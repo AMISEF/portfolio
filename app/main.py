@@ -12,7 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
 from app.db import init_db
-from app.routers import auth, market, pages, portfolio
+from app.routers import auth, journal, market, pages, portfolio
 
 
 @asynccontextmanager
@@ -36,6 +36,7 @@ app.include_router(pages.router)
 app.include_router(market.router)
 app.include_router(auth.router)
 app.include_router(portfolio.router)
+app.include_router(journal.router)
 
 
 @app.get("/health")
