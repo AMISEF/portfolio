@@ -1,0 +1,19 @@
+# محیط و کلیدها (هرگز commit نشوند)
+.env
+data/credit_state.json
+
+# پایتون
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# ابزار/سیستم
+.DS_Store
+*.log
+.idea/
+.vscode/
+node_modules/
