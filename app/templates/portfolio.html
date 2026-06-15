@@ -36,6 +36,22 @@
   </div>
 </div>
 
+<!-- تحلیل ریسک سبد (قاعده‌محور) -->
+<div class="card rise" id="riskCard" style="animation-delay:.1s;margin-bottom:16px" hidden>
+  <div class="card__head">
+    <span class="card__title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 4v6c0 5-3.8 8.5-9 10-5.2-1.5-9-5-9-10V6z"/></svg>
+      تحلیل ریسک سبد
+    </span>
+    <span class="risk-badge" id="riskBadge"></span>
+  </div>
+  <div class="card__body">
+    <div class="risk-meter"><div class="risk-meter__fill" id="riskFill"></div></div>
+    <div class="risk-metrics" id="riskMetrics"></div>
+    <ul class="risk-insights" id="riskInsights"></ul>
+  </div>
+</div>
+
 <div class="pf-grid">
   <!-- نمودار تخصیص -->
   <div class="card rise" style="animation-delay:.12s">

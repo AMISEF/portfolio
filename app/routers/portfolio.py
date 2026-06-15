@@ -15,7 +15,7 @@ from sqlmodel import Session, select
 from app.db import get_session
 from app.deps import current_user
 from app.models import Holding, User
-from app.services import prices
+from app.services import prices, risk
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
@@ -75,6 +75,7 @@ async def summary(user: User = Depends(current_user), session: Session = Depends
             "count": len(items),
         },
         "holdings": items,
+        "risk": risk.analyze(items, total_value),
     }
 
 

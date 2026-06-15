@@ -25,6 +25,28 @@
 
     renderDonut(d.holdings);
     renderTable(d.holdings);
+    if (d.risk) renderRisk(d.risk);
+  }
+
+  function renderRisk(r) {
+    const card = $("riskCard");
+    if (!card) return;
+    card.hidden = false;
+    const colors = { "بالا": "var(--down)", "متوسط": "#f59e0b", "پایین": "var(--up)" };
+    const col = colors[r.risk_level] || "var(--text-dim)";
+    $("riskBadge").textContent = "ریسک: " + r.risk_level;
+    $("riskBadge").style.color = col;
+    $("riskFill").style.width = r.score + "%";
+    $("riskFill").style.background = col;
+    const m = r.metrics || {};
+    $("riskMetrics").innerHTML = [
+      m.assets !== undefined ? `<span>دارایی‌ها: <b>${CS.toFa(m.assets)}</b></span>` : "",
+      m.top_pct !== undefined ? `<span>تمرکز: <b>${CS.toFa(m.top_pct)}٪ ${m.top_symbol || ""}</b></span>` : "",
+      m.stable_pct !== undefined ? `<span>استیبل‌کوین: <b>${CS.toFa(m.stable_pct)}٪</b></span>` : "",
+      m.change_24h !== undefined ? `<span>تغییر ۲۴ساعته: <b class="${CS.chgClass(m.change_24h)}">${CS.faPct(m.change_24h)}</b></span>` : "",
+    ].join("");
+    $("riskInsights").innerHTML = (r.insights || []).map((i) =>
+      `<li class="ri ri--${i.type}">${i.text}</li>`).join("");
   }
 
   function renderDonut(holdings) {
