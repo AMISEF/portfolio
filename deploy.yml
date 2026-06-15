@@ -1,0 +1,93 @@
+name: CI/CD — Test & Deploy
+
+# هر push روی main: اول تست، بعد استقرار خودکار روی سرور.
+# اجرای دستی هم از تب Actions ممکن است (workflow_dispatch).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  SERVER_HOST: 38.252.8.195
+  SERVER_USER: root
+  APP_DIR: /var/www/portfolio
+
+jobs:
+  # ---------- ۱) تست/بررسی سلامت کد ----------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: نصب وابستگی‌ها
+        run: pip install -r requirements.txt
+      - name: بررسی import اپ (تشخیص خطای نحوی)
+        run: python -c "from app.main import app; print('app import OK')"
+      - name: بررسی سلامت سرویس‌ها (با دادهٔ نمونه)
+        run: |
+          python - <<'PY'
+          import asyncio
+          from app.services import cryptorank, toobit, tabdeal, sourcearena
+          m = asyncio.run(cryptorank.macro()); assert m["stats"], "macro empty"
+          g = asyncio.run(toobit.gainers()); assert g["gainers"], "gainers empty"
+          asyncio.run(tabdeal.usdt()); asyncio.run(sourcearena.gold18())
+          print("services OK")
+          PY
+
+  # ---------- ۲) استقرار خودکار روی سرور ----------
+  deploy:
+    needs: test
+    # فقط روی push به main (نه روی pull_request)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: بررسی وجود Secret کلید SSH
+        id: guard
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Secret به نام DEPLOY_SSH_KEY تنظیم نشده — استقرار خودکار رد شد. طبق DEPLOY.md آن را بسازید."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.guard.outputs.ready == 'true'
+
+      - name: آماده‌سازی کلید SSH
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: انتقال کد با rsync (به‌جز فایل‌های حساس/محلی)
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          rsync -az --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.venv' \
+            --exclude='.env' \
+            --exclude='data/' \
+            --exclude='__pycache__' \
+            -e "ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
+            ./ "${SERVER_USER}@${SERVER_HOST}:${APP_DIR}/"
+
+      - name: نصب وابستگی‌ها و ری‌استارت سرویس
+        if: steps.guard.outputs.ready == 'true'
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no \
+            "${SERVER_USER}@${SERVER_HOST}" \
+            "bash ${APP_DIR}/deploy/remote_update.sh"
