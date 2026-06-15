@@ -118,3 +118,54 @@ sudo systemctl restart cryptosmart-hub
 * اگر صفحه دادهٔ «نمونه» نشان داد یعنی سرور به آن API وصل نشده — فایروال/خروجی سرور
   و صحت کلید را بررسی کنید (`curl` مستقیم به همان API از روی سرور).
 * فایل `.env` را هرگز commit نکنید (در `.gitignore` هست).
+
+---
+
+## ۸) CI/CD — استقرار خودکار (GitHub Actions)
+
+با این روش، هر بار که کد روی `main` push شود، GitHub به‌صورت خودکار کد را روی سرور
+می‌ریزد و سرویس را ری‌استارت می‌کند. دیگر نیازی به `git pull` دستی روی سرور نیست
+(و سرور هم نیازی به دسترسی گیت‌هاب ندارد).
+
+فایل گردش‌کار: `.github/workflows/deploy.yml`
+
+### گام ۸-۱: ساخت کلید SSH روی سرور
+روی سرور (به‌عنوان root) این دستورها را بزنید:
+
+```bash
+ssh-keygen -t ed25519 -f ~/deploy_key -N ""
+cat ~/deploy_key.pub >> ~/.ssh/authorized_keys   # اجازهٔ ورود به GitHub Actions
+chmod 600 ~/.ssh/authorized_keys
+cat ~/deploy_key                                 # این «کلید خصوصی» را کامل کپی کنید
+```
+
+> خروجی `cat ~/deploy_key` از خط `-----BEGIN ...` تا `-----END ...` را کامل کپی کنید.
+
+### گام ۸-۲: افزودن Secret در گیت‌هاب
+در ریپو: **Settings → Secrets and variables → Actions → New repository secret**
+
+| نام | مقدار |
+|---|---|
+| `DEPLOY_SSH_KEY` | همان کلید خصوصی که کپی کردید |
+
+### گام ۸-۳: پاک‌کردن کلید خصوصی از سرور (امنیت)
+```bash
+rm ~/deploy_key
+```
+
+### گام ۸-۴: راه‌اندازی اولیهٔ یک‌بار روی سرور
+چون CI کد را می‌ریزد ولی `.env` و سرویس را نمی‌سازد، یک‌بار این‌ها را انجام دهید:
+
+```bash
+sudo mkdir -p /var/www/portfolio && cd /var/www/portfolio
+# اولین push را در گیت‌هاب اجرا کنید تا کد اینجا rsync شود، سپس:
+cp .env.example .env && nano .env        # کلیدهای واقعی
+sudo cp deploy/cryptosmart-hub.service /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now cryptosmart-hub
+# Nginx و SSL طبق گام‌های ۵ و ۶
+```
+
+> برای اینکه `systemctl restart` بدون رمز در CI کار کند، چون کاربر `root` است مشکلی نیست.
+> اگر کاربر غیر-root شد، باید یک قانون sudoers بدون رمز برای ری‌استارت سرویس اضافه شود.
+
+بعد از این، هر `git push` روی `main` ⟵ استقرار خودکار. ✅
