@@ -1,0 +1,22 @@
+# سرویس systemd برای اجرای دائمی CryptoSmart Hub
+# مسیر نصب: /etc/systemd/system/cryptosmart-hub.service
+# فعال‌سازی: sudo systemctl daemon-reload && sudo systemctl enable --now cryptosmart-hub
+
+[Unit]
+Description=CryptoSmart Hub (FastAPI / Uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/portfolio
+# برنامه فایل .env را به‌صورت خودکار از WorkingDirectory می‌خواند
+ExecStart=/var/www/portfolio/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 2
+Restart=always
+RestartSec=3
+# دادهٔ شمارندهٔ کردیت در همین مسیر نوشته می‌شود
+StateDirectory=portfolio
+
+[Install]
+WantedBy=multi-user.target
