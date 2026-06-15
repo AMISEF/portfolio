@@ -1,0 +1,58 @@
+{# نوار ناوبری — موبایل: پایین صفحه | دسکتاپ: عمودی سمت راست #}
+
+{# --- موبایل (پایین) --- #}
+<nav class="nav nav--bottom">
+  <div class="nav__bar">
+    <button class="nav__item" type="button" disabled title="پورتفولیو (به‌زودی)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 13h7V3H3zM14 21h7V11h-7zM14 3v5h7V3zM3 17v4h7v-4z"/></svg>
+    </button>
+    <button class="nav__item" type="button" disabled title="بازار (به‌زودی)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 17l5-5 4 4 8-8"/><path d="M16 8h5v5"/></svg>
+    </button>
+
+    <!-- خانه: مرکز و برجسته -->
+    <a class="nav__item nav__item--home {% if active=='home' %}is-active{% endif %}" href="/" title="خانه">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
+    </a>
+
+    <button class="nav__item" type="button" disabled title="ژورنال (به‌زودی)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M8 8h7M8 12h7M8 16h4"/></svg>
+    </button>
+    <button class="nav__item" type="button" disabled title="بیشتر (به‌زودی)">
+      <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+    </button>
+  </div>
+</nav>
+
+{# --- دسکتاپ (عمودی، راست) --- #}
+<nav class="nav nav--side">
+  <img class="nav__logo" src="/static/img/logo.svg" alt="{{ brand_fa }}">
+
+  <a class="nav__item nav__item--home {% if active=='home' %}is-active{% endif %}" href="/" title="خانه">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>
+  </a>
+  <button class="nav__item" type="button" disabled title="پورتفولیو (به‌زودی)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 13h7V3H3zM14 21h7V11h-7zM14 3v5h7V3zM3 17v4h7v-4z"/></svg>
+  </button>
+  <button class="nav__item" type="button" disabled title="بازار (به‌زودی)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 17l5-5 4 4 8-8"/><path d="M16 8h5v5"/></svg>
+  </button>
+  <button class="nav__item" type="button" disabled title="ژورنال (به‌زودی)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M8 8h7M8 12h7M8 16h4"/></svg>
+  </button>
+
+  <div class="nav__spacer"></div>
+
+  <button class="nav__item" type="button" disabled title="تنظیمات (به‌زودی)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a7.97 7.97 0 0 0 .1-3l1.6-1.2-1.5-2.6-1.9.6a8 8 0 0 0-2.6-1.5L14.4 4h-3l-.4 1.8a8 8 0 0 0-2.6 1.5l-1.9-.6L4.5 9.3 6.1 10.5a8 8 0 0 0 .1 3l-1.6 1.2 1.5 2.6 1.9-.6a8 8 0 0 0 2.6 1.5l.4 1.8h3l.4-1.8a8 8 0 0 0 2.6-1.5l1.9.6 1.5-2.6z"/></svg>
+  </button>
+</nav>
