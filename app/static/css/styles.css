@@ -407,11 +407,37 @@ a { color: inherit; text-decoration: none; }
 .section-title .accent { color: var(--brand); }
 .section-title__bar { flex: 1; height: 1px; background: linear-gradient(to left, var(--border), transparent); }
 
-.grid {
-  display: grid;
-  gap: 18px;
-  grid-template-columns: repeat(12, 1fr);
+/* سرتیتر بازار + تاریخ/ساعت */
+.market-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px; margin: 18px 2px 14px;
 }
+.market-head__title { font-size: 1.5rem; font-weight: 900; color: var(--heading); display: flex; align-items: center; gap: 8px; }
+.market-head__title .accent { color: var(--brand); }
+.market-head__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+.dt { display: flex; flex-direction: column; }
+.dt__label { font-size: .62rem; color: var(--text-dim); font-weight: 700; }
+.dt__val { font-size: .9rem; font-weight: 800; color: var(--heading); }
+.dt__val.clock { color: var(--brand-dark); font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+
+/* چیدمان سه‌ستونه نمای بازار (مثل تصویر) */
+.overview {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 300px 1fr 320px;   /* راست: گینرها | وسط: هیت‌مپ | چپ: قیمت‌ها */
+  align-items: start;
+}
+.ov-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (max-width: 1180px) {
+  .overview { grid-template-columns: 1fr 1fr; }
+  .ov-center { grid-column: 1 / -1; order: -1; }   /* هیت‌مپ بالا و تمام‌عرض */
+}
+@media (max-width: 720px) {
+  .overview { grid-template-columns: 1fr; }
+}
+
+/* شبکهٔ ۱۲ستونه (برای صفحات بعدی) */
+.grid { display: grid; gap: 18px; grid-template-columns: repeat(12, 1fr); }
 .col-12 { grid-column: span 12; }
 .col-8  { grid-column: span 8; }
 .col-6  { grid-column: span 6; }
@@ -447,6 +473,7 @@ a { color: inherit; text-decoration: none; }
 }
 .card__title { font-size: 1rem; font-weight: 800; color: var(--heading); display: flex; align-items: center; gap: 8px; }
 .card__title svg { width: 18px; height: 18px; color: var(--brand); }
+.card__sub { font-size: .66rem; color: var(--text-dim); font-weight: 700; display: flex; align-items: center; gap: 6px; }
 .card__body { position: relative; z-index: 1; }
 
 /* تگ منبع داده (live/sample) */
@@ -475,29 +502,59 @@ a { color: inherit; text-decoration: none; }
 .stat__chg { font-size: .76rem; font-weight: 800; margin-top: 2px; }
 
 /* ==========================================================================
-   هیت‌مپ بازار
+   هیت‌مپ بازار — دسته‌بندی‌شده (مثل CryptoRank)
    ========================================================================== */
 .heatmap {
-  display: grid;
-  grid-auto-flow: dense;
-  grid-template-columns: repeat(12, 1fr);
-  grid-auto-rows: 46px;
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
+  height: 460px;
+}
+.heat-cat {
+  display: flex;
+  flex-direction: column;
+  flex-basis: 0;
+  min-width: 96px;
+  gap: 4px;
+}
+.heat-cat__label {
+  font-size: .64rem; font-weight: 800; color: var(--text-dim);
+  padding: 2px 4px; letter-spacing: .3px;
+}
+.heat-cat__tiles {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  flex: 1; align-content: stretch;
 }
 .heat {
-  border-radius: 10px;
-  padding: 8px;
+  flex: 1 1 64px;
+  min-width: 52px; min-height: 40px;
+  border-radius: 9px;
+  padding: 6px 7px;
   display: flex; flex-direction: column; justify-content: center;
   color: #fff; overflow: hidden; cursor: default;
-  transition: transform .18s ease, filter .18s ease;
-  box-shadow: inset 0 0 30px rgba(0,0,0,.12);
+  transition: transform .16s ease, filter .16s ease;
+  box-shadow: inset 0 0 26px rgba(0,0,0,.16);
+  text-shadow: 0 1px 3px rgba(0,0,0,.28);
 }
-.heat:hover { transform: scale(1.04); filter: brightness(1.08); z-index: 2; }
-.heat b { font-size: .92rem; font-weight: 900; line-height: 1; }
-.heat .pct { font-size: .72rem; font-weight: 700; opacity: .95; }
-.heat .nm { font-size: .6rem; opacity: .85; }
-.heat--xl b { font-size: 1.6rem; }
-.heat--lg b { font-size: 1.15rem; }
+.heat:hover { transform: scale(1.05); filter: brightness(1.1); z-index: 3; }
+.heat b { font-size: .82rem; font-weight: 900; line-height: 1.05; }
+.heat .pct { font-size: .68rem; font-weight: 700; opacity: .96; }
+.heat .nm { font-size: .58rem; opacity: .85; margin-top: 1px; }
+.heat--md { flex-grow: 3; }
+.heat--lg b { font-size: 1.1rem; }
+.heat--xl { min-width: 120px; }
+.heat--xl b { font-size: 1.9rem; }
+.heat--xl .pct { font-size: .95rem; }
+.heat--xl .nm { font-size: .8rem; }
+
+.heatmap-legend {
+  display: flex; gap: 16px; justify-content: center;
+  margin-top: 12px; font-size: .72rem; color: var(--text-soft);
+}
+.heatmap-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.heatmap-legend i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+
+@media (max-width: 640px) { .heatmap { height: 380px; } .heat-cat { min-width: 78px; } }
 
 /* ==========================================================================
    گیج ترس و طمع
@@ -528,28 +585,49 @@ a { color: inherit; text-decoration: none; }
 }
 .rowitem__main { flex: 1; min-width: 0; }
 .rowitem__name { font-weight: 800; font-size: .92rem; color: var(--heading); }
-.rowitem__sub { font-size: .7rem; color: var(--text-dim); }
-.rowitem__price { text-align: left; }
-.rowitem__price .p { font-weight: 800; font-size: .95rem; }
-.rowitem__price .v { font-size: .68rem; color: var(--text-dim); }
+.rowitem__sub { font-size: .68rem; color: var(--text-dim); }
+.rowitem__price { text-align: left; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.rowitem__price .p { font-weight: 800; font-size: .92rem; font-variant-numeric: tabular-nums; }
 
-.chg { font-weight: 800; font-size: .82rem; padding: 3px 8px; border-radius: 10px; white-space: nowrap; }
+/* آیکون ارز (تصویر + fallback حرفی) */
+.coin { position: relative; width: 40px; height: 40px; flex-shrink: 0; }
+.coin__img {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--surface-solid); object-fit: cover;
+  box-shadow: 0 4px 10px -4px rgba(0,0,0,.3);
+}
+.coin__badge {
+  position: absolute; inset: 0; place-items: center;
+  width: 40px; height: 40px; border-radius: 50%;
+  font-weight: 900; font-size: .66rem; color: #fff;
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-800));
+}
+
+.chg { font-weight: 800; font-size: .8rem; padding: 3px 8px; border-radius: 10px; white-space: nowrap; }
 .chg.up { color: var(--up); background: rgba(22,199,132,.12); }
 .chg.down { color: var(--down); background: rgba(234,57,67,.12); }
 
-/* قیمت‌های داخلی — کارت‌های کوچک */
-.pricegrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-@media (max-width: 480px) { .pricegrid { grid-template-columns: 1fr; } }
-.pricebox {
-  padding: 12px; border-radius: 14px;
+/* قیمت‌های کلیدی — ردیف با نماد */
+.keyprices { display: flex; flex-direction: column; gap: 9px; }
+.keyprice {
+  display: flex; align-items: center; gap: 11px;
+  padding: 11px 12px; border-radius: 14px;
   background: var(--surface-2); border: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 4px;
   transition: var(--trans);
 }
-.pricebox:hover { transform: translateY(-3px); border-color: var(--brand); }
-.pricebox__name { font-size: .76rem; color: var(--text-soft); font-weight: 700; display: flex; align-items: center; }
-.pricebox__price { font-size: 1.12rem; font-weight: 900; color: var(--heading); font-variant-numeric: tabular-nums; }
-.pricebox__unit { font-size: .66rem; color: var(--text-dim); }
+.keyprice:hover { transform: translateX(-4px); border-color: var(--brand); }
+.kp-ic {
+  width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+  display: grid; place-items: center; color: #fff;
+  font-weight: 900; font-size: 1rem;
+  box-shadow: 0 5px 12px -5px rgba(0,0,0,.4);
+}
+.keyprice__main { flex: 1; min-width: 0; }
+.keyprice__name { font-weight: 800; font-size: .86rem; color: var(--heading); display: flex; align-items: center; }
+.keyprice__note { font-size: .62rem; color: var(--text-dim); }
+.keyprice__right { text-align: left; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.keyprice__price { font-weight: 900; font-size: .98rem; color: var(--heading); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.keyprice__price small { font-size: .62rem; font-weight: 700; color: var(--text-dim); }
 
 /* اسکلتون بارگذاری */
 .skeleton { position: relative; overflow: hidden; background: var(--chip); border-radius: 8px; color: transparent !important; }

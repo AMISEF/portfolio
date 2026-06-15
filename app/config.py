@@ -37,8 +37,12 @@ class Settings(BaseSettings):
     toobit_access_key: str = ""
     toobit_secret_key: str = ""
     toobit_base_url: str = "https://api.toobit.com"
+    # دامنهٔ فیوچرز توبیت (قراردادهای XAU/XAG/OIL)
+    toobit_futures_base_url: str = "https://api.toobit.com"
     toobit_ttl: int = 12          # قیمت‌های لحظه‌ای — هر ~۱۲ ثانیه
     toobit_gainers_count: int = 5
+    # نمادهای فیوچرز موردنظر
+    toobit_futures_symbols: str = "XAUUSDT,XAGUSDT,OILBRENTUSDT"
 
     # ---- Tabdeal (قیمت تتر تومانی) ----
     tabdeal_api_key: str = ""

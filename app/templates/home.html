@@ -1,102 +1,92 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- ===== نوار تاریخ / ساعت + وضعیت زنده ===== -->
-<section class="topstrip rise">
-  <div class="datetime">
-    <div class="datetime__block">
-      <span class="datetime__label">تاریخ شمسی</span>
-      <span class="datetime__value" id="dateShamsi">—</span>
-    </div>
-    <div class="datetime__block">
-      <span class="datetime__label">تاریخ میلادی</span>
-      <span class="datetime__value" id="dateGregorian">—</span>
-    </div>
-    <div class="datetime__block">
-      <span class="datetime__label">ساعت</span>
-      <span class="datetime__value clock" id="clock">--:--:--</span>
-    </div>
+<!-- ===== سرتیتر بازار + تاریخ/ساعت زنده ===== -->
+<section class="market-head rise">
+  <div class="market-head__title">
+    نمای کلی <span class="accent">بازار</span>
+    <span class="src-tag" id="macroSrc"></span>
   </div>
-  <span class="live-badge"><span class="live-dot"></span> داده‌های زنده</span>
+  <div class="market-head__meta">
+    <div class="dt">
+      <span class="dt__label">شمسی</span>
+      <span class="dt__val" id="dateShamsi">—</span>
+    </div>
+    <div class="dt">
+      <span class="dt__label">میلادی</span>
+      <span class="dt__val" id="dateGregorian">—</span>
+    </div>
+    <div class="dt">
+      <span class="dt__label">ساعت</span>
+      <span class="dt__val clock" id="clock">--:--:--</span>
+    </div>
+    <span class="live-badge"><span class="live-dot"></span> زنده</span>
+  </div>
 </section>
 
-<!-- ===== تیکر متحرک شاخص‌های کلان ===== -->
+<!-- ===== تیکر متحرک شاخص‌های کلان (همین کافی است) ===== -->
 <div class="ticker" aria-label="شاخص‌های کلیدی بازار">
   <div class="ticker__track" id="tickerTrack">
     <span class="ticker__item skeleton">در حال بارگذاری شاخص‌ها…</span>
   </div>
 </div>
 
-<!-- ===== عنوان بخش ===== -->
-<h2 class="section-title">
-  نمای کلی <span class="accent">بازار</span>
-  <span class="section-title__bar"></span>
-  <span class="src-tag" id="macroSrc"></span>
-</h2>
+<!-- ===== چیدمان سه‌ستونه مانند نمای ارسالی ===== -->
+<div class="overview">
 
-<div class="grid">
-  <!-- شاخص‌های کلان -->
-  <div class="col-12">
-    <div class="card rise" style="animation-delay:.05s">
-      <div class="card__body">
-        <div class="statgrid" id="statGrid">
-          <span class="skeleton">بارگذاری…</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- هیت‌مپ -->
-  <div class="col-8">
-    <div class="card rise" style="animation-delay:.1s">
+  <!-- ستون راست: بیشترین رشد توبیت -->
+  <section class="ov-col ov-left rise" style="animation-delay:.05s">
+    <div class="card">
       <div class="card__head">
         <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-8"/><path d="M16 8h5v5"/></svg>
+          بیشترین رشد
+        </span>
+        <span class="card__sub">۲۴ ساعته • توبیت <span class="src-tag" id="gainersSrc"></span></span>
+      </div>
+      <div class="card__body">
+        <div class="rowlist" id="gainers"><span class="skeleton">بارگذاری…</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ستون وسط: هیت‌مپ + شاخص ترس و طمع -->
+  <section class="ov-col ov-center rise" style="animation-delay:.1s">
+    <div class="card">
+      <div class="card__head">
+        <span class="card__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="3" y="15" width="7" height="6" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg>
           نقشهٔ حرارتی بازار
         </span>
         <span class="src-tag" id="heatmapSrc"></span>
       </div>
       <div class="card__body">
         <div class="heatmap" id="heatmap"><span class="skeleton">بارگذاری نقشهٔ حرارتی…</span></div>
+        <div class="heatmap-legend">
+          <span><i style="background:#16c784"></i> رشد</span>
+          <span><i style="background:#4b5563"></i> بدون تغییر</span>
+          <span><i style="background:#ea3943"></i> افت</span>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- شاخص ترس و طمع -->
-  <div class="col-4">
-    <div class="card rise" style="animation-delay:.15s">
+    <div class="card">
       <div class="card__head">
         <span class="card__title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 0 0-9 9h18a9 9 0 0 0-9-9z"/><path d="M12 12l5-3"/></svg>
           شاخص ترس و طمع
         </span>
-        <span class="live-dot"></span>
+        <span class="live-badge"><span class="live-dot"></span> به‌روز</span>
       </div>
       <div class="card__body">
         <div class="gauge" id="fngGauge"><span class="skeleton">بارگذاری…</span></div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- بیشترین رشد در توبیت -->
-  <div class="col-4">
-    <div class="card rise" style="animation-delay:.2s">
-      <div class="card__head">
-        <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-8"/><path d="M16 8h5v5"/></svg>
-          بیشترین رشد (توبیت)
-        </span>
-        <span class="src-tag" id="gainersSrc"></span>
-      </div>
-      <div class="card__body">
-        <div class="rowlist" id="gainers"><span class="skeleton">بارگذاری…</span></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- قیمت‌های کلیدی داخلی و کالا -->
-  <div class="col-8">
-    <div class="card rise" style="animation-delay:.25s">
+  <!-- ستون چپ: قیمت‌های کلیدی (تتر، طلا، فلزات، نفت) -->
+  <section class="ov-col ov-right rise" style="animation-delay:.15s">
+    <div class="card">
       <div class="card__head">
         <span class="card__title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 10h4.5a1.5 1.5 0 0 1 0 3H9h5"/></svg>
@@ -105,14 +95,15 @@
         <span class="live-badge"><span class="live-dot live-dot--brand"></span> لحظه‌ای</span>
       </div>
       <div class="card__body">
-        <div class="pricegrid" id="internalPrices"><span class="skeleton">بارگذاری…</span></div>
+        <div class="keyprices" id="internalPrices"><span class="skeleton">بارگذاری…</span></div>
       </div>
     </div>
-  </div>
+  </section>
+
 </div>
 
 <p class="disclaimer">
-  داده‌های نمایش‌داده‌شده صرفاً جنبهٔ اطلاع‌رسانی دارند و توصیهٔ سرمایه‌گذاری نیستند.
+  داده‌ها صرفاً اطلاع‌رسانی است و توصیهٔ سرمایه‌گذاری نیست.
   <br>© {{ brand_fa }} — نسخهٔ فاز ۱ (نمای کلی بازار)
 </p>
 
