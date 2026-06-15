@@ -65,5 +65,13 @@ class Settings(BaseSettings):
     # مهلت زمانی درخواست‌های HTTP خروجی (ثانیه)
     http_timeout: float = 10.0
 
+    # ---- احراز هویت و دیتابیس ----
+    # کلید امضای کوکی نشست — حتماً روی سرور در .env مقدار تصادفی بدهید
+    secret_key: str = "change-me-in-production-please-set-a-long-random-value"
+    database_url: str = "sqlite:///data/cryptosmart.db"
+    session_max_age: int = 60 * 60 * 24 * 30  # ۳۰ روز
+    # توکن ربات تلگرام (برای احراز هویت مینی‌اپ — اختیاری در فاز فعلی)
+    telegram_bot_token: str = ""
+
 
 settings = Settings()

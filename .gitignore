@@ -1,6 +1,9 @@
 # محیط و کلیدها (هرگز commit نشوند)
 .env
 data/credit_state.json
+data/*.db
+data/*.sqlite
+data/*.sqlite3
 
 # پایتون
 __pycache__/
