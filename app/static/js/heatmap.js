@@ -1,53 +1,62 @@
-/* رندر نقشهٔ حرارتی بازار — دسته‌بندی‌شده بر اساس بخش (Layer1/DeFi/…)؛
-   رنگ بر اساس درصد تغییر ۲۴ساعته، اندازهٔ خانه بر اساس ارزش بازار. */
+/* نقشهٔ حرارتی بازار به‌سبک CryptoRank:
+   ارزها بر اساس دسته (ارز / بلاکچین / استیبل‌کوین / دیفای / میم‌کوین / سی‌فای)
+   گروه‌بندی می‌شوند؛ اندازهٔ هر دسته و هر خانه ∝ ارزش بازار، رنگ ∝ تغییر ۲۴ساعته. */
 (function (w) {
   "use strict";
-  const CS = w.CS;
 
-  // رنگ سبز/قرمز با شدت متناسب با بزرگی تغییر
-  function heatColor(chg) {
-    const m = Math.min(Math.abs(chg) / 8, 1);
-    if (chg >= 0) return `rgba(22,199,132,${(0.35 + m * 0.55).toFixed(3)})`;
-    return `rgba(234,57,67,${(0.35 + m * 0.55).toFixed(3)})`;
+  const CAT_ORDER = ["Currency", "Blockchain", "Stablecoin", "DeFi", "Meme", "CeFi"];
+  const CAT_FA = {
+    Currency: "ارز", Blockchain: "بلاکچین", Stablecoin: "استیبل‌کوین",
+    DeFi: "دیفای", Meme: "میم‌کوین", CeFi: "سی‌فای",
+  };
+
+  function heatColor(ch) {
+    const x = Math.max(-8, Math.min(8, ch || 0)) / 8;
+    if (Math.abs(x) < 0.02) return "hsl(220 8% 38%)";        // بی‌تغییر: خاکستری
+    if (x > 0) return `hsl(152 58% ${42 - x * 16}%)`;        // سبز (رشد)
+    return `hsl(353 65% ${44 + x * 16}%)`;                   // قرمز (افت)
   }
+
+  // وزن فشرده‌شده برای جلوگیری از غول‌شدن بیت‌کوین در شبکه
+  const weight = (mc) => Math.pow(Math.max(mc, 1), 0.62);
 
   function render(el, items) {
     if (!items || !items.length) {
       el.innerHTML = '<span class="src-tag">داده‌ای موجود نیست</span>';
       return;
     }
-
-    // رتبهٔ ارزش بازار سراسری → برای تعیین اندازهٔ خانه‌ها (xl/lg)
+    // رتبهٔ سراسری بر اساس ارزش بازار (برای تصمیم نمایش قیمت/اندازه)
     const ranked = items.slice().sort((a, b) => (b.market_cap || 0) - (a.market_cap || 0));
-    const sizeOf = new Map();
-    ranked.forEach((it, i) => sizeOf.set(it.symbol, i === 0 ? "xl" : i < 4 ? "lg" : ""));
+    const rank = new Map(ranked.map((it, i) => [it.symbol, i]));
 
     // گروه‌بندی بر اساس دسته
-    const groups = new Map();
-    for (const it of items) {
-      const cat = it.category || "سایر";
-      if (!groups.has(cat)) groups.set(cat, []);
-      groups.get(cat).push(it);
-    }
+    const groups = {};
+    items.forEach((it) => {
+      const c = CAT_ORDER.includes(it.category) ? it.category : "Currency";
+      (groups[c] = groups[c] || []).push(it);
+    });
 
-    // مرتب‌سازی دسته‌ها بر اساس مجموع ارزش بازار (بزرگ‌ترین اول → پیشرو RTL)
-    const cats = [...groups.entries()].sort((a, b) =>
-      b[1].reduce((s, x) => s + (x.market_cap || 0), 0) -
-      a[1].reduce((s, x) => s + (x.market_cap || 0), 0));
+    const cats = Object.keys(groups).sort((a, b) => {
+      const ai = CAT_ORDER.indexOf(a), bi = CAT_ORDER.indexOf(b);
+      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+    });
 
-    el.innerHTML = cats.map(([cat, coins]) => {
-      coins.sort((a, b) => (b.market_cap || 0) - (a.market_cap || 0));
-      const tiles = coins.map((c) => {
-        const size = sizeOf.get(c.symbol) || "";
-        const cls = size === "xl" ? " heat--xl" : size === "lg" ? " heat--lg" : "";
-        return `<div class="heat${cls}" style="background:${heatColor(c.change_24h)}"
-                  title="${c.name || c.symbol} • ${CS.faPrice(c.price)}">
-                  <b>${c.symbol}</b>
-                  <span class="pct">${CS.faPct(c.change_24h)}</span>
+    el.innerHTML = cats.map((cat) => {
+      const list = groups[cat].sort((a, b) => (b.market_cap || 0) - (a.market_cap || 0));
+      const catMc = list.reduce((s, it) => s + (it.market_cap || 0), 0);
+      const tiles = list.map((it) => {
+        const r = rank.get(it.symbol) ?? 99;
+        const cls = r === 0 ? "heat--xl" : r < 3 ? "heat--lg" : r < 8 ? "heat--md" : "";
+        const showPrice = r < 9;
+        return `<div class="heat ${cls}" style="flex-grow:${weight(it.market_cap)};background:${heatColor(it.change_24h)}"
+                  title="${it.name} • ${w.CS.faPrice(it.price)} • ${w.CS.faPct(it.change_24h)}">
+                  <b>${it.symbol}</b>
+                  <span class="pct">${w.CS.faPct(it.change_24h)}</span>
+                  ${showPrice ? `<span class="nm">${w.CS.faPrice(it.price)}</span>` : ""}
                 </div>`;
       }).join("");
-      return `<div class="heat-cat">
-                <div class="heat-cat__label">${cat}</div>
+      return `<div class="heat-cat" style="flex-grow:${weight(catMc)}">
+                <div class="heat-cat__label">${CAT_FA[cat] || cat}</div>
                 <div class="heat-cat__tiles">${tiles}</div>
               </div>`;
     }).join("");

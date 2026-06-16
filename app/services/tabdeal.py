@@ -26,11 +26,14 @@ async def get_usdt() -> dict[str, Any]:
     asks = data.get("asks") or []
     best_bid = float(bids[0][0]) if bids else 0.0
     best_ask = float(asks[0][0]) if asks else 0.0
-    mid_rial = (best_bid + best_ask) / 2 if (best_bid and best_ask) else (best_bid or best_ask)
-    if not mid_rial:
+    mid = (best_bid + best_ask) / 2 if (best_bid and best_ask) else (best_bid or best_ask)
+    if not mid:
         raise RuntimeError("Tabdeal depth empty")
 
-    price_toman = round(mid_rial / 10)  # ریال → تومان
+    # تشخیص خودکار واحد: نرخ تتر در ایران (۱۴۰۵) صدها هزار تومان است.
+    # اگر عدد بزرگ‌تر از ۱٬۰۰۰٬۰۰۰ باشد یعنی «ریال» است → تقسیم بر ۱۰ تا «تومان» شود؛
+    # وگرنه همان تومان است (تبدیل مستقیم تومان می‌دهد).
+    price_toman = round(mid / 10) if mid > 1_000_000 else round(mid)
     return {"source": "live", "usdt_irt": {"name": "تتر / تومان", "price": price_toman, "change_24h": 0.0}}
 
 
