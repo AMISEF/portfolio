@@ -26,9 +26,13 @@
   --nav-w: 92px;             /* عرض نوار کناری دسکتاپ */
   --header-h: 76px;
 
+  --warn: #f59e0b;          /* هشدار / خنثی */
+
   --font: "Vazirmatn", "B Nazanin", Tahoma, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
   --shadow-soft: 0 10px 30px -12px rgba(22, 47, 85, .25);
   --shadow-pop: 0 18px 50px -18px rgba(22, 47, 85, .45);
+  --shadow-brand: 0 10px 24px -10px rgba(25, 195, 179, .7);
   --trans: .28s cubic-bezier(.4, 0, .2, 1);
 }
 
@@ -325,6 +329,25 @@ a { color: inherit; text-decoration: none; }
 /* ==========================================================================
    نوار تاریخ/ساعت + تیکر
    ========================================================================== */
+/* ---------- سرستون بازار (عنوان + تاریخ/ساعت) ---------- */
+.market-head {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px; margin: 18px 2px 16px;
+}
+.market-head__title { font-size: 1.5rem; font-weight: 900; color: var(--heading); display: flex; align-items: center; gap: 8px; }
+.market-head__title .accent { color: var(--brand); }
+.market-head__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+.dt { display: flex; flex-direction: column; }
+.dt__label { font-size: .62rem; color: var(--text-dim); font-weight: 700; }
+.dt__val { font-size: .9rem; font-weight: 800; color: var(--heading); }
+.dt__val.clock { color: var(--brand-dark); font-variant-numeric: tabular-nums; letter-spacing: 1px; font-family: var(--font-mono); }
+
+/* ---------- شبکهٔ نمای کلی (سه‌ستونه) ---------- */
+.overview { display: grid; gap: 16px; grid-template-columns: 300px 1fr 320px; align-items: start; }
+.ov-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (max-width: 1180px) { .overview { grid-template-columns: 1fr 1fr; } .ov-center { grid-column: 1 / -1; order: -1; } }
+@media (max-width: 720px) { .overview { grid-template-columns: 1fr; } }
+
 .topstrip {
   margin: 18px 0 14px;
   display: flex;
@@ -391,10 +414,10 @@ a { color: inherit; text-decoration: none; }
   animation: tickerMove 38s linear infinite;
 }
 .ticker:hover .ticker__track { animation-play-state: paused; }
-@keyframes tickerMove { from { transform: translateX(0); } to { transform: translateX(50%); } }
+@keyframes tickerMove { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .ticker__item { display: inline-flex; align-items: center; gap: 8px; font-size: .9rem; }
 .ticker__item b { color: var(--heading); font-weight: 800; }
-.ticker__item .val { color: var(--text); font-weight: 700; }
+.ticker__item .val { color: var(--text); font-weight: 700; font-family: var(--font-mono); }
 
 /* ==========================================================================
    شبکهٔ کارت‌ها
@@ -459,8 +482,8 @@ a { color: inherit; text-decoration: none; }
 /* شاخص‌های کلان — ردیف چیپ‌ها */
 .statgrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
 }
 .stat {
   padding: 12px 14px;
@@ -477,27 +500,29 @@ a { color: inherit; text-decoration: none; }
 /* ==========================================================================
    هیت‌مپ بازار
    ========================================================================== */
-.heatmap {
-  display: grid;
-  grid-auto-flow: dense;
-  grid-template-columns: repeat(12, 1fr);
-  grid-auto-rows: 46px;
-  gap: 6px;
-}
+.heatmap { display: flex; flex-wrap: wrap; gap: 6px; height: 460px; }
+.heat-cat { display: flex; flex-direction: column; flex-basis: 0; min-width: 96px; gap: 4px; flex-grow: 1; }
+.heat-cat__label { font-size: .64rem; font-weight: 800; color: var(--text-dim); padding: 2px 4px; }
+.heat-cat__tiles { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; align-content: stretch; }
 .heat {
-  border-radius: 10px;
-  padding: 8px;
+  flex: 1 1 64px; min-width: 52px; min-height: 40px;
+  border-radius: 9px; padding: 6px 7px;
   display: flex; flex-direction: column; justify-content: center;
   color: #fff; overflow: hidden; cursor: default;
-  transition: transform .18s ease, filter .18s ease;
-  box-shadow: inset 0 0 30px rgba(0,0,0,.12);
+  transition: transform .16s ease, filter .16s ease;
+  box-shadow: inset 0 0 26px rgba(0,0,0,.16); text-shadow: 0 1px 3px rgba(0,0,0,.28);
 }
-.heat:hover { transform: scale(1.04); filter: brightness(1.08); z-index: 2; }
-.heat b { font-size: .92rem; font-weight: 900; line-height: 1; }
-.heat .pct { font-size: .72rem; font-weight: 700; opacity: .95; }
-.heat .nm { font-size: .6rem; opacity: .85; }
-.heat--xl b { font-size: 1.6rem; }
-.heat--lg b { font-size: 1.15rem; }
+.heat:hover { transform: scale(1.05); filter: brightness(1.1); z-index: 3; }
+.heat b { font-size: .82rem; font-weight: 900; line-height: 1.05; }
+.heat .pct { font-size: .68rem; font-weight: 700; opacity: .96; font-family: var(--font-mono); }
+.heat--lg b { font-size: 1.1rem; }
+.heat--xl { min-width: 120px; flex-grow: 3; }
+.heat--xl b { font-size: 1.9rem; }
+.heat--xl .pct { font-size: .95rem; }
+.heatmap-legend { display: flex; gap: 16px; justify-content: center; margin-top: 12px; font-size: .72rem; color: var(--text-soft); flex-wrap: wrap; }
+.heatmap-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.heatmap-legend i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+@media (max-width: 640px) { .heatmap { height: 380px; } .heat-cat { min-width: 78px; } }
 
 /* ==========================================================================
    گیج ترس و طمع
@@ -537,7 +562,15 @@ a { color: inherit; text-decoration: none; }
 .chg.up { color: var(--up); background: rgba(22,199,132,.12); }
 .chg.down { color: var(--down); background: rgba(234,57,67,.12); }
 
-/* قیمت‌های داخلی — کارت‌های کوچک */
+/* آیکون ارز در ردیف‌ها (تصویر دایره‌ای از CDN) */
+.rowitem__icon img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.rowitem__icon.is-img { background: var(--surface-solid); padding: 0; overflow: hidden; }
+
+/* قیمت‌های کلیدی — ردیف با نشان رنگی */
+.keyprices { display: flex; flex-direction: column; gap: 9px; }
+.kp-ic { width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0; display: grid; place-items: center; color: #fff; font-weight: 900; font-size: 1rem; box-shadow: 0 5px 12px -5px rgba(0,0,0,.4); }
+
+/* قیمت‌های داخلی — کارت‌های کوچک (سازگاری عقب‌رو) */
 .pricegrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 @media (max-width: 480px) { .pricegrid { grid-template-columns: 1fr; } }
 .pricebox {
@@ -569,6 +602,11 @@ a { color: inherit; text-decoration: none; }
   line-height: 1.9;
 }
 
-/* ورود نرم کارت‌ها */
-@keyframes riseIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+/* ورود نرم کارت‌ها — فقط transform (نه opacity) تا محتوا هرگز مخفی نماند */
+@keyframes riseIn { from { transform: translateY(14px); } to { transform: none; } }
 .rise { animation: riseIn .5s both; }
+@media (prefers-reduced-motion: reduce) {
+  .rise { animation: none; }
+  .ticker__track { animation: none; }
+  .live-dot { animation: none; }
+}

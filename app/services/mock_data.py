@@ -93,5 +93,5 @@ def sourcearena_gold() -> dict:
     """قیمت طلای ۱۸ عیار (تومان به ازای هر گرم)."""
     return {
         "source": "sample",
-        "gold_18k": {"name": "طلای ۱۸ عیار (گرم)", "price": 38_420_000, "change_24h": 0.58, "unit": "تومان"},
+        "gold_18k": {"name": "طلای ۱۸ عیار (گرم)", "price": 6_540_000, "change_24h": 0.58, "unit": "تومان"},
     }

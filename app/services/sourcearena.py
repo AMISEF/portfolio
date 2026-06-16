@@ -32,9 +32,9 @@ async def get_gold18() -> dict[str, Any]:
         if any(s in slug for s in _GOLD18_SLUGS):
             price = _f(it, "price", "p", "value")
             change = _f(it, "change", "change_percent", "dp")
-            # سورس‌آرنا معمولاً ریال می‌دهد؛ به تومان تبدیل می‌کنیم اگر بزرگ بود
-            if price > 100_000_000:
-                price = round(price / 10)
+            # سورس‌آرنا قیمت را همیشه به «ریال» می‌دهد؛ برای نمایش به «تومان»
+            # تقسیم بر ۱۰ می‌کنیم. (هر تومان = ۱۰ ریال)
+            price = round(price / 10)
             return {
                 "source": "live",
                 "gold_18k": {"name": "طلای ۱۸ عیار (گرم)", "price": price, "change_24h": change, "unit": "تومان"},
