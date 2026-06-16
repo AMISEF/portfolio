@@ -27,4 +27,10 @@
       if (!localStorage.getItem("cs-theme") && tg.colorScheme) setTheme(tg.colorScheme);
     }
   } catch (e) {}
+
+  // دکمهٔ حساب کاربری (فاز بعدی: ثبت‌نام/ورود واقعی)
+  const acc = document.getElementById("accountBtn");
+  if (acc) acc.addEventListener("click", () => {
+    alert("ورود و ثبت‌نام در فاز بعدی فعال می‌شود.");
+  });
 })();

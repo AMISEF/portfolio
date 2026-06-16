@@ -48,30 +48,3 @@ async def internal():
 @router.get("/credits")
 async def credits():
     return credit_budget.usage()
-
-
-@router.get("/debug")
-async def debug():
-    """عیب‌یابی روی سرور: نشان می‌دهد هر منبع چه برمی‌گرداند و کجا خطا می‌خورد.
-    این را روی سرور صدا بزنید و خروجی را بفرستید تا نگاشت دقیق فیلدها تنظیم شود."""
-    result: dict = {}
-    for name, fn in (
-        ("cryptorank", cryptorank.probe),
-        ("toobit", toobit.probe),
-        ("tabdeal", tabdeal.probe),
-        ("sourcearena", sourcearena.probe),
-    ):
-        try:
-            result[name] = await fn()
-        except Exception as e:  # noqa: BLE001
-            result[name] = {"error": f"{type(e).__name__}: {e}"}
-    # نتیجهٔ نهایی پارس‌شده هم برای مقایسه
-    try:
-        result["_parsed"] = {
-            "macro": (await cryptorank.macro())["source"],
-            "gainers": await toobit.gainers(),
-            "internal": {"usdt": await tabdeal.usdt(), "gold": await sourcearena.gold18(), "futures": await toobit.futures()},
-        }
-    except Exception as e:  # noqa: BLE001
-        result["_parsed_error"] = f"{type(e).__name__}: {e}"
-    return result

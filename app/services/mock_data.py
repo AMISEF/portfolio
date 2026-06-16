@@ -1,13 +1,16 @@
 """
-دادهٔ نمونهٔ fallback — وقتی منبع بیرونی در دسترس نیست.
-شکل خروجی دقیقاً مثل دادهٔ زنده است؛ هر پاسخ فیلد source="sample" دارد تا در UI شفاف باشد.
+دادهٔ نمونهٔ واقع‌گرایانه برای زمانی که منبع بیرونی در دسترس نیست
+(مثلاً در محیط توسعه بدون دسترسی شبکه، یا خطای موقت API).
+
+شکل این داده‌ها دقیقاً همان چیزی است که سرویس‌ها پس از نرمال‌سازی برمی‌گردانند،
+بنابراین فرانت‌اند تفاوتی بین دادهٔ زنده و نمونه نمی‌بیند. هر پاسخ دارای فیلد
+"source": "live" | "sample" است تا در UI شفاف باشد.
 """
 from __future__ import annotations
 
-from app.services import icons
-
 
 def macro() -> dict:
+    """شاخص‌های کلان بازار + نوار تیکر + هیت‌مپ + ترس و طمع."""
     return {
         "source": "sample",
         "stats": {
@@ -41,17 +44,15 @@ def _heatmap() -> list[dict]:
         ("AVAX", "Avalanche", "Blockchain", 28.4, -1.20, 11_500_000_000),
         ("XLM", "Stellar", "Currency", 0.31, 0.90, 9_000_000_000),
         ("ZEC", "Zcash", "Currency", 497.57, 17.5, 8_110_000_000),
-        ("WBT", "WhiteBIT", "CeFi", 38.2, 0.40, 5_500_000_000),
-        ("SHIB", "Shiba Inu", "Meme", 0.0000123, 2.10, 7_200_000_000),
     ]
     return [
-        {"symbol": s, "name": n, "category": c, "price": p, "change_24h": ch,
-         "market_cap": mc, "icon": icons.coin_icon(s)}
+        {"symbol": s, "name": n, "category": c, "price": p, "change_24h": ch, "market_cap": mc}
         for (s, n, c, p, ch, mc) in rows
     ]
 
 
 def toobit_gainers() -> dict:
+    """تاپ گینرهای صرافی توبیت (۵ ارز)."""
     rows = [
         ("PUFFER", "PUFFERUSDT", 0.0261, 76.6, 12_300_000),
         ("ASTEROID", "ASTEROIDUSDT", 0.000107, 75.1, 44_600_000),
@@ -62,14 +63,14 @@ def toobit_gainers() -> dict:
     return {
         "source": "sample",
         "gainers": [
-            {"symbol": s, "pair": p, "price": pr, "change_24h": ch,
-             "volume_24h": v, "icon": icons.coin_icon(s)}
+            {"symbol": s, "pair": p, "price": pr, "change_24h": ch, "volume_24h": v}
             for (s, p, pr, ch, v) in rows
         ],
     }
 
 
 def toobit_futures() -> dict:
+    """قیمت فیوچرز فلزات و نفت از توبیت."""
     return {
         "source": "sample",
         "futures": {
@@ -81,10 +82,15 @@ def toobit_futures() -> dict:
 
 
 def tabdeal_usdt() -> dict:
-    return {"source": "sample", "usdt_irt": {"name": "تتر / تومان", "price": 102_450, "change_24h": 0.35}}
+    """قیمت تتر تومانی از صرافی تبدیل (تومان)."""
+    return {
+        "source": "sample",
+        "usdt_irt": {"name": "تتر / تومان", "price": 102_450, "change_24h": 0.35},
+    }
 
 
 def sourcearena_gold() -> dict:
+    """قیمت طلای ۱۸ عیار (تومان به ازای هر گرم)."""
     return {
         "source": "sample",
         "gold_18k": {"name": "طلای ۱۸ عیار (گرم)", "price": 6_540_000, "change_24h": 0.58, "unit": "تومان"},
