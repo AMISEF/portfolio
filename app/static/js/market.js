@@ -1,6 +1,6 @@
 /* موتور دادهٔ صفحهٔ خانه: واکشی اندپوینت‌ها، رندر و به‌روزرسانی لحظه‌ای (بدون رفرش).
-   قیمت‌های ارز/تتر و نقشهٔ حرارتی به‌صورت زنده از توبیت/منابع پایش می‌شوند و هنگام
-   تغییر، با یک افکت کوتاه «چشمک» می‌خورند تا زنده‌بودن داده مشخص باشد. */
+   ۵ ارز برتر از توبیت هر ۵ ثانیه، شاخص‌های کلان از CoinMarketCap، نقشهٔ حرارتی
+   و قیمت‌های کلیدی زنده پایش می‌شوند و هنگام تغییر «چشمک» می‌خورند. */
 (function (w) {
   "use strict";
   const CS = w.CS;
@@ -26,59 +26,85 @@
     _last[key] = val;
   }
 
-  function coinIcon(symbol) {
+  function coinIcon(symbol, cls) {
     const sym = String(symbol || "").toLowerCase().replace(/usdt$|usd$/i, "");
     const url = "https://cdn.jsdelivr.net/npm/cryptocurrency-icons@0.18.1/128/color/" + sym + ".png";
     const letter = String(symbol || "?").slice(0, 3).toUpperCase();
-    return '<div class="rowitem__icon">' +
+    return '<div class="' + (cls || "rowitem__icon") + '">' +
       '<img src="' + url + '" alt="' + symbol + '" loading="lazy" ' +
       'onerror="this.parentNode.classList.add(\'badge\');this.parentNode.textContent=\'' + letter + '\'"></div>';
   }
 
-  /* ---------- شاخص‌های کلان + تیکر ---------- */
-  const TICKER_KEYS = [
-    ["ارزش کل بازار", "total_market_cap", CS.faBig],
-    ["حجم ۲۴ساعته", "total_volume_24h", CS.faBig],
-    ["دامیننس بیت‌کوین", "btc_dominance", (v) => CS.toFa(v.toFixed(2)) + "٪"],
-    ["دامیننس اتریوم", "eth_dominance", (v) => CS.toFa(v.toFixed(2)) + "٪"],
-    ["ارزش بازار اتریوم", "eth_market_cap", CS.faBig],
-    ["ارزش بازار آلت‌کوین‌ها", "alt_market_cap", CS.faBig],
-    ["دامیننس تتر", "usdt_dominance", (v) => CS.toFa(v.toFixed(2)) + "٪"],
-  ];
-  const STAT_KEYS = [
-    ["ارزش کل بازار", "total_market_cap", CS.faBig],
-    ["حجم ۲۴ساعته", "total_volume_24h", CS.faBig],
-    ["دامیننس BTC", "btc_dominance", (v) => CS.toFa(v.toFixed(2)) + "٪"],
-    ["دامیننس ETH", "eth_dominance", (v) => CS.toFa(v.toFixed(2)) + "٪"],
-  ];
-
-  function renderStats(stats) {
-    $("statGrid").innerHTML = STAT_KEYS.map(([label, key, fmt]) => {
-      const s = stats[key] || {};
-      const ch = s.change_24h;
-      const chHtml = (ch === undefined || ch === null || ch === 0) ? "" :
-        '<div class="stat__chg ' + CS.chgClass(ch) + '">' + CS.faPct(ch) + '</div>';
-      return '<div class="stat"><div class="stat__label">' + label + '<span class="live-dot live-dot--brand"></span></div>' +
-        '<div class="stat__value">' + fmt(s.value || 0) + '</div>' + chHtml + '</div>';
-    }).join("");
-  }
-
-  function renderTicker(stats) {
-    const items = TICKER_KEYS.map(([label, key, fmt]) => {
-      const s = stats[key] || {};
-      const ch = s.change_24h;
+  /* ---------- تیکر متحرک شاخص‌ها ---------- */
+  function renderTicker(d) {
+    const items = [];
+    const push = (label, valStr, ch) => {
       const chHtml = (ch === undefined || ch === null || ch === 0) ? "" :
         '<span class="' + CS.chgClass(ch) + '">' + CS.faPct(ch) + '</span>';
-      return '<span class="ticker__item"><span class="live-dot live-dot--brand"></span><b>' + label +
-        '</b><span class="val">' + fmt(s.value || 0) + '</span>' + chHtml + '</span>';
-    }).join("");
-    $("tickerTrack").innerHTML = items + items;
+      items.push('<span class="ticker__item"><span class="live-dot live-dot--brand"></span><b>' +
+        label + '</b><span class="val">' + valStr + '</span>' + chHtml + '</span>');
+    };
+    if (d.market_cap) push("ارزش کل بازار", CS.faBig(d.market_cap.value), d.market_cap.change_24h);
+    if (d.volume_24h) push("حجم ۲۴ساعته", CS.faBig(d.volume_24h.value), d.volume_24h.change_24h);
+    if (d.dominance) {
+      push("دامیننس بیت‌کوین", CS.toFa(d.dominance.btc.toFixed(2)) + "٪", d.dominance.btc_change_24h);
+      push("دامیننس اتریوم", CS.toFa(d.dominance.eth.toFixed(2)) + "٪");
+    }
+    if (d.altcoin_season) push("فصل آلت‌کوین", CS.toFa(d.altcoin_season.value) + "/۱۰۰");
+    if (d.fear_greed) push("ترس و طمع", CS.toFa(d.fear_greed.value) + " · " + (d.fear_greed.label_fa || ""));
+    const html = items.join("");
+    $("tickerTrack").innerHTML = html + html;
+  }
+
+  /* ---------- کارت ارزش کل بازار ---------- */
+  function renderMarketCap(d) {
+    const mc = d.market_cap || {}, vol = d.volume_24h || {};
+    const chHtml = (ch) => (ch === undefined || ch === null || ch === 0) ? "" :
+      '<span class="chg ' + CS.chgClass(ch) + '">' + CS.faPct(ch) + '</span>';
+    $("boxMarketCap").innerHTML =
+      '<div class="mcap__item"><div class="mcap__label">ارزش بازار</div>' +
+        '<div class="mcap__value">' + CS.faBig(mc.value || 0) + '</div>' + chHtml(mc.change_24h) + '</div>' +
+      '<div class="mcap__item"><div class="mcap__label">حجم ۲۴ساعته</div>' +
+        '<div class="mcap__value">' + CS.faBig(vol.value || 0) + '</div>' + chHtml(vol.change_24h) + '</div>';
+  }
+
+  /* ---------- کارت دامیننس (نوار سه‌بخشی) ---------- */
+  function renderDominance(d) {
+    const dom = d.dominance || { btc: 0, eth: 0, others: 0 };
+    const pct = (v) => CS.toFa((v || 0).toFixed(1)) + "٪";
+    $("boxDominance").innerHTML =
+      '<div class="dom__legend">' +
+        '<span><i style="background:#F7931A"></i>بیت‌کوین</span>' +
+        '<span><i style="background:#627EEA"></i>اتریوم</span>' +
+        '<span><i style="background:var(--text-dim)"></i>سایر</span>' +
+      '</div>' +
+      '<div class="dom__values">' +
+        '<b style="color:#F7931A">' + pct(dom.btc) + '</b>' +
+        '<b style="color:#627EEA">' + pct(dom.eth) + '</b>' +
+        '<b style="color:var(--text-dim)">' + pct(dom.others) + '</b>' +
+      '</div>' +
+      '<div class="dom__bar">' +
+        '<span style="width:' + (dom.btc || 0) + '%;background:#F7931A"></span>' +
+        '<span style="width:' + (dom.eth || 0) + '%;background:#627EEA"></span>' +
+        '<span style="width:' + (dom.others || 0) + '%;background:var(--gray-500)"></span>' +
+      '</div>';
+  }
+
+  /* ---------- کارت فصل آلت‌کوین (نوار رنگی + نشانگر) ---------- */
+  function renderAltseason(d) {
+    const a = d.altcoin_season || { value: 0, label_fa: "" };
+    const v = Math.max(0, Math.min(100, a.value || 0));
+    $("boxAltseason").innerHTML =
+      '<div class="alt__top"><span class="alt__num">' + CS.toFa(v) + '</span><span class="alt__den">/۱۰۰</span>' +
+        '<span class="alt__label">' + (a.label_fa || "") + '</span></div>' +
+      '<div class="alt__bar"><span class="alt__knob" style="right:calc(' + v + '% - 9px)"></span></div>' +
+      '<div class="alt__ends"><span>فصل بیت‌کوین</span><span>فصل آلت‌کوین</span></div>';
   }
 
   async function loadMacro() {
     try {
       const d = await CS.fetchJSON("/api/market/macro");
-      renderStats(d.stats); renderTicker(d.stats);
+      renderTicker(d); renderMarketCap(d); renderDominance(d); renderAltseason(d);
       if (d.fear_greed) w.CSGauge.render($("fngGauge"), d.fear_greed);
       srcTag($("macroSrc"), d.source);
     } catch (e) { console.warn("macro:", e); }
@@ -93,25 +119,20 @@
     } catch (e) { console.warn("heatmap:", e); }
   }
 
-  /* ---------- ارزهای برتر بازار (۵ ارز اصلی، زنده) ---------- */
+  /* ---------- ۵ ارز برتر بازار (کارت افقی، زنده هر ۵ ثانیه) ---------- */
   async function loadCoins() {
     try {
       const d = await CS.fetchJSON("/api/market/coins");
-      $("topCoins").innerHTML = d.coins.map((g, i) =>
-        '<div class="rowitem" data-sym="' + g.symbol + '">' +
-        '<span class="rowitem__rank">' + CS.toFa(i + 1) + '</span>' +
-        coinIcon(g.symbol) +
-        '<div class="rowitem__main"><div class="rowitem__name">' + g.symbol + '</div>' +
-        '<div class="rowitem__sub">' + (g.pair || g.symbol + "USDT") + '</div></div>' +
-        '<div class="rowitem__right">' +
-          '<div class="rowitem__price" data-price>' + CS.faPriceUsd(g.price) + '</div>' +
-          '<span class="chg ' + CS.chgClass(g.change_24h) + '">' + CS.faPct(g.change_24h) + '</span>' +
-          '<div class="rowitem__vol">حجم ' + CS.faBig(g.volume_24h) + '</div>' +
-        '</div></div>'
+      $("topCoins").innerHTML = d.coins.map((g) =>
+        '<div class="coincard" data-sym="' + g.symbol + '">' +
+        '<div class="coincard__head">' + coinIcon(g.symbol, "coincard__icon") +
+          '<span class="coincard__name">' + g.symbol + '</span></div>' +
+        '<div class="coincard__price" data-price>' + CS.faPriceUsd(g.price) + '</div>' +
+        '<span class="chg ' + CS.chgClass(g.change_24h) + '">' + CS.faPct(g.change_24h) + '</span>' +
+        '</div>'
       ).join("");
-      // افکت چشمک روی قیمت‌ها
       d.coins.forEach((g) => {
-        const el = document.querySelector('#topCoins .rowitem[data-sym="' + g.symbol + '"] [data-price]');
+        const el = document.querySelector('#topCoins .coincard[data-sym="' + g.symbol + '"] [data-price]');
         flash(el, "c_" + g.symbol, g.price);
       });
       srcTag($("coinsSrc"), d.source);
@@ -150,8 +171,8 @@
   }
 
   /* ---------- راه‌اندازی + پایش لحظه‌ای ---------- */
-  loadMacro();   setInterval(loadMacro, 60 * 1000);   // ۶۰ ثانیه (CoinGecko)
+  loadMacro();   setInterval(loadMacro, 60 * 1000);   // ۶۰ ثانیه (CoinMarketCap)
   loadHeatmap(); setInterval(loadHeatmap, 12 * 1000); // ۱۲ ثانیه (زنده)
-  loadCoins();   setInterval(loadCoins, 8 * 1000);    // ۸ ثانیه (زنده)
+  loadCoins();   setInterval(loadCoins, 5 * 1000);    // ۵ ثانیه (زنده — توبیت)
   loadPrices();  setInterval(loadPrices, 8 * 1000);   // ۸ ثانیه (زنده)
 })(window);

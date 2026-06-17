@@ -61,6 +61,8 @@ html, body {
   background: var(--bg); color: var(--text);
   direction: rtl; text-align: right;
   -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  overflow-x: hidden;            /* جلوگیری از اسکرول افقی صفحه در موبایل */
+  max-width: 100%;
 }
 body {
   min-height: 100vh; background-image: var(--bg-grad); background-attachment: fixed;
@@ -118,6 +120,11 @@ a { color: inherit; text-decoration: none; }
 }
 .account-btn:hover { transform: translateY(-2px); }
 .account-btn svg { width: 20px; height: 20px; }
+/* موبایل: فقط آیکون گرد (متن «ورود/ثبت‌نام» مخفی) */
+@media (max-width: 640px) {
+  .account-btn { width: 44px; padding: 0; justify-content: center; }
+  .account-btn span { display: none; }
+}
 
 /* ==========================================================================
    ناوبری
@@ -210,10 +217,67 @@ a { color: inherit; text-decoration: none; }
 /* ==========================================================================
    شبکهٔ نمای کلی (سه‌ستونه)
    ========================================================================== */
-.overview { display: grid; gap: 16px; grid-template-columns: 300px 1fr 320px; align-items: start; }
-.ov-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-@media (max-width: 1180px) { .overview { grid-template-columns: 1fr 1fr; } .ov-center { grid-column: 1 / -1; order: -1; } }
-@media (max-width: 720px) { .overview { grid-template-columns: 1fr; } }
+.overview { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
+.ov-main, .ov-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (max-width: 980px) { .overview { grid-template-columns: 1fr; } }
+
+/* ---------- ردیف ۵ ارز برتر بازار (کارت افقی) ---------- */
+.topcoins { margin-bottom: 16px; min-width: 0; }
+.topcoins__head { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 8px; }
+.topcoins__title { font-size: 1rem; font-weight: 800; color: var(--heading); }
+.topcoins__row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.coincard {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft); padding: 12px 14px; display: flex; flex-direction: column; gap: 7px;
+  backdrop-filter: var(--blur-card); -webkit-backdrop-filter: var(--blur-card); transition: var(--trans); min-width: 0;
+}
+.coincard:hover { transform: translateY(-3px); border-color: var(--brand); }
+.coincard__head { display: flex; align-items: center; gap: 8px; }
+.coincard__icon { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; background: var(--surface-solid); overflow: hidden; box-shadow: 0 3px 8px -4px rgba(0,0,0,.3); }
+.coincard__icon img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.coincard__icon.badge { color: #fff; font-weight: 900; font-size: .62rem; background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); }
+.coincard__name { font-weight: 800; font-size: .92rem; color: var(--heading); }
+.coincard__price { font-weight: 900; font-size: 1.02rem; color: var(--heading); font-family: var(--font-mono); font-variant-numeric: tabular-nums; padding: 0 3px; border-radius: 6px; }
+.coincard .chg { align-self: flex-start; }
+@media (max-width: 880px) {
+  /* کاروسل افقی درون‌محصور (صفحه افقی اسکرول نمی‌خورد) */
+  .topcoins__row { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+  .coincard { flex: 0 0 44%; max-width: 200px; scroll-snap-align: start; }
+}
+@media (max-width: 520px) { .coincard { flex-basis: 60%; } }
+
+/* ---------- شبکهٔ ۴ کارت شاخص ---------- */
+.index-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 520px) { .index-grid { grid-template-columns: 1fr; } }
+.index-card { padding: 16px; }
+.index-card .card__body { min-height: 92px; display: flex; flex-direction: column; justify-content: center; }
+
+/* کارت ارزش بازار */
+.mcap { display: flex; gap: 18px; flex-wrap: wrap; }
+.mcap__item { display: flex; flex-direction: column; gap: 2px; }
+.mcap__label { font-size: .7rem; color: var(--text-soft); font-weight: 700; }
+.mcap__value { font-size: 1.5rem; font-weight: 900; color: var(--heading); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* کارت دامیننس */
+.dom { display: flex; flex-direction: column; gap: 8px; }
+.dom__legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: .68rem; font-weight: 700; color: var(--text-soft); }
+.dom__legend span { display: inline-flex; align-items: center; gap: 5px; }
+.dom__legend i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.dom__values { display: flex; gap: 16px; }
+.dom__values b { font-size: 1.4rem; font-weight: 900; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.dom__bar { display: flex; height: 12px; border-radius: var(--radius-pill); overflow: hidden; background: var(--chip); }
+.dom__bar span { height: 100%; transition: width .4s ease; }
+
+/* کارت فصل آلت‌کوین */
+.alt { display: flex; flex-direction: column; gap: 10px; }
+.alt__top { display: flex; align-items: baseline; gap: 4px; }
+.alt__num { font-size: 2rem; font-weight: 900; color: var(--heading); font-family: var(--font-mono); line-height: 1; }
+.alt__den { font-size: .9rem; color: var(--text-dim); font-weight: 700; }
+.alt__label { margin-right: auto; font-size: .8rem; font-weight: 800; color: var(--brand-dark); }
+.alt__bar { position: relative; height: 10px; border-radius: var(--radius-pill);
+  background: linear-gradient(to left, #2D63B0 0%, #6F95C8 35%, #DCE2E7 50%, #F5B86B 65%, #F7931A 100%); }
+.alt__knob { position: absolute; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--heading); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.alt__ends { display: flex; justify-content: space-between; font-size: .66rem; font-weight: 700; color: var(--text-dim); }
 
 /* ---------- کارت شیشه‌ای ---------- */
 .card {
@@ -272,10 +336,10 @@ a { color: inherit; text-decoration: none; }
 /* ==========================================================================
    نقشهٔ حرارتی
    ========================================================================== */
-.heatmap { display: flex; flex-wrap: wrap; gap: 6px; height: 460px; }
-.heat-cat { display: flex; flex-direction: column; flex-basis: 0; min-width: 96px; gap: 4px; flex-grow: 1; }
+.heatmap { display: flex; flex-wrap: wrap; gap: 6px; height: 460px; overflow: hidden; align-content: stretch; }
+.heat-cat { display: flex; flex-direction: column; flex-basis: 0; min-width: 96px; gap: 4px; flex-grow: 1; min-height: 0; }
 .heat-cat__label { font-size: .64rem; font-weight: 800; color: var(--text-dim); padding: 2px 4px; }
-.heat-cat__tiles { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; align-content: stretch; }
+.heat-cat__tiles { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; align-content: stretch; min-height: 0; }
 .heat { flex: 1 1 64px; min-width: 52px; min-height: 40px; border-radius: 9px; padding: 6px 7px; display: flex; flex-direction: column; justify-content: center; color: #fff; overflow: hidden; cursor: default; transition: transform .16s ease, filter .16s ease; box-shadow: inset 0 0 26px rgba(0,0,0,.16); text-shadow: 0 1px 3px rgba(0,0,0,.28); }
 .heat:hover { transform: scale(1.05); filter: brightness(1.1); z-index: 3; }
 .heat b { font-size: .82rem; font-weight: 900; line-height: 1.05; }
@@ -284,10 +348,20 @@ a { color: inherit; text-decoration: none; }
 .heat--md b { font-size: .96rem; }
 .heat--lg { min-width: 90px; } .heat--lg b { font-size: 1.25rem; }
 .heat--xl { min-width: 130px; flex-grow: 3; } .heat--xl b { font-size: 1.9rem; } .heat--xl .pct { font-size: .95rem; }
-.heatmap-legend { display: flex; gap: 16px; justify-content: center; margin-top: 12px; font-size: .72rem; color: var(--text-soft); flex-wrap: wrap; }
+/* راهنما همیشه زیر نقشه، کاملاً جدا (روی نقشه نمی‌افتد) */
+.heatmap-legend { display: flex; gap: 16px; justify-content: center; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: .72rem; color: var(--text-soft); flex-wrap: wrap; }
 .heatmap-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .heatmap-legend i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
-@media (max-width: 640px) { .heatmap { height: 380px; } .heat-cat { min-width: 78px; } }
+.heatmap-legend__src { color: var(--text-dim); }
+@media (max-width: 880px) {
+  /* موبایل: هر دسته یک ردیف کامل (دیگر «توی هم» نمی‌رود و افقی اسکرول ندارد) */
+  .heatmap { height: auto; flex-direction: column; gap: 10px; }
+  .heat-cat { width: 100%; min-width: 0; flex-basis: auto; }
+  .heat-cat__tiles { min-height: 56px; }
+  .heat { flex: 1 1 70px; min-height: 52px; }
+  .heat--xl, .heat--lg, .heat--md { min-width: 70px; flex-grow: 1; }
+  .heat--xl b { font-size: 1.1rem; } .heat--lg b { font-size: 1rem; }
+}
 
 /* ==========================================================================
    گیج ترس و طمع

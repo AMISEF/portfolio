@@ -19,8 +19,8 @@ import httpx
 from app.config import settings
 from app.services import mock_data
 
-# ارزهای اصلی بازار به ترتیب نمایش (نماد بدون USDT)
-TOP_SYMBOLS = ["BTC", "ETH", "XRP", "SOL", "BNB"]
+# ارزهای اصلی بازار به ترتیب نمایش (نماد بدون USDT) — مطابق CoinMarketCap
+TOP_SYMBOLS = ["BTC", "ETH", "BNB", "SOL", "XRP"]
 
 
 async def get_top_coins() -> dict[str, Any]:
@@ -57,7 +57,7 @@ async def get_top_coins() -> dict[str, Any]:
 
 async def top_coins() -> dict[str, Any]:
     from app.cache import cached
-    return await cached("toobit:top_coins", settings.toobit_ttl, get_top_coins, mock_data.toobit_top_coins)
+    return await cached("toobit:top_coins", settings.toobit_coins_ttl, get_top_coins, mock_data.toobit_top_coins)
 
 
 # نمادهای محتمل نفت در توبیت (به ترتیب اولویت) + جست‌وجوی زیررشته‌ای
@@ -94,7 +94,7 @@ async def get_oil() -> dict[str, Any]:
 
 async def oil() -> dict[str, Any]:
     from app.cache import cached
-    return await cached("toobit:oil", settings.toobit_ttl, get_oil, mock_data.toobit_oil)
+    return await cached("toobit:oil", settings.toobit_oil_ttl, get_oil, mock_data.toobit_oil)
 
 
 # ---- نقشهٔ حرارتی زنده از توبیت ----
@@ -105,16 +105,24 @@ _CATEGORY = {
     "TRX": "Smart Contract", "AVAX": "Smart Contract", "NEAR": "Smart Contract", "DOT": "Smart Contract",
     "SUI": "Smart Contract", "TON": "Smart Contract", "APT": "Smart Contract", "HBAR": "Smart Contract",
     "ALGO": "Smart Contract", "ICP": "Smart Contract", "ETC": "Smart Contract", "VET": "Smart Contract",
-    "USDT": "Stablecoin", "USDC": "Stablecoin", "DAI": "Stablecoin", "FDUSD": "Stablecoin",
-    "USDE": "Stablecoin", "USDS": "Stablecoin", "TUSD": "Stablecoin", "USD1": "Stablecoin",
     "UNI": "DeFi", "AAVE": "DeFi", "LINK": "DeFi", "MKR": "DeFi", "LDO": "DeFi", "CRV": "DeFi",
-    "HYPE": "DeFi", "ENA": "DeFi", "ATOM": "DeFi",
+    "HYPE": "DeFi", "ENA": "DeFi", "ATOM": "DeFi", "PENDLE": "DeFi", "JUP": "DeFi",
     "DOGE": "Meme", "SHIB": "Meme", "PEPE": "Meme", "WIF": "Meme", "BONK": "Meme", "FLOKI": "Meme",
+    "TRUMP": "Meme", "MEW": "Meme", "POPCAT": "Meme", "BRETT": "Meme", "SPX": "Meme",
+    "FARTCOIN": "Meme", "PNUT": "Meme", "MOG": "Meme", "TURBO": "Meme", "MEME": "Meme",
+}
+
+# استیبل‌کوین‌ها و توکن‌های دلاری که از نقشهٔ حرارتی کنار گذاشته می‌شوند.
+_STABLES = {
+    "USDT", "USDC", "DAI", "FDUSD", "USDE", "USDS", "TUSD", "USD1", "BUSD",
+    "USDP", "GUSD", "PYUSD", "EURT", "EURS", "USDD", "FRAX", "LUSD", "USDF",
+    "USDX", "USTC", "USD0", "USDG",
 }
 
 
-async def get_heatmap(limit: int = 30) -> dict[str, Any]:
-    """نقشهٔ حرارتی زنده: پرحجم‌ترین جفت‌های USDT با قیمت و تغییر ۲۴ساعتهٔ لحظه‌ای."""
+async def get_heatmap(limit: int = 48) -> dict[str, Any]:
+    """نقشهٔ حرارتی زنده: پرحجم‌ترین جفت‌های USDT (بدون استیبل‌کوین) با قیمت و
+    تغییر ۲۴ساعتهٔ لحظه‌ای."""
     timeout = httpx.Timeout(settings.http_timeout)
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
@@ -127,6 +135,9 @@ async def get_heatmap(limit: int = 30) -> dict[str, Any]:
         if not sym.endswith("USDT"):
             continue
         base = sym[:-4]
+        # استیبل‌کوین‌ها نمایش داده نمی‌شوند (نوسان صفر، جای ارزهای دیگر را می‌گیرند)
+        if base in _STABLES:
+            continue
         price = _f(t, "c", "lastPrice")
         vol = _f(t, "qv", "quoteVolume", "q")
         if price <= 0 or vol <= 0:
@@ -149,7 +160,7 @@ async def get_heatmap(limit: int = 30) -> dict[str, Any]:
 
 async def heatmap() -> dict[str, Any]:
     from app.cache import cached
-    return await cached("toobit:heatmap", settings.toobit_ttl, get_heatmap, mock_data.toobit_heatmap)
+    return await cached("toobit:heatmap", settings.toobit_heatmap_ttl, get_heatmap, mock_data.toobit_heatmap)
 
 
 def _pct(t: dict) -> float:

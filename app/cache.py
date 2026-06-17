@@ -44,11 +44,19 @@ class TTLCache:
 
 
 class CreditBudget:
-    """پایش مصرف کردیت CryptoRank در سه بازه: دقیقه، روز، ماه."""
+    """پایش مصرف کردیت یک منبع در سه بازه: دقیقه، روز، ماه.
 
-    def __init__(self, state_file: str) -> None:
+    سقف‌ها هنگام ساخت داده می‌شوند تا برای چند منبع (CryptoRank، CoinMarketCap)
+    قابل استفاده باشد. اگر سقفی داده نشود از تنظیمات CryptoRank استفاده می‌شود
+    (سازگاری عقب‌رو)."""
+
+    def __init__(self, state_file: str, per_min: int | None = None,
+                 daily: int | None = None, monthly: int | None = None) -> None:
         self._path = Path(state_file)
         self._lock = threading.Lock()
+        self._per_min = per_min if per_min is not None else settings.cryptorank_per_min_credits
+        self._daily = daily if daily is not None else settings.cryptorank_daily_credits
+        self._monthly = monthly if monthly is not None else settings.cryptorank_monthly_credits
         self._state = self._load()
 
     def _load(self) -> dict[str, Any]:
@@ -77,11 +85,11 @@ class CreditBudget:
         now = datetime.now(timezone.utc)
         m_key, d_key, mo_key = self._keys(now)
         with self._lock:
-            if self._used("minute", m_key) + cost > settings.cryptorank_per_min_credits:
+            if self._used("minute", m_key) + cost > self._per_min:
                 return False
-            if self._used("day", d_key) + cost > settings.cryptorank_daily_credits:
+            if self._used("day", d_key) + cost > self._daily:
                 return False
-            if self._used("month", mo_key) + cost > settings.cryptorank_monthly_credits:
+            if self._used("month", mo_key) + cost > self._monthly:
                 return False
             return True
 
@@ -105,14 +113,20 @@ class CreditBudget:
         now = datetime.now(timezone.utc)
         m_key, d_key, mo_key = self._keys(now)
         return {
-            "minute": {"used": self._used("minute", m_key), "limit": settings.cryptorank_per_min_credits},
-            "day": {"used": self._used("day", d_key), "limit": settings.cryptorank_daily_credits},
-            "month": {"used": self._used("month", mo_key), "limit": settings.cryptorank_monthly_credits},
+            "minute": {"used": self._used("minute", m_key), "limit": self._per_min},
+            "day": {"used": self._used("day", d_key), "limit": self._daily},
+            "month": {"used": self._used("month", mo_key), "limit": self._monthly},
         }
 
 
 cache = TTLCache()
 credit_budget = CreditBudget(settings.credit_state_file)
+cmc_budget = CreditBudget(
+    settings.cmc_state_file,
+    per_min=settings.cmc_per_min_credits,
+    daily=settings.cmc_daily_credits,
+    monthly=settings.cmc_monthly_credits,
+)
 
 
 async def cached(key: str, ttl: float, fetcher: Callable, fallback: Callable):
