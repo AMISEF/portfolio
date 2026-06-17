@@ -72,11 +72,11 @@
     } catch (e) { console.warn("macro:", e); }
   }
 
-  /* ---------- بیشترین رشد ۲۴ساعته (۵ ارز توبیت) ---------- */
-  async function loadGainers() {
+  /* ---------- ارزهای برتر بازار (۵ ارز اصلی از توبیت) ---------- */
+  async function loadCoins() {
     try {
-      const d = await CS.fetchJSON("/api/market/gainers");
-      $("gainers").innerHTML = d.gainers.map((g, i) =>
+      const d = await CS.fetchJSON("/api/market/coins");
+      $("topCoins").innerHTML = d.coins.map((g, i) =>
         '<div class="rowitem"><span class="rowitem__rank">' + CS.toFa(i + 1) + '</span>' +
         coinIcon(g.symbol) +
         '<div class="rowitem__main"><div class="rowitem__name">' + g.symbol + '</div>' +
@@ -85,8 +85,8 @@
         '<span class="rowitem__vol">حجم ' + CS.faBig(g.volume_24h) + '</span></div>' +
         '<span class="chg ' + CS.chgClass(g.change_24h) + '">' + CS.faPct(g.change_24h) + '</span></div>'
       ).join("");
-      srcTag($("gainersSrc"), d.source);
-    } catch (e) { console.warn("gainers:", e); }
+      srcTag($("coinsSrc"), d.source);
+    } catch (e) { console.warn("coins:", e); }
   }
 
   /* ---------- قیمت‌های کلیدی ---------- */
@@ -114,11 +114,13 @@
       if (c.XAG) rows.push(keyRow("Ag", "#9AA3AC", c.XAG.name || "نقره", c.XAG.sub || "اونس", CS.faPriceUsd(c.XAG.price), c.XAG.change_24h));
       if (c.OIL) rows.push(keyRow("O", "#1B1B1B", c.OIL.name || "نفت خام", c.OIL.sub || "بشکه", CS.faPriceUsd(c.OIL.price), c.OIL.change_24h));
       $("keyPrices").innerHTML = rows.join("") || '<span class="src-tag">داده‌ای موجود نیست</span>';
+      // گیج ترس و طمع را هم در همین چرخهٔ سریع به‌روزرسانی کن تا «ثابت» نماند
+      if (d.fear_greed) w.CSGauge.render($("fngGauge"), d.fear_greed);
     } catch (e) { console.warn("prices:", e); }
   }
 
   /* ---------- راه‌اندازی + پایش دوره‌ای ---------- */
   loadMacro();  setInterval(loadMacro, 10 * 60 * 1000); // ۱۰ دقیقه (هماهنگ با کش CryptoRank)
-  loadGainers(); setInterval(loadGainers, 15 * 1000);   // ۱۵ ثانیه
-  loadPrices();  setInterval(loadPrices, 20 * 1000);    // ۲۰ ثانیه
+  loadCoins();  setInterval(loadCoins, 15 * 1000);      // ۱۵ ثانیه
+  loadPrices(); setInterval(loadPrices, 20 * 1000);     // ۲۰ ثانیه
 })(window);

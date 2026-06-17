@@ -11,8 +11,8 @@
   <link rel="stylesheet" href="/static/css/styles.css?v={{ static_v }}">
   <link rel="icon" href="/static/img/logo.png" type="image/png">
 
-  <!-- SDK مینی‌اپ تلگرام (برای حالت وب‌اپ) -->
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- SDK مینی‌اپ تلگرام (برای حالت وب‌اپ) — async تا رندر اولیه را کند نکند -->
+  <script src="https://telegram.org/js/telegram-web-app.js" async></script>
   <!-- جلوگیری از پرش تم: قبل از رندر، تم ذخیره‌شده اعمال می‌شود -->
   <script>
     (function () {

@@ -1,10 +1,14 @@
 """
-سرویس Toobit — تاپ گینرهای اسپات (۵ ارز با بیشترین رشد ۲۴ساعته).
+سرویس Toobit — قیمت لحظه‌ای ارزهای برتر بازار (مارکت‌کپ بالا).
 
-از تیکر ۲۴ساعتهٔ عمومی، جفت‌های USDT را بر اساس درصد رشد مرتب کرده و موارد
-برتر را با قیمت، رشد و حجم دلاری برمی‌گرداند. آیکون ارز در فرانت‌اند از روی
-نماد ساخته می‌شود. اندپوینت عمومی احراز هویت نمی‌خواهد؛ کلیدها برای فاز بعد
-(همگام‌سازی پورتفولیو، فقط‌خواندنی) نگه داشته می‌شوند.
+طبق درخواست، باکس ارزها ارزهای اصلی بازار (BTC، ETH، XRP، SOL، BNB) را با
+قیمت لحظه‌ای، تغییر ۲۴ساعته و حجم دلاری نمایش می‌دهد. آیکون هر ارز در فرانت‌اند
+از روی نماد ساخته می‌شود.
+
+نگاشت فیلدهای تیکر ۲۴ساعتهٔ توبیت (تأییدشده از پاسخ زنده):
+  s = نماد، c = آخرین قیمت، pcp = درصد تغییر (کسری، در ۱۰۰ ضرب می‌شود)،
+  pc = تغییر مطلق، qv = حجم دلاری ۲۴ساعته.
+اندپوینت عمومی است؛ کلیدها برای فاز بعد (همگام‌سازی پورتفولیو، فقط‌خواندنی) می‌مانند.
 """
 from __future__ import annotations
 
@@ -15,8 +19,11 @@ import httpx
 from app.config import settings
 from app.services import mock_data
 
+# ارزهای اصلی بازار به ترتیب نمایش (نماد بدون USDT)
+TOP_SYMBOLS = ["BTC", "ETH", "XRP", "SOL", "BNB"]
 
-async def get_gainers() -> dict[str, Any]:
+
+async def get_top_coins() -> dict[str, Any]:
     timeout = httpx.Timeout(settings.http_timeout)
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
@@ -24,35 +31,40 @@ async def get_gainers() -> dict[str, Any]:
         data = resp.json()
 
     tickers = data if isinstance(data, list) else []
-    rows = []
+    by_sym: dict[str, dict] = {}
     for t in tickers:
-        sym = (t.get("s") or t.get("symbol") or "")
-        if not sym.endswith("USDT"):
-            continue
-        change = _f(t, "priceChangePercent", "P", "changeRate")
-        if abs(change) < 1:  # برخی APIها نرخ را کسری می‌دهند
-            change *= 100
-        price = _f(t, "lastPrice", "c", "close")
-        if price <= 0:
+        s = (t.get("s") or t.get("symbol") or "").upper()
+        if s:
+            by_sym[s] = t
+
+    rows = []
+    for sym in TOP_SYMBOLS:
+        t = by_sym.get(sym + "USDT")
+        if not t:
             continue
         rows.append({
-            "symbol": sym[:-4],
-            "pair": sym,
-            "price": price,
-            "change_24h": round(change, 2),
-            "volume_24h": _f(t, "quoteVolume", "qv", "q", "volume"),
+            "symbol": sym,
+            "pair": sym + "USDT",
+            "price": _f(t, "c", "lastPrice", "close"),
+            "change_24h": round(_pct(t), 2),
+            "volume_24h": _f(t, "qv", "quoteVolume", "q", "volume"),
         })
 
-    rows.sort(key=lambda r: r["change_24h"], reverse=True)
-    top = rows[: settings.toobit_gainers_count]
-    if not top:
-        raise RuntimeError("Toobit returned no usable tickers")
-    return {"source": "live", "gainers": top}
+    if not rows:
+        raise RuntimeError("Toobit returned no usable tickers for top coins")
+    return {"source": "live", "coins": rows}
 
 
-async def gainers() -> dict[str, Any]:
+async def top_coins() -> dict[str, Any]:
     from app.cache import cached
-    return await cached("toobit:gainers", settings.toobit_ttl, get_gainers, mock_data.toobit_gainers)
+    return await cached("toobit:top_coins", settings.toobit_ttl, get_top_coins, mock_data.toobit_top_coins)
+
+
+def _pct(t: dict) -> float:
+    """درصد تغییر ۲۴ساعته. pcp کسری است (مثلاً -0.0183 ⇒ -1.83٪)."""
+    v = _f(t, "pcp", "priceChangePercent", "P", "changeRate")
+    # اگر مقدار کسری باشد (|v|<1) آن را به درصد تبدیل کن
+    return v * 100 if abs(v) < 1 else v
 
 
 def _f(d: dict, *keys: str) -> float:

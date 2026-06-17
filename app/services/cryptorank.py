@@ -78,18 +78,29 @@ async def get_macro() -> dict[str, Any]:
 
     timeout = httpx.Timeout(settings.http_timeout)
     async with httpx.AsyncClient(timeout=timeout) as client:
-        g = await _fetch_global(client)
+        # currencies برای هیت‌مپ ضروری است؛ global اختیاری (ممکن است در پلن رایگان محدود باشد)
         coins = await _fetch_currencies(client, limit=30)
+        try:
+            g = await _fetch_global(client)
+        except Exception:
+            g = {}
 
-    total_mc = _num(g, "totalMarketCap", "total_market_cap")
     eth_mc = next((_coin_mc(c) for c in coins if (c.get("symbol") or "").upper() == "ETH"), 0.0)
     btc_mc = next((_coin_mc(c) for c in coins if (c.get("symbol") or "").upper() == "BTC"), 0.0)
+    sum_mc = sum(_coin_mc(c) for c in coins) or 0.0
+    sum_vol = sum(_coin_vol(c) for c in coins) or 0.0
+
+    # ارزش کل بازار: ترجیحاً از global، وگرنه تخمین از مجموع currencies
+    total_mc = _num(g, "totalMarketCap", "total_market_cap") or sum_mc
+    total_vol = _num(g, "totalVolume24h", "total_volume_24h") or sum_vol
+    btc_dom = _num(g, "btcDominance", "btc_dominance") or (btc_mc / total_mc * 100 if total_mc else 0.0)
+    eth_dom = _num(g, "ethDominance", "eth_dominance") or (eth_mc / total_mc * 100 if total_mc else 0.0)
 
     stats = {
         "total_market_cap": {"value": total_mc, "change_24h": _num(g, "totalMarketCapChange24h", "marketCapChange24h")},
-        "total_volume_24h": {"value": _num(g, "totalVolume24h", "total_volume_24h"), "change_24h": _num(g, "volumeChange24h")},
-        "btc_dominance": {"value": _num(g, "btcDominance", "btc_dominance"), "change_24h": _num(g, "btcDominanceChange24h")},
-        "eth_dominance": {"value": _num(g, "ethDominance", "eth_dominance"), "change_24h": _num(g, "ethDominanceChange24h")},
+        "total_volume_24h": {"value": total_vol, "change_24h": _num(g, "volumeChange24h")},
+        "btc_dominance": {"value": btc_dom, "change_24h": _num(g, "btcDominanceChange24h")},
+        "eth_dominance": {"value": eth_dom, "change_24h": _num(g, "ethDominanceChange24h")},
         "eth_market_cap": {"value": eth_mc, "change_24h": 0.0},
         "alt_market_cap": {"value": max(total_mc - btc_mc, 0.0), "change_24h": 0.0},
         "usdt_dominance": {"value": _num(g, "usdtDominance", "usdt_dominance"), "change_24h": 0.0},
@@ -138,6 +149,31 @@ async def macro() -> dict[str, Any]:
         return cache.get_stale(_KEY) or mock_data.macro()
 
 
+async def raw_debug() -> dict[str, Any]:
+    """پاسخ خام /global و /currencies برای عیب‌یابی (وضعیت + نمونهٔ کوتاه)."""
+    out: dict[str, Any] = {"api_key_set": bool(settings.cryptorank_api_key)}
+    if not settings.cryptorank_api_key:
+        return out
+    async with httpx.AsyncClient(timeout=httpx.Timeout(6.0)) as client:
+        for name, url, params in (
+            ("global", f"{settings.cryptorank_base_url}/global", {}),
+            ("currencies", f"{settings.cryptorank_base_url}/currencies", {"limit": 2}),
+        ):
+            try:
+                r = await client.get(url, headers=_headers(), params=params)
+                try:
+                    body = r.json()
+                except Exception:
+                    body = r.text[:600]
+                # کوتاه‌کردن لیست بزرگ
+                if isinstance(body, dict) and isinstance(body.get("data"), list):
+                    body = {**body, "data": body["data"][:2]}
+                out[name] = {"url": url, "status": r.status_code, "json": body}
+            except Exception as e:  # noqa: BLE001
+                out[name] = {"url": url, "error": f"{type(e).__name__}: {e}"}
+    return out
+
+
 # ---- کمک‌تابع‌های استخراج امن ----
 def _num(d: dict, *keys: str) -> float:
     for k in keys:
@@ -165,3 +201,7 @@ def _coin_change(c: dict) -> float:
 
 def _coin_mc(c: dict) -> float:
     return _num(_coin_values(c), "marketCap", "market_cap") or _num(c, "marketCap", "market_cap")
+
+
+def _coin_vol(c: dict) -> float:
+    return _num(_coin_values(c), "volume24h", "totalVolume24h", "volume_24h") or _num(c, "volume24h", "volume_24h")

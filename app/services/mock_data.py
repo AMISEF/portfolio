@@ -60,17 +60,18 @@ def commodities() -> dict:
     }
 
 
-def toobit_gainers() -> dict:
+def toobit_top_coins() -> dict:
+    """ارزهای اصلی بازار (مارکت‌کپ بالا) — قیمت، تغییر ۲۴ساعته، حجم دلاری."""
     rows = [
         ("BTC", "BTCUSDT", 65541.0, 2.43, 1_300_000_000),
-        ("ETH", "ETHUSDT", 1788.0, 1.18, 640_000_000),
-        ("XRP", "XRPUSDT", 2.11, 4.65, 210_000_000),
-        ("SOL", "SOLUSDT", 138.0, 3.04, 180_000_000),
-        ("BNB", "BNBUSDT", 606.25, 0.88, 90_000_000),
+        ("ETH", "ETHUSDT", 1788.0, 0.89, 640_000_000),
+        ("XRP", "XRPUSDT", 2.11, -1.99, 210_000_000),
+        ("SOL", "SOLUSDT", 138.0, -1.18, 180_000_000),
+        ("BNB", "BNBUSDT", 606.25, -1.51, 90_000_000),
     ]
     return {
         "source": "sample",
-        "gainers": [
+        "coins": [
             {"symbol": s, "pair": p, "price": pr, "change_24h": ch, "volume_24h": v}
             for (s, p, pr, ch, v) in rows
         ],

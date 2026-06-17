@@ -15,45 +15,50 @@ import asyncio
 import httpx
 from fastapi import APIRouter
 
-from app.cache import credit_budget
+from app.cache import cache, credit_budget
 from app.config import settings
-from app.services import cryptorank, fng, sourcearena, tabdeal, toobit
+from app.services import cryptorank, fng, mock_data, sourcearena, tabdeal, toobit
 
 router = APIRouter(prefix="/api/market", tags=["market"])
 
 
 @router.get("/macro")
 async def macro():
-    data = await cryptorank.macro()
-    try:
-        data["fear_greed"] = await fng.fng()
-    except Exception:
-        pass
+    # CryptoRank و ترس‌وطمع هم‌زمان (سرعت بیشتر)
+    data, fg = await asyncio.gather(_safe(cryptorank.macro()), _safe(fng.fng()))
+    if not isinstance(data, dict) or "error" in data:
+        data = mock_data.macro()
+    if isinstance(fg, dict) and "error" not in fg:
+        data["fear_greed"] = fg
     return data
 
 
-@router.get("/gainers")
-async def gainers():
-    return await toobit.gainers()
+@router.get("/coins")
+async def coins():
+    """ارزهای برتر بازار (مارکت‌کپ بالا) از توبیت."""
+    return await toobit.top_coins()
 
 
 @router.get("/prices")
 async def prices():
-    """قیمت‌های کلیدی: تتر تومانی + طلای ۱۸ع + کالاهای جهانی (XAU/XAG/OIL)."""
-    usdt, gold, mac = await asyncio.gather(
-        _safe(tabdeal.usdt()),
-        _safe(sourcearena.gold18()),
-        _safe(cryptorank.macro()),
-    )
-    commodities = mac.get("commodities", {}) if isinstance(mac, dict) else {}
+    """قیمت‌های کلیدی — سریع و بدون انتظار برای CryptoRank.
+    تتر تومانی + طلای ۱۸ع زنده؛ کالاها و ترس‌وطمع از کش (اگر آماده نباشد، نمونه)."""
+    usdt, gold = await asyncio.gather(_safe(tabdeal.usdt()), _safe(sourcearena.gold18()))
+
+    # کالاها از کش macro (بدون فراخوانی تازه تا /prices کند نشود)
+    mac = cache.get("cryptorank:macro") or cache.get_stale("cryptorank:macro")
+    commodities = (mac or {}).get("commodities") or mock_data.commodities()["commodities"]
+    fg = cache.get("fng") or mock_data.fear_greed()
+
     return {
         "usdt_irt": usdt.get("usdt_irt") if isinstance(usdt, dict) else None,
         "gold_18k": gold.get("gold_18k") if isinstance(gold, dict) else None,
         "commodities": commodities,
+        "fear_greed": fg,
         "sources": {
             "usdt": usdt.get("source") if isinstance(usdt, dict) else "error",
             "gold": gold.get("source") if isinstance(gold, dict) else "error",
-            "commodities": mac.get("source") if isinstance(mac, dict) else "error",
+            "commodities": (mac or {}).get("source", "sample"),
         },
     }
 
@@ -117,16 +122,17 @@ async def debug():
     results = await asyncio.gather(
         _safe(tabdeal.usdt()),
         _safe(sourcearena.gold18()),
-        _safe(toobit.gainers()),
+        _safe(toobit.top_coins()),
         _safe(cryptorank.macro()),
         _safe(fng.fng()),
+        _safe(cryptorank.raw_debug()),
         *[c for _, c in raw_calls],
     )
 
     out["parsed"]["tabdeal_usdt"] = results[0]
     out["parsed"]["sourcearena_gold"] = results[1]
     g = results[2]
-    out["parsed"]["toobit_gainers"] = g if "error" in g else {"source": g.get("source"), "top": g.get("gainers", [])[:5]}
+    out["parsed"]["toobit_coins"] = g if "error" in g else {"source": g.get("source"), "coins": g.get("coins", [])}
     m = results[3]
     if "error" in m:
         out["parsed"]["cryptorank"] = m
@@ -134,12 +140,14 @@ async def debug():
         hm = m.get("heatmap", [])
         out["parsed"]["cryptorank"] = {
             "source": m.get("source"),
+            "stats": m.get("stats"),
             "btc_eth": [c for c in hm if c.get("symbol") in ("BTC", "ETH")],
             "commodities": m.get("commodities"),
         }
     out["parsed"]["fear_greed"] = results[4]
+    out["raw"]["cryptorank"] = results[5]
 
-    for (name, _), res in zip(raw_calls, results[5:]):
+    for (name, _), res in zip(raw_calls, results[6:]):
         out["raw"][name] = res
 
     # کوتاه‌کردن تیکر بزرگ توبیت
