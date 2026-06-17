@@ -29,8 +29,8 @@ if systemctl list-unit-files 2>/dev/null | grep -q '^cryptosmart-hub.service'; t
   sudo systemctl disable cryptosmart-hub 2>/dev/null || true
 fi
 
-# ---- بازنشست‌کردن نسخهٔ قبلی پورتفولیو و آزادسازی قطعی پورت 8002 ----
-# پورتفولیو روی پورت 8002 اجرا می‌شود. پورت‌های اپ‌های دیگر هرگز لمس نمی‌شوند:
+# ---- بازنشست‌کردن نسخهٔ قبلی پورتفولیو و آزادسازی قطعی پورت 8000 ----
+# پورتفولیو روی پورت 8000 اجرا می‌شود. پورت‌های اپ‌های دیگر هرگز لمس نمی‌شوند:
 #   cryptosmart=3000، tj-frontend=3001، tj-backend=8001.
 # فقط اپِ خودِ پورتفولیو حذف/بازسازی می‌شود.
 # ⚠️ هرگز اپ‌های pm2 «cryptosmart»، «tj-frontend» یا «tj-backend» حذف نمی‌شوند.
@@ -38,21 +38,21 @@ if command -v pm2 >/dev/null 2>&1; then
   pm2 delete "$APP_NAME" 2>/dev/null || true
 fi
 
-# آزادسازی هر پروسه‌ای که هنوز روی پورت 8002 گوش می‌دهد (فقط همین پورت).
+# آزادسازی هر پروسه‌ای که هنوز روی پورت 8000 گوش می‌دهد (فقط همین پورت).
 # ⚠️ هرگز پورت‌های 3000/3001/8001 (مختص اپ‌های دیگر) لمس نمی‌شوند.
 # نکته: «|| true» و if لازم‌اند تا با set -euo pipefail، نبودِ پروسه (خروجی خالی
 # grep) اسکریپت را متوقف نکند.
-free_port_8002() {
+free_port_8000() {
   local pids p
-  pids="$(ss -lptnH 'sport = :8002' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u || true)"
+  pids="$(ss -lptnH 'sport = :8000' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u || true)"
   if [ -n "$pids" ]; then for p in $pids; do kill "$p" 2>/dev/null || true; done; fi
   sleep 1
-  pids="$(ss -lptnH 'sport = :8002' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u || true)"
+  pids="$(ss -lptnH 'sport = :8000' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u || true)"
   if [ -n "$pids" ]; then for p in $pids; do kill -9 "$p" 2>/dev/null || true; done; fi
   return 0
 }
-echo "آزادسازی پورت 8002…"
-free_port_8002
+echo "آزادسازی پورت 8000…"
+free_port_8000
 sleep 1
 
 # ---- اطمینان از نصب pm2 ----
@@ -87,9 +87,9 @@ fi
 
 # ---- بررسی سلامت HTTP ----
 for i in 1 2 3 4 5; do
-  if curl -fsS http://127.0.0.1:8002/health >/dev/null 2>&1; then
+  if curl -fsS http://127.0.0.1:8000/health >/dev/null 2>&1; then
     echo "✅ بررسی سلامت موفق بود (تلاش $i)."
-    curl -fsS http://127.0.0.1:8002/health || true; echo
+    curl -fsS http://127.0.0.1:8000/health || true; echo
     git -C "$APP_DIR" log --oneline -1 2>/dev/null || true
     exit 0
   fi

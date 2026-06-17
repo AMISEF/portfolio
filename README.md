@@ -20,7 +20,7 @@
 ## پشتهٔ فناوری
 - **بک‌اند:** Python · FastAPI · Jinja2 (رندر سمت سرور)
 - **فرانت‌اند:** HTML/CSS/JS ساده (بدون فریم‌ورک سنگین) با توکن‌های دیزاین سیستم
-- **سرویس:** pm2 (uvicorn تک‌پروسه روی `127.0.0.1:8002`؛ پورت‌های دیگرِ سرور: cryptosmart=3000، tj-frontend=3001، tj-backend=8001)
+- **سرویس:** pm2 (uvicorn تک‌پروسه روی `127.0.0.1:8000`؛ پورت‌های دیگرِ سرور: cryptosmart=3000، tj-frontend=3001، tj-backend=8001)
 - **وب‌سرور:** Nginx (reverse proxy)
 - **CI/CD:** GitHub Actions → SSH + rsync → `deploy/remote_update.sh`
 
