@@ -29,16 +29,28 @@ if systemctl list-unit-files 2>/dev/null | grep -q '^cryptosmart-hub.service'; t
   sudo systemctl disable cryptosmart-hub 2>/dev/null || true
 fi
 
-# ---- بازنشست‌کردن اپ pm2 قدیمیِ پورتفولیو (به نام «cryptosmart») ----
-# نسخهٔ قبلی پورتفولیو زیر pm2 با نام cryptosmart روی همان پورت 8000 اجرا می‌شد و
-# مانع راه‌اندازی اپ جدید می‌شد. فقط همین اپ حذف می‌شود؛ به اپ‌های دیگر (tj-backend,
-# tj-frontend و هر سرویس دیگری روی سرور) دست زده نمی‌شود.
+# ---- بازنشست‌کردن نسخهٔ قبلی پورتفولیو و آزادسازی قطعی پورت 8000 ----
+# نسخهٔ قبلی پورتفولیو زیر pm2 با نام cryptosmart (و با چند worker) روی پورت 8000
+# اجرا می‌شد و پروسه‌های فرزند یتیم، پورت را اشغال نگه می‌داشتند. این اپ و اپ جدید
+# هر دو حذف و سپس از نو ساخته می‌شوند. فقط پورت 8000 (مختص پورتفولیو) آزاد می‌شود؛
+# اپ‌های tj-backend و tj-frontend روی پورت‌های دیگر دست‌نخورده می‌مانند.
 if command -v pm2 >/dev/null 2>&1; then
-  if pm2 describe cryptosmart >/dev/null 2>&1; then
-    echo "حذف اپ pm2 قدیمی «cryptosmart» برای آزادسازی پورت 8000…"
-    pm2 delete cryptosmart 2>/dev/null || true
-  fi
+  pm2 delete cryptosmart 2>/dev/null || true
+  pm2 delete "$APP_NAME" 2>/dev/null || true
 fi
+
+# آزادسازی هر پروسه‌ای که هنوز روی پورت 8000 گوش می‌دهد (فقط همین پورت)
+free_port_8000() {
+  local pids
+  pids="$(ss -lptnH 'sport = :8000' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u)"
+  for p in $pids; do kill "$p" 2>/dev/null || true; done
+  sleep 1
+  pids="$(ss -lptnH 'sport = :8000' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u)"
+  for p in $pids; do kill -9 "$p" 2>/dev/null || true; done
+}
+echo "آزادسازی پورت 8000…"
+free_port_8000
+sleep 1
 
 # ---- اطمینان از نصب pm2 ----
 if ! command -v pm2 >/dev/null 2>&1; then
@@ -51,9 +63,8 @@ if ! command -v pm2 >/dev/null 2>&1; then
   fi
 fi
 
-# ---- راه‌اندازی/بارگذاری مجدد اپ زیر pm2 ----
-# startOrReload هم اولین اجرا را پوشش می‌دهد هم به‌روزرسانی بدون قطعی را.
-pm2 startOrReload ecosystem.config.js --update-env
+# ---- راه‌اندازی اپ زیر pm2 (پس از حذف نسخه‌های قبلی، شروع تمیز) ----
+pm2 start ecosystem.config.js --update-env
 pm2 save
 # فعال‌سازی اجرای خودکار pm2 پس از ری‌استارت سرور (بی‌خطر اگر قبلاً تنظیم شده)
 pm2 startup systemd -u root --hp /root >/dev/null 2>&1 || true
