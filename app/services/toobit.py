@@ -60,8 +60,19 @@ async def top_coins() -> dict[str, Any]:
     return await cached("toobit:top_coins", settings.toobit_ttl, get_top_coins, mock_data.toobit_top_coins)
 
 
-# نمادهای محتمل نفت در توبیت (به ترتیب اولویت)
-_OIL_SYMBOLS = ["OILUSDT", "OILBRENTUSDT", "USOILUSDT", "WTIUSDT", "BRENTUSDT", "UKOILUSDT", "USOUSDT"]
+# نمادهای محتمل نفت در توبیت (به ترتیب اولویت) + جست‌وجوی زیررشته‌ای
+_OIL_SYMBOLS = ["OILUSDT", "OILBRENTUSDT", "USOILUSDT", "WTIUSDT", "BRENTUSDT", "UKOILUSDT", "USOUSDT", "CRUDEOILUSDT"]
+
+
+def _find_oil(by_sym: dict) -> dict | None:
+    for s in _OIL_SYMBOLS:
+        if s in by_sym:
+            return by_sym[s]
+    # جست‌وجوی زیررشته‌ای: هر نماد دلاری که «OIL» یا «BRENT» یا «WTI» دارد
+    for sym, t in by_sym.items():
+        if sym.endswith("USDT") and ("OIL" in sym or "BRENT" in sym or "WTI" in sym):
+            return t
+    return None
 
 
 async def get_oil() -> dict[str, Any]:
@@ -72,9 +83,8 @@ async def get_oil() -> dict[str, Any]:
         data = resp.json()
 
     by_sym = {(t.get("s") or t.get("symbol") or "").upper(): t for t in (data if isinstance(data, list) else [])}
-    t = next((by_sym[s] for s in _OIL_SYMBOLS if s in by_sym), None)
+    t = _find_oil(by_sym)
     if not t:
-        # نمادی برای نفت پیدا نشد؛ خطا تا fallback (نمونه) استفاده شود
         raise RuntimeError("Toobit: no oil symbol found")
     return {
         "source": "live",
@@ -85,6 +95,61 @@ async def get_oil() -> dict[str, Any]:
 async def oil() -> dict[str, Any]:
     from app.cache import cached
     return await cached("toobit:oil", settings.toobit_ttl, get_oil, mock_data.toobit_oil)
+
+
+# ---- نقشهٔ حرارتی زنده از توبیت ----
+# دستهٔ هر نماد (انگلیسی). نمادهای ناشناخته در «Other».
+_CATEGORY = {
+    "BTC": "Currency", "XRP": "Currency", "XLM": "Currency", "XMR": "Currency", "BCH": "Currency", "LTC": "Currency",
+    "ETH": "Smart Contract", "SOL": "Smart Contract", "BNB": "Smart Contract", "ADA": "Smart Contract",
+    "TRX": "Smart Contract", "AVAX": "Smart Contract", "NEAR": "Smart Contract", "DOT": "Smart Contract",
+    "SUI": "Smart Contract", "TON": "Smart Contract", "APT": "Smart Contract", "HBAR": "Smart Contract",
+    "ALGO": "Smart Contract", "ICP": "Smart Contract", "ETC": "Smart Contract", "VET": "Smart Contract",
+    "USDT": "Stablecoin", "USDC": "Stablecoin", "DAI": "Stablecoin", "FDUSD": "Stablecoin",
+    "USDE": "Stablecoin", "USDS": "Stablecoin", "TUSD": "Stablecoin", "USD1": "Stablecoin",
+    "UNI": "DeFi", "AAVE": "DeFi", "LINK": "DeFi", "MKR": "DeFi", "LDO": "DeFi", "CRV": "DeFi",
+    "HYPE": "DeFi", "ENA": "DeFi", "ATOM": "DeFi",
+    "DOGE": "Meme", "SHIB": "Meme", "PEPE": "Meme", "WIF": "Meme", "BONK": "Meme", "FLOKI": "Meme",
+}
+
+
+async def get_heatmap(limit: int = 30) -> dict[str, Any]:
+    """نقشهٔ حرارتی زنده: پرحجم‌ترین جفت‌های USDT با قیمت و تغییر ۲۴ساعتهٔ لحظه‌ای."""
+    timeout = httpx.Timeout(settings.http_timeout)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        resp = await client.get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
+        resp.raise_for_status()
+        data = resp.json()
+
+    rows = []
+    for t in (data if isinstance(data, list) else []):
+        sym = (t.get("s") or t.get("symbol") or "").upper()
+        if not sym.endswith("USDT"):
+            continue
+        base = sym[:-4]
+        price = _f(t, "c", "lastPrice")
+        vol = _f(t, "qv", "quoteVolume", "q")
+        if price <= 0 or vol <= 0:
+            continue
+        rows.append({
+            "symbol": base,
+            "name": base,
+            "category": _CATEGORY.get(base, "Other"),
+            "price": price,
+            "change_24h": round(_pct(t), 2),
+            "market_cap": vol,  # اندازهٔ کاشی بر اساس حجم ۲۴ساعته (توبیت ارزش بازار ندارد)
+        })
+
+    rows.sort(key=lambda r: r["market_cap"], reverse=True)
+    top = rows[:limit]
+    if not top:
+        raise RuntimeError("Toobit heatmap: no usable tickers")
+    return {"source": "live", "heatmap": top}
+
+
+async def heatmap() -> dict[str, Any]:
+    from app.cache import cached
+    return await cached("toobit:heatmap", settings.toobit_ttl, get_heatmap, mock_data.toobit_heatmap)
 
 
 def _pct(t: dict) -> float:

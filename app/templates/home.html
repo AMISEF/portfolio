@@ -70,17 +70,17 @@
       <div class="card__head">
         <span class="card__title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="3" y="15" width="7" height="6" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg>
-          نقشهٔ حرارتی بازار
+          <span dir="ltr">Market Heatmap</span>
         </span>
         <span class="src-tag" id="heatmapSrc"></span>
       </div>
       <div class="card__body">
-        <div class="heatmap" id="heatmap"><span class="skeleton">بارگذاری نقشهٔ حرارتی…</span></div>
-        <div class="heatmap-legend">
-          <span><i style="background:var(--down)"></i> کاهش</span>
-          <span><i style="background:var(--warn)"></i> خنثی</span>
-          <span><i style="background:var(--up)"></i> رشد</span>
-          <span style="color:var(--text-dim)">اندازه = ارزش بازار</span>
+        <div class="heatmap" id="heatmap"><span class="skeleton">Loading…</span></div>
+        <div class="heatmap-legend" dir="ltr">
+          <span><i style="background:var(--down)"></i> Down</span>
+          <span><i style="background:var(--warn)"></i> Flat</span>
+          <span><i style="background:var(--up)"></i> Up</span>
+          <span style="color:var(--text-dim)">Size = 24h volume · Source: Toobit</span>
         </div>
       </div>
     </div>

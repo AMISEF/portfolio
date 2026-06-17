@@ -17,20 +17,26 @@ from fastapi import APIRouter
 
 from app.cache import cache, credit_budget
 from app.config import settings
-from app.services import cryptorank, fng, mock_data, sourcearena, tabdeal, toobit
+from app.services import coingecko, fng, mock_data, sourcearena, tabdeal, toobit
 
 router = APIRouter(prefix="/api/market", tags=["market"])
 
 
 @router.get("/macro")
 async def macro():
-    # CryptoRank و ترس‌وطمع هم‌زمان (سرعت بیشتر)
-    data, fg = await asyncio.gather(_safe(cryptorank.macro()), _safe(fng.fng()))
+    """شاخص‌های کلان (CoinGecko — دامیننس دقیق) + ترس و طمع."""
+    data, fg = await asyncio.gather(_safe(coingecko.macro()), _safe(fng.fng()))
     if not isinstance(data, dict) or "error" in data:
-        data = mock_data.macro()
+        data = {"source": "sample", "stats": mock_data.macro()["stats"]}
     if isinstance(fg, dict) and "error" not in fg:
         data["fear_greed"] = fg
     return data
+
+
+@router.get("/heatmap")
+async def heatmap():
+    """نقشهٔ حرارتی زنده از توبیت (قیمت و تغییر ۲۴ساعتهٔ لحظه‌ای)."""
+    return await toobit.heatmap()
 
 
 @router.get("/coins")
@@ -127,9 +133,9 @@ async def debug():
         _safe(sourcearena.metals()),
         _safe(toobit.top_coins()),
         _safe(toobit.oil()),
-        _safe(cryptorank.macro()),
+        _safe(toobit.heatmap()),
+        _safe(coingecko.macro()),
         _safe(fng.fng()),
-        _safe(cryptorank.raw_debug()),
         *[c for _, c in raw_calls],
     )
 
@@ -138,18 +144,10 @@ async def debug():
     g = results[2]
     out["parsed"]["toobit_coins"] = g if "error" in g else {"source": g.get("source"), "coins": g.get("coins", [])}
     out["parsed"]["toobit_oil"] = results[3]
-    m = results[4]
-    if "error" in m:
-        out["parsed"]["cryptorank"] = m
-    else:
-        hm = m.get("heatmap", [])
-        out["parsed"]["cryptorank"] = {
-            "source": m.get("source"),
-            "stats": m.get("stats"),
-            "btc_eth": [c for c in hm if c.get("symbol") in ("BTC", "ETH")],
-        }
-    out["parsed"]["fear_greed"] = results[5]
-    out["raw"]["cryptorank"] = results[6]
+    hm = results[4]
+    out["parsed"]["toobit_heatmap"] = hm if "error" in hm else {"source": hm.get("source"), "top5": hm.get("heatmap", [])[:5]}
+    out["parsed"]["coingecko_macro"] = results[5]
+    out["parsed"]["fear_greed"] = results[6]
 
     for (name, _), res in zip(raw_calls, results[7:]):
         out["raw"][name] = res

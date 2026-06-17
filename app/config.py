@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     sourcearena_base_url: str = "https://sa.resicard.ir/api"
     sourcearena_ttl: int = 1800
 
+    # ---- CoinGecko (شاخص‌های کلان دقیق — بدون کلید) ----
+    coingecko_base_url: str = "https://api.coingecko.com/api/v3"
+    coingecko_ttl: int = 60
+
     # ---- شاخص ترس و طمع ----
     fng_base_url: str = "https://api.alternative.me/fng/"
     fng_ttl: int = 600

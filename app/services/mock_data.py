@@ -47,6 +47,31 @@ def _heatmap() -> list[dict]:
     ]
 
 
+def toobit_heatmap() -> dict:
+    """نقشهٔ حرارتی نمونه (دسته‌های انگلیسی، اندازه بر اساس حجم)."""
+    rows = [
+        ("BTC", "Currency", 65541, -1.39, 9_000_000_000),
+        ("ETH", "Smart Contract", 1788, 0.89, 4_000_000_000),
+        ("SOL", "Smart Contract", 138.0, -1.18, 1_200_000_000),
+        ("BNB", "Smart Contract", 606.25, -1.51, 900_000_000),
+        ("XRP", "Currency", 2.11, -1.99, 1_500_000_000),
+        ("USDT", "Stablecoin", 0.999, -0.04, 12_000_000_000),
+        ("USDC", "Stablecoin", 1.00, -0.01, 3_000_000_000),
+        ("DOGE", "Meme", 0.16, 1.20, 600_000_000),
+        ("TRX", "Smart Contract", 0.27, 0.0, 400_000_000),
+        ("ADA", "Smart Contract", 0.62, 1.10, 350_000_000),
+        ("LINK", "DeFi", 17.8, 2.40, 300_000_000),
+        ("AVAX", "Smart Contract", 28.4, -1.20, 280_000_000),
+        ("XLM", "Currency", 0.31, 0.90, 200_000_000),
+        ("HYPE", "DeFi", 32.5, 5.10, 250_000_000),
+        ("ZEC", "Currency", 49.5, 1.5, 150_000_000),
+    ]
+    return {"source": "sample", "heatmap": [
+        {"symbol": s, "name": s, "category": c, "price": p, "change_24h": ch, "market_cap": v}
+        for (s, c, p, ch, v) in rows
+    ]}
+
+
 def toobit_oil() -> dict:
     """نفت خام (دلار، هر بشکه) — از توبیت."""
     return {"source": "sample", "oil": {"name": "نفت خام", "sub": "بشکه", "price": 72.94, "change_24h": 1.21}}

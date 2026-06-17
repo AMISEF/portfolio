@@ -4,11 +4,9 @@
   "use strict";
   const CS = w.CS;
 
-  const CAT_ORDER = ["Currency", "Blockchain", "Stablecoin", "DeFi", "Meme", "CeFi"];
-  const CAT_FA = {
-    Currency: "ارز", Blockchain: "بلاکچین", Stablecoin: "استیبل‌کوین",
-    DeFi: "دیفای", Meme: "میم‌کوین", CeFi: "سی‌فای",
-  };
+  // برچسب‌ها انگلیسی (طبق درخواست) — همان دستهٔ سرور نمایش داده می‌شود
+  const CAT_ORDER = ["Currency", "Smart Contract", "Stablecoin", "DeFi", "Meme", "Other"];
+  const CAT_FA = {};  // بدون ترجمه؛ نام دسته همان انگلیسی است
 
   function heatColor(ch) {
     const x = Math.max(-8, Math.min(8, ch || 0)) / 8;
@@ -28,7 +26,7 @@
 
     const groups = {};
     items.forEach((it) => {
-      const c = CAT_ORDER.includes(it.category) ? it.category : "Currency";
+      const c = CAT_ORDER.includes(it.category) ? it.category : "Other";
       (groups[c] = groups[c] || []).push(it);
     });
     const cats = Object.keys(groups).sort((a, b) => {
