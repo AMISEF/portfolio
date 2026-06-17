@@ -85,32 +85,6 @@ if [ "$PM2_STATUS" = "errored" ] || [ "$PM2_STATUS" = "missing" ]; then
   exit 1
 fi
 
-# ---- به‌روزرسانی پیکربندی Nginx (پورت ۸۰۰۲) ----
-# فقط بلوک portfolio لمس می‌شود؛ به دو سایت دیگر کاری نداریم.
-if command -v nginx >/dev/null 2>&1; then
-  NGINX_SRC="$APP_DIR/deploy/nginx/portfolio.cryptosmart.site.conf"
-  NGINX_AVAIL="/etc/nginx/sites-available/portfolio.cryptosmart.site.conf"
-  NGINX_LINK_A="/etc/nginx/sites-enabled/portfolio.cryptosmart.site.conf"
-  NGINX_LINK_B="/etc/nginx/sites-enabled/portfolio.cryptosmart.site"
-
-  if [ -f "$NGINX_SRC" ]; then
-    cp "$NGINX_SRC" "$NGINX_AVAIL"
-    # ایجاد symlink در sites-enabled اگر هیچ‌کدام وجود ندارند
-    if [ ! -e "$NGINX_LINK_A" ] && [ ! -e "$NGINX_LINK_B" ]; then
-      ln -s "$NGINX_AVAIL" "$NGINX_LINK_B"
-    fi
-    # اگر لینک قدیمی به جای دیگری اشاره داشت، آن را به conf جدید هدایت کن
-    for lnk in "$NGINX_LINK_A" "$NGINX_LINK_B"; do
-      if [ -L "$lnk" ] && [ "$(readlink -f "$lnk")" != "$(readlink -f "$NGINX_AVAIL")" ]; then
-        ln -sf "$NGINX_AVAIL" "$lnk"
-      fi
-    done
-    nginx -t && systemctl reload nginx \
-      && echo "✅ Nginx بارگذاری مجدد شد (portfolio → 8002)." \
-      || echo "⚠️ Nginx reload ناموفق بود — لاگ nginx را بررسی کنید."
-  fi
-fi
-
 # ---- بررسی سلامت HTTP ----
 for i in 1 2 3 4 5; do
   if curl -fsS http://127.0.0.1:8002/health >/dev/null 2>&1; then
