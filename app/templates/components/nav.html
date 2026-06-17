@@ -17,7 +17,7 @@
 
 <!-- دسکتاپ: نوار عمودی سمت راست -->
 <nav class="nav nav--side">
-  <img class="nav__logo" src="/static/img/logo.svg" alt="CryptoSmart" onerror="this.src='/static/img/logo.png'">
+  <img class="nav__logo" src="/static/img/logo.png" alt="CryptoSmart">
   <button class="nav__item nav__item--home {% if active=='home' %}is-active{% endif %}" data-nav="home" title="خانه" aria-label="خانه"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">{{ home_svg|safe }}</svg></button>
   <button class="nav__item" data-nav="portfolio" title="پورتفولیو" aria-label="پورتفولیو"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ items[0][2]|safe }}</svg></button>
   <button class="nav__item" data-nav="journal" title="ژورنال" aria-label="ژورنال"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ items[1][2]|safe }}</svg></button>

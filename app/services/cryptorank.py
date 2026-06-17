@@ -22,12 +22,6 @@ from app.services import mock_data
 _KEY = "cryptorank:macro"
 _STABLE = {"USDT", "USDC", "DAI", "FDUSD", "TUSD", "USDE"}
 _MEME = {"DOGE", "SHIB", "PEPE", "WIF", "BONK", "FLOKI"}
-# نمادهای کالا که از CryptoRank می‌خواهیم
-_COMMODITY_FA = {
-    "XAU": {"name": "طلای جهانی", "sub": "اونس"},
-    "XAG": {"name": "نقره", "sub": "اونس"},
-    "OIL": {"name": "نفت خام", "sub": "بشکه"},
-}
 
 
 def _headers() -> dict[str, str]:
@@ -78,29 +72,29 @@ async def get_macro() -> dict[str, Any]:
 
     timeout = httpx.Timeout(settings.http_timeout)
     async with httpx.AsyncClient(timeout=timeout) as client:
-        # currencies برای هیت‌مپ ضروری است؛ global اختیاری (ممکن است در پلن رایگان محدود باشد)
-        coins = await _fetch_currencies(client, limit=30)
+        g = await _fetch_global(client)  # شاخص‌های کلان (تأییدشده کار می‌کند)
         try:
-            g = await _fetch_global(client)
+            coins = await _fetch_currencies(client, limit=100)  # limit مجاز: 100/500/1000
         except Exception:
-            g = {}
+            coins = []
 
-    eth_mc = next((_coin_mc(c) for c in coins if (c.get("symbol") or "").upper() == "ETH"), 0.0)
     btc_mc = next((_coin_mc(c) for c in coins if (c.get("symbol") or "").upper() == "BTC"), 0.0)
-    sum_mc = sum(_coin_mc(c) for c in coins) or 0.0
-    sum_vol = sum(_coin_vol(c) for c in coins) or 0.0
+    eth_mc = next((_coin_mc(c) for c in coins if (c.get("symbol") or "").upper() == "ETH"), 0.0)
 
-    # ارزش کل بازار: ترجیحاً از global، وگرنه تخمین از مجموع currencies
-    total_mc = _num(g, "totalMarketCap", "total_market_cap") or sum_mc
-    total_vol = _num(g, "totalVolume24h", "total_volume_24h") or sum_vol
-    btc_dom = _num(g, "btcDominance", "btc_dominance") or (btc_mc / total_mc * 100 if total_mc else 0.0)
-    eth_dom = _num(g, "ethDominance", "eth_dominance") or (eth_mc / total_mc * 100 if total_mc else 0.0)
+    total_mc = _num(g, "totalMarketCap", "total_market_cap")
+    btc_dom = _num(g, "btcDominance", "btc_dominance")
+    eth_dom = _num(g, "ethDominance", "eth_dominance")
+    if not btc_mc and total_mc:
+        btc_mc = btc_dom / 100 * total_mc
+    if not eth_mc and total_mc:
+        eth_mc = eth_dom / 100 * total_mc
 
+    # نام فیلدهای تغییر در پاسخ واقعی v2: ...Change (نه ...Change24h)
     stats = {
-        "total_market_cap": {"value": total_mc, "change_24h": _num(g, "totalMarketCapChange24h", "marketCapChange24h")},
-        "total_volume_24h": {"value": total_vol, "change_24h": _num(g, "volumeChange24h")},
-        "btc_dominance": {"value": btc_dom, "change_24h": _num(g, "btcDominanceChange24h")},
-        "eth_dominance": {"value": eth_dom, "change_24h": _num(g, "ethDominanceChange24h")},
+        "total_market_cap": {"value": total_mc, "change_24h": _num(g, "totalMarketCapChange", "totalMarketCapChange24h")},
+        "total_volume_24h": {"value": _num(g, "totalVolume24h", "total_volume_24h"), "change_24h": _num(g, "totalVolume24hChange", "volumeChange24h")},
+        "btc_dominance": {"value": btc_dom, "change_24h": _num(g, "btcDominanceChange", "btcDominanceChange24h")},
+        "eth_dominance": {"value": eth_dom, "change_24h": _num(g, "ethDominanceChange", "ethDominanceChange24h")},
         "eth_market_cap": {"value": eth_mc, "change_24h": 0.0},
         "alt_market_cap": {"value": max(total_mc - btc_mc, 0.0), "change_24h": 0.0},
         "usdt_dominance": {"value": _num(g, "usdtDominance", "usdt_dominance"), "change_24h": 0.0},
@@ -115,26 +109,13 @@ async def get_macro() -> dict[str, Any]:
             "change_24h": _coin_change(c),
             "market_cap": _coin_mc(c),
         }
-        for c in coins
+        for c in coins[:30]
     ]
+    # اگر currencies شکل غیرمنتظره داشت (همهٔ مقادیر صفر)، به هیت‌مپ نمونه برگرد
+    if not heatmap or sum(h["market_cap"] for h in heatmap) <= 0:
+        heatmap = mock_data._heatmap()
 
-    return {"source": "live", "stats": stats, "heatmap": heatmap, "commodities": _extract_commodities(coins)}
-
-
-def _extract_commodities(coins: list[dict]) -> dict[str, Any]:
-    """تلاش برای یافتن XAU/XAG/OIL در فهرست CryptoRank؛ در نبود، نمونه."""
-    out: dict[str, Any] = {}
-    by_sym = {(c.get("symbol") or "").upper(): c for c in coins}
-    for sym, fa in _COMMODITY_FA.items():
-        c = by_sym.get(sym)
-        if c:
-            out[sym] = {"name": fa["name"], "sub": fa["sub"], "price": _coin_price(c), "change_24h": _coin_change(c)}
-    if not out:
-        return mock_data.commodities()["commodities"]
-    # هر نماد یافت‌نشده را از نمونه پر کن تا UI کامل بماند
-    for sym, fa in _COMMODITY_FA.items():
-        out.setdefault(sym, mock_data.commodities()["commodities"][sym])
-    return out
+    return {"source": "live", "stats": stats, "heatmap": heatmap}
 
 
 async def macro() -> dict[str, Any]:
@@ -157,7 +138,7 @@ async def raw_debug() -> dict[str, Any]:
     async with httpx.AsyncClient(timeout=httpx.Timeout(6.0)) as client:
         for name, url, params in (
             ("global", f"{settings.cryptorank_base_url}/global", {}),
-            ("currencies", f"{settings.cryptorank_base_url}/currencies", {"limit": 2}),
+            ("currencies", f"{settings.cryptorank_base_url}/currencies", {"limit": 100}),
         ):
             try:
                 r = await client.get(url, headers=_headers(), params=params)

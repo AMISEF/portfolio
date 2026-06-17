@@ -20,7 +20,6 @@ def macro() -> dict:
             "usdt_dominance": {"value": 4.62, "change_24h": -0.04},
         },
         "heatmap": _heatmap(),
-        "commodities": commodities()["commodities"],
     }
 
 
@@ -48,16 +47,9 @@ def _heatmap() -> list[dict]:
     ]
 
 
-def commodities() -> dict:
-    """طلای جهانی (XAU)، نقره (XAG)، نفت خام (OIL) — از CryptoRank."""
-    return {
-        "source": "sample",
-        "commodities": {
-            "XAU": {"name": "طلای جهانی", "sub": "اونس", "price": 2648.30, "change_24h": 0.42},
-            "XAG": {"name": "نقره", "sub": "اونس", "price": 31.18, "change_24h": -0.65},
-            "OIL": {"name": "نفت خام", "sub": "بشکه", "price": 72.94, "change_24h": 1.21},
-        },
-    }
+def toobit_oil() -> dict:
+    """نفت خام (دلار، هر بشکه) — از توبیت."""
+    return {"source": "sample", "oil": {"name": "نفت خام", "sub": "بشکه", "price": 72.94, "change_24h": 1.21}}
 
 
 def toobit_top_coins() -> dict:
@@ -86,10 +78,15 @@ def tabdeal_usdt() -> dict:
     }
 
 
-def sourcearena_gold() -> dict:
+def sourcearena_metals() -> dict:
+    """طلای ۱۸ع (تومان/گرم) + انس طلا و نقره (دلار)."""
     return {
         "source": "sample",
-        "gold_18k": {"name": "طلای ۱۸ عیار", "sub": "هر گرم", "price": 6_540_000, "change_24h": 0.58},
+        "gold_18k": {"name": "طلای ۱۸ عیار", "sub": "هر گرم", "price": 16_470_000, "change_24h": 0.0},
+        "commodities": {
+            "XAU": {"name": "طلای جهانی", "sub": "اونس", "price": 4326.2, "change_24h": 0.0},
+            "XAG": {"name": "نقره", "sub": "اونس", "price": 69.9, "change_24h": 0.0},
+        },
     }
 
 

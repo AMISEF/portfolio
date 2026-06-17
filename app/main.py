@@ -19,4 +19,4 @@ app.include_router(market.router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "app": settings.app_name, "build": "p1-coins-2"}
+    return {"status": "ok", "app": settings.app_name, "build": "p1-metals-3"}

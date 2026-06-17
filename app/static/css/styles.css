@@ -15,7 +15,8 @@
   --on-brand: #04201D; --on-blue: #FFFFFF;
 
   --font: "Vazirmatn", "B Nazanin", Tahoma, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* اعداد هم با همان فونت نرم وزیرمتن (ارقام جدول‌بندی‌شده) — نه فونت مونوی سیستمی */
+  --font-mono: "Vazirmatn", "B Nazanin", Tahoma, sans-serif;
 
   --radius-lg: 22px; --radius-md: 16px; --radius-sm: 10px; --radius-pill: 999px; --radius-nav: 26px;
   --shadow-soft: 0 10px 30px -12px rgba(22,47,85,.25);
@@ -172,7 +173,7 @@ a { color: inherit; text-decoration: none; }
 .dt { display: flex; flex-direction: column; }
 .dt__label { font-size: .62rem; color: var(--text-dim); font-weight: 700; }
 .dt__val { font-size: .9rem; font-weight: 800; color: var(--heading); }
-.dt__val.clock { color: var(--brand-dark); font-variant-numeric: tabular-nums; letter-spacing: 1px; font-family: var(--font-mono); }
+.dt__val.clock { color: var(--brand-dark); font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 
 /* نقطهٔ زندهٔ چشمک‌زن */
 .live-dot {

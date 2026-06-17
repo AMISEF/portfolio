@@ -60,6 +60,33 @@ async def top_coins() -> dict[str, Any]:
     return await cached("toobit:top_coins", settings.toobit_ttl, get_top_coins, mock_data.toobit_top_coins)
 
 
+# نمادهای محتمل نفت در توبیت (به ترتیب اولویت)
+_OIL_SYMBOLS = ["OILUSDT", "OILBRENTUSDT", "USOILUSDT", "WTIUSDT", "BRENTUSDT", "UKOILUSDT", "USOUSDT"]
+
+
+async def get_oil() -> dict[str, Any]:
+    timeout = httpx.Timeout(settings.http_timeout)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        resp = await client.get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
+        resp.raise_for_status()
+        data = resp.json()
+
+    by_sym = {(t.get("s") or t.get("symbol") or "").upper(): t for t in (data if isinstance(data, list) else [])}
+    t = next((by_sym[s] for s in _OIL_SYMBOLS if s in by_sym), None)
+    if not t:
+        # نمادی برای نفت پیدا نشد؛ خطا تا fallback (نمونه) استفاده شود
+        raise RuntimeError("Toobit: no oil symbol found")
+    return {
+        "source": "live",
+        "oil": {"name": "نفت خام", "sub": "بشکه", "price": _f(t, "c", "lastPrice"), "change_24h": round(_pct(t), 2)},
+    }
+
+
+async def oil() -> dict[str, Any]:
+    from app.cache import cached
+    return await cached("toobit:oil", settings.toobit_ttl, get_oil, mock_data.toobit_oil)
+
+
 def _pct(t: dict) -> float:
     """درصد تغییر ۲۴ساعته. pcp کسری است (مثلاً -0.0183 ⇒ -1.83٪)."""
     v = _f(t, "pcp", "priceChangePercent", "P", "changeRate")

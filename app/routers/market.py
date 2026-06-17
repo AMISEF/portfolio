@@ -41,24 +41,27 @@ async def coins():
 
 @router.get("/prices")
 async def prices():
-    """قیمت‌های کلیدی — سریع و بدون انتظار برای CryptoRank.
-    تتر تومانی + طلای ۱۸ع زنده؛ کالاها و ترس‌وطمع از کش (اگر آماده نباشد، نمونه)."""
-    usdt, gold = await asyncio.gather(_safe(tabdeal.usdt()), _safe(sourcearena.gold18()))
+    """قیمت‌های کلیدی: تتر تومانی (تبدیل) + طلای ۱۸ع و انس طلا/نقره (سورس‌آرنا)
+    + نفت (توبیت). ترس‌وطمع از کش تا گیج هر ۲۰ ثانیه به‌روز شود."""
+    usdt, metals, oil = await asyncio.gather(
+        _safe(tabdeal.usdt()), _safe(sourcearena.metals()), _safe(toobit.oil())
+    )
 
-    # کالاها از کش macro (بدون فراخوانی تازه تا /prices کند نشود)
-    mac = cache.get("cryptorank:macro") or cache.get_stale("cryptorank:macro")
-    commodities = (mac or {}).get("commodities") or mock_data.commodities()["commodities"]
+    commodities = dict(metals.get("commodities", {})) if isinstance(metals, dict) else {}
+    if isinstance(oil, dict) and oil.get("oil"):
+        commodities["OIL"] = oil["oil"]
+
     fg = cache.get("fng") or mock_data.fear_greed()
 
     return {
         "usdt_irt": usdt.get("usdt_irt") if isinstance(usdt, dict) else None,
-        "gold_18k": gold.get("gold_18k") if isinstance(gold, dict) else None,
+        "gold_18k": metals.get("gold_18k") if isinstance(metals, dict) else None,
         "commodities": commodities,
         "fear_greed": fg,
         "sources": {
             "usdt": usdt.get("source") if isinstance(usdt, dict) else "error",
-            "gold": gold.get("source") if isinstance(gold, dict) else "error",
-            "commodities": (mac or {}).get("source", "sample"),
+            "metals": metals.get("source") if isinstance(metals, dict) else "error",
+            "oil": oil.get("source") if isinstance(oil, dict) else "error",
         },
     }
 
@@ -121,8 +124,9 @@ async def debug():
 
     results = await asyncio.gather(
         _safe(tabdeal.usdt()),
-        _safe(sourcearena.gold18()),
+        _safe(sourcearena.metals()),
         _safe(toobit.top_coins()),
+        _safe(toobit.oil()),
         _safe(cryptorank.macro()),
         _safe(fng.fng()),
         _safe(cryptorank.raw_debug()),
@@ -130,10 +134,11 @@ async def debug():
     )
 
     out["parsed"]["tabdeal_usdt"] = results[0]
-    out["parsed"]["sourcearena_gold"] = results[1]
+    out["parsed"]["sourcearena_metals"] = results[1]
     g = results[2]
     out["parsed"]["toobit_coins"] = g if "error" in g else {"source": g.get("source"), "coins": g.get("coins", [])}
-    m = results[3]
+    out["parsed"]["toobit_oil"] = results[3]
+    m = results[4]
     if "error" in m:
         out["parsed"]["cryptorank"] = m
     else:
@@ -142,12 +147,11 @@ async def debug():
             "source": m.get("source"),
             "stats": m.get("stats"),
             "btc_eth": [c for c in hm if c.get("symbol") in ("BTC", "ETH")],
-            "commodities": m.get("commodities"),
         }
-    out["parsed"]["fear_greed"] = results[4]
-    out["raw"]["cryptorank"] = results[5]
+    out["parsed"]["fear_greed"] = results[5]
+    out["raw"]["cryptorank"] = results[6]
 
-    for (name, _), res in zip(raw_calls, results[6:]):
+    for (name, _), res in zip(raw_calls, results[7:]):
         out["raw"][name] = res
 
     # کوتاه‌کردن تیکر بزرگ توبیت
