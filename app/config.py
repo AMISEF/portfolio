@@ -31,12 +31,27 @@ class Settings(BaseSettings):
     # کش ۱۰ دقیقه ⇒ حدود ۸٬۶۴۰ کردیت در ماه (< ۱۰٬۰۰۰)
     cryptorank_ttl: int = 600
 
-    # ---- Toobit (تاپ گینرها + تصاویر ارز) ----
+    # ---- Toobit (ارزهای برتر + هیت‌مپ + نفت + تصاویر ارز) ----
     toobit_access_key: str = ""
     toobit_secret_key: str = ""
     toobit_base_url: str = "https://api.toobit.com"
-    toobit_ttl: int = 12
+    toobit_ttl: int = 12               # سازگاری عقب‌رو
+    toobit_coins_ttl: int = 5          # ۵ ارز برتر — هر ۵ ثانیه (زنده)
+    toobit_heatmap_ttl: int = 10       # نقشهٔ حرارتی
+    toobit_oil_ttl: int = 120          # نفت کم‌نوسان‌تر
     toobit_gainers_count: int = 5
+
+    # ---- CoinMarketCap (شاخص‌های کلان + فصل آلت‌کوین) ----
+    # کلید از متغیر محیطی CMC_API_KEY خوانده می‌شود.
+    cmc_api_key: str = ""
+    cmc_base_url: str = "https://pro-api.coinmarketcap.com"
+    cmc_macro_ttl: int = 300           # global-metrics هر ۵ دقیقه
+    cmc_altseason_ttl: int = 900       # فصل آلت‌کوین (۹۰روزه، کم‌تغییر) هر ۱۵ دقیقه
+    # سقف مصرف کردیت پلن Basic (هارد‌کپ ماهانه ۲۰٬۰۰۰ و ۵۰ درخواست/دقیقه)
+    cmc_monthly_credits: int = 19_000  # حاشیهٔ ایمنی زیر ۲۰٬۰۰۰
+    cmc_daily_credits: int = 600
+    cmc_per_min_credits: int = 40      # زیر ۵۰/دقیقه
+    cmc_state_file: str = "data/cmc_credit_state.json"
 
     # ---- Tabdeal (تتر تومانی — بدون هیچ تبدیلی) ----
     tabdeal_api_key: str = ""

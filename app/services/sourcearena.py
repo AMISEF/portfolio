@@ -44,6 +44,8 @@ async def get_metals() -> dict[str, Any]:
 
     return {
         "source": "live",
+        # تغییر دلار آزاد (تومان) ≈ تغییر ۲۴ساعتهٔ تتر/تومان — برای ردیف تتر استفاده می‌شود
+        "usd_change_24h": _c(data, "usd") or _c(data, "usd_sherkat"),
         "gold_18k": {"name": "طلای ۱۸ عیار", "sub": "هر گرم", "price": round(gold18), "change_24h": _c(data, "18ayar")},
         "commodities": {
             "XAU": {"name": "طلای جهانی", "sub": "اونس", "price": xau_usd, "change_24h": _c(data, "usd_xau")},
@@ -62,7 +64,9 @@ def _v(data: dict, key: str) -> float:
 
 
 def _c(data: dict, key: str) -> float:
-    return _f(data.get(key) or {}, "change_pct", "change_percent")
+    """درصد تغییر ۲۴ساعته از زیرشاخه‌های محتملِ پاسخ SourceArena."""
+    return _f(data.get(key) or {}, "change_pct", "change_percent", "change",
+              "changePercent", "percent", "diff_percent")
 
 
 def _f(d: dict, *keys: str) -> float:

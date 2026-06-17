@@ -15,19 +15,29 @@ import asyncio
 import httpx
 from fastapi import APIRouter
 
-from app.cache import cache, credit_budget
+from app.cache import cache, cmc_budget, credit_budget
 from app.config import settings
-from app.services import coingecko, fng, mock_data, sourcearena, tabdeal, toobit
+from app.services import coinmarketcap, fng, mock_data, sourcearena, tabdeal, toobit
 
 router = APIRouter(prefix="/api/market", tags=["market"])
 
 
 @router.get("/macro")
 async def macro():
-    """شاخص‌های کلان (CoinGecko — دامیننس دقیق) + ترس و طمع."""
-    data, fg = await asyncio.gather(_safe(coingecko.macro()), _safe(fng.fng()))
+    """شاخص‌های کلان از CoinMarketCap (ارزش بازار، حجم، دامیننس) + فصل آلت‌کوین
+    + شاخص ترس و طمع. هر بخش به‌طور مستقل امن می‌شود تا خطای یک منبع کل پاسخ را
+    خراب نکند."""
+    data, alt, fg = await asyncio.gather(
+        _safe(coinmarketcap.macro()),
+        _safe(coinmarketcap.altseason()),
+        _safe(fng.fng()),
+    )
     if not isinstance(data, dict) or "error" in data:
-        data = {"source": "sample", "stats": mock_data.macro()["stats"]}
+        data = mock_data.cmc_macro()
+    if isinstance(alt, dict) and "error" not in alt:
+        data["altcoin_season"] = alt.get("altcoin_season")
+    else:
+        data["altcoin_season"] = mock_data.cmc_altseason()["altcoin_season"]
     if isinstance(fg, dict) and "error" not in fg:
         data["fear_greed"] = fg
     return data
@@ -57,10 +67,18 @@ async def prices():
     if isinstance(oil, dict) and oil.get("oil"):
         commodities["OIL"] = oil["oil"]
 
+    # تغییر ۲۴ساعتهٔ تتر/تومان از تغییر دلار آزاد (SourceArena) گرفته می‌شود؛
+    # اندپوینت عمق Tabdeal خودش درصد تغییر ندارد.
+    usdt_irt = usdt.get("usdt_irt") if isinstance(usdt, dict) else None
+    if isinstance(usdt_irt, dict) and isinstance(metals, dict):
+        usd_chg = metals.get("usd_change_24h")
+        if usd_chg and not usdt_irt.get("change_24h"):
+            usdt_irt["change_24h"] = usd_chg
+
     fg = cache.get("fng") or mock_data.fear_greed()
 
     return {
-        "usdt_irt": usdt.get("usdt_irt") if isinstance(usdt, dict) else None,
+        "usdt_irt": usdt_irt,
         "gold_18k": metals.get("gold_18k") if isinstance(metals, dict) else None,
         "commodities": commodities,
         "fear_greed": fg,
@@ -107,6 +125,7 @@ async def _raw_get(url: str, params: dict | None = None) -> dict:
 async def debug():
     """پاسخ خام + پارس‌شدهٔ هر منبع + وضعیت کلیدها، برای تثبیت نگاشت فیلدها."""
     keys = {
+        "cmc_api_key_set": bool(settings.cmc_api_key),
         "cryptorank_api_key_set": bool(settings.cryptorank_api_key),
         "sourcearena_token_set": bool(settings.sourcearena_token),
         "toobit_keys_set": bool(settings.toobit_access_key),
@@ -114,9 +133,10 @@ async def debug():
         "tabdeal_base_url": settings.tabdeal_base_url,
         "toobit_base_url": settings.toobit_base_url,
         "sourcearena_base_url": settings.sourcearena_base_url,
-        "cryptorank_base_url": settings.cryptorank_base_url,
+        "cmc_base_url": settings.cmc_base_url,
     }
-    out: dict = {"keys": keys, "credits": credit_budget.usage(), "parsed": {}, "raw": {}}
+    out: dict = {"keys": keys, "credits": credit_budget.usage(),
+                 "cmc_credits": cmc_budget.usage(), "parsed": {}, "raw": {}}
 
     raw_calls = [
         ("tabdeal_usdtirt", _raw_get(f"{settings.tabdeal_base_url}/r/api/v1/depth/", {"symbol": "USDTIRT"})),
@@ -134,7 +154,8 @@ async def debug():
         _safe(toobit.top_coins()),
         _safe(toobit.oil()),
         _safe(toobit.heatmap()),
-        _safe(coingecko.macro()),
+        _safe(coinmarketcap.macro()),
+        _safe(coinmarketcap.altseason()),
         _safe(fng.fng()),
         *[c for _, c in raw_calls],
     )
@@ -146,10 +167,11 @@ async def debug():
     out["parsed"]["toobit_oil"] = results[3]
     hm = results[4]
     out["parsed"]["toobit_heatmap"] = hm if "error" in hm else {"source": hm.get("source"), "top5": hm.get("heatmap", [])[:5]}
-    out["parsed"]["coingecko_macro"] = results[5]
-    out["parsed"]["fear_greed"] = results[6]
+    out["parsed"]["cmc_macro"] = results[5]
+    out["parsed"]["cmc_altseason"] = results[6]
+    out["parsed"]["fear_greed"] = results[7]
 
-    for (name, _), res in zip(raw_calls, results[7:]):
+    for (name, _), res in zip(raw_calls, results[8:]):
         out["raw"][name] = res
 
     # کوتاه‌کردن تیکر بزرگ توبیت

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- ===== تیکر متحرک شاخص‌های کلان ===== -->
+<!-- ===== تیکر متحرک شاخص‌های کلیدی ===== -->
 <div class="ticker rise" aria-label="شاخص‌های کلیدی بازار">
   <div class="ticker__track" id="tickerTrack">
     <span class="ticker__item skeleton">در حال بارگذاری شاخص‌ها…</span>
@@ -19,53 +19,81 @@
   </div>
 </section>
 
-<!-- ===== شبکهٔ سه‌ستونه ===== -->
+<!-- ===== ردیف ۵ ارز برتر بازار (زنده از توبیت، هر ۵ ثانیه) ===== -->
+<section class="topcoins rise" style="animation-delay:.04s">
+  <div class="topcoins__head">
+    <span class="topcoins__title">ارزهای برتر بازار</span>
+    <span class="src-tag" id="coinsSrc"></span>
+  </div>
+  <div class="topcoins__row" id="topCoins"><span class="skeleton">بارگذاری…</span></div>
+</section>
+
+<!-- ===== شبکهٔ نمای کلی ===== -->
 <div class="overview">
 
-  <!-- ستون راست (پیشرو RTL): بیشترین رشد + قیمت‌های کلیدی -->
-  <div class="ov-col rise" style="animation-delay:.05s">
-    <div class="card">
-      <div class="card__head">
-        <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-8"/><path d="M16 8h5v5"/></svg>
-          ارزهای برتر بازار
-        </span>
-        <span class="src-tag" id="coinsSrc"></span>
+  <!-- ستون اصلی: کارت‌های شاخص + نقشهٔ حرارتی -->
+  <div class="ov-main rise" style="animation-delay:.1s">
+
+    <!-- چهار کارت شاخص: ارزش بازار، دامیننس، فصل آلت‌کوین، ترس و طمع -->
+    <div class="index-grid">
+
+      <!-- ارزش کل بازار + حجم -->
+      <div class="card index-card">
+        <div class="card__head">
+          <span class="card__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+            ارزش کل بازار
+          </span>
+          <span class="src-tag" id="macroSrc"></span>
+        </div>
+        <div class="card__body">
+          <div class="mcap" id="boxMarketCap"><span class="skeleton">بارگذاری…</span></div>
+        </div>
       </div>
-      <div class="card__body">
-        <div class="rowlist" id="topCoins"><span class="skeleton">بارگذاری…</span></div>
+
+      <!-- دامیننس بیت‌کوین / اتریوم / سایر -->
+      <div class="card index-card">
+        <div class="card__head">
+          <span class="card__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18"/></svg>
+            دامیننس بیت‌کوین
+          </span>
+        </div>
+        <div class="card__body">
+          <div class="dom" id="boxDominance"><span class="skeleton">بارگذاری…</span></div>
+        </div>
       </div>
+
+      <!-- شاخص فصل آلت‌کوین -->
+      <div class="card index-card">
+        <div class="card__head">
+          <span class="card__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><circle cx="9" cy="12" r="3"/><path d="M14 7l5 5-5 5"/></svg>
+            شاخص فصل آلت‌کوین
+          </span>
+        </div>
+        <div class="card__body">
+          <div class="alt" id="boxAltseason"><span class="skeleton">بارگذاری…</span></div>
+        </div>
+      </div>
+
+      <!-- شاخص ترس و طمع -->
+      <div class="card index-card">
+        <div class="card__head">
+          <span class="card__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 0 0-9 9h18a9 9 0 0 0-9-9z"/><path d="M12 12l5-3"/></svg>
+            شاخص ترس و طمع
+          </span>
+          <span class="live-dot"></span>
+        </div>
+        <div class="card__body">
+          <div class="gauge" id="fngGauge"><span class="skeleton">بارگذاری…</span></div>
+        </div>
+      </div>
+
     </div>
 
-    <div class="card">
-      <div class="card__head">
-        <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 10h4.5a1.5 1.5 0 0 1 0 3H9h5"/></svg>
-          قیمت‌های کلیدی
-        </span>
-        <span class="live-badge live-badge--brand"><span class="live-dot live-dot--brand"></span> لحظه‌ای</span>
-      </div>
-      <div class="card__body">
-        <div class="keyprices" id="keyPrices"><span class="skeleton">بارگذاری…</span></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ستون میانی: شاخص‌های کلان + نقشهٔ حرارتی -->
-  <div class="ov-col ov-center rise" style="animation-delay:.12s">
-    <div class="card">
-      <div class="card__head">
-        <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="3" y="15" width="7" height="6" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg>
-          شاخص‌های کلان بازار
-        </span>
-        <span class="src-tag" id="macroSrc"></span>
-      </div>
-      <div class="card__body">
-        <div class="statgrid" id="statGrid"><span class="skeleton">بارگذاری…</span></div>
-      </div>
-    </div>
-
+    <!-- نقشهٔ حرارتی -->
     <div class="card">
       <div class="card__head">
         <span class="card__title">
@@ -80,27 +108,27 @@
           <span><i style="background:var(--down)"></i> Down</span>
           <span><i style="background:var(--warn)"></i> Flat</span>
           <span><i style="background:var(--up)"></i> Up</span>
-          <span style="color:var(--text-dim)">Size = 24h volume · Source: Toobit</span>
+          <span class="heatmap-legend__src">Size = 24h volume · Source: Toobit</span>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ستون چپ: ترس و طمع -->
-  <div class="ov-col rise" style="animation-delay:.19s">
+  <!-- ستون کناری: قیمت‌های کلیدی -->
+  <aside class="ov-side rise" style="animation-delay:.16s">
     <div class="card">
       <div class="card__head">
         <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 0 0-9 9h18a9 9 0 0 0-9-9z"/><path d="M12 12l5-3"/></svg>
-          شاخص ترس و طمع
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 10h4.5a1.5 1.5 0 0 1 0 3H9h5"/></svg>
+          قیمت‌های کلیدی
         </span>
-        <span class="live-dot"></span>
+        <span class="live-badge live-badge--brand"><span class="live-dot live-dot--brand"></span> لحظه‌ای</span>
       </div>
       <div class="card__body">
-        <div class="gauge" id="fngGauge"><span class="skeleton">بارگذاری…</span></div>
+        <div class="keyprices" id="keyPrices"><span class="skeleton">بارگذاری…</span></div>
       </div>
     </div>
-  </div>
+  </aside>
 
 </div>
 

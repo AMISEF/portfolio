@@ -47,23 +47,44 @@ def _heatmap() -> list[dict]:
     ]
 
 
+def cmc_macro() -> dict:
+    """شاخص‌های کلان نمونه (هم‌شکل خروجی CoinMarketCap)."""
+    return {
+        "source": "sample",
+        "market_cap": {"value": 2_260_000_000_000, "change_24h": -1.20},
+        "volume_24h": {"value": 71_000_000_000, "change_24h": -3.40},
+        "dominance": {"btc": 58.5, "eth": 9.5, "others": 32.0, "btc_change_24h": 0.18},
+    }
+
+
+def cmc_altseason() -> dict:
+    """شاخص فصل آلت‌کوین نمونه."""
+    return {"source": "sample", "altcoin_season": {
+        "value": 47, "label_en": "Mixed", "label_fa": "بازار متعادل"}}
+
+
 def toobit_heatmap() -> dict:
-    """نقشهٔ حرارتی نمونه (دسته‌های انگلیسی، اندازه بر اساس حجم)."""
+    """نقشهٔ حرارتی نمونه (بدون استیبل‌کوین، با چند میم‌کوین، اندازه بر اساس حجم)."""
     rows = [
         ("BTC", "Currency", 65541, -1.39, 9_000_000_000),
         ("ETH", "Smart Contract", 1788, 0.89, 4_000_000_000),
         ("SOL", "Smart Contract", 138.0, -1.18, 1_200_000_000),
         ("BNB", "Smart Contract", 606.25, -1.51, 900_000_000),
         ("XRP", "Currency", 2.11, -1.99, 1_500_000_000),
-        ("USDT", "Stablecoin", 0.999, -0.04, 12_000_000_000),
-        ("USDC", "Stablecoin", 1.00, -0.01, 3_000_000_000),
         ("DOGE", "Meme", 0.16, 1.20, 600_000_000),
+        ("SHIB", "Meme", 0.000012, 2.30, 420_000_000),
+        ("PEPE", "Meme", 0.0000089, -3.10, 380_000_000),
+        ("WIF", "Meme", 1.42, 4.50, 190_000_000),
+        ("BONK", "Meme", 0.000021, -2.10, 160_000_000),
+        ("FLOKI", "Meme", 0.00014, 1.80, 120_000_000),
         ("TRX", "Smart Contract", 0.27, 0.0, 400_000_000),
         ("ADA", "Smart Contract", 0.62, 1.10, 350_000_000),
         ("LINK", "DeFi", 17.8, 2.40, 300_000_000),
         ("AVAX", "Smart Contract", 28.4, -1.20, 280_000_000),
         ("XLM", "Currency", 0.31, 0.90, 200_000_000),
         ("HYPE", "DeFi", 32.5, 5.10, 250_000_000),
+        ("UNI", "DeFi", 7.4, -0.80, 140_000_000),
+        ("DOT", "Smart Contract", 4.2, 0.40, 130_000_000),
         ("ZEC", "Currency", 49.5, 1.5, 150_000_000),
     ]
     return {"source": "sample", "heatmap": [
@@ -82,9 +103,9 @@ def toobit_top_coins() -> dict:
     rows = [
         ("BTC", "BTCUSDT", 65541.0, 2.43, 1_300_000_000),
         ("ETH", "ETHUSDT", 1788.0, 0.89, 640_000_000),
-        ("XRP", "XRPUSDT", 2.11, -1.99, 210_000_000),
-        ("SOL", "SOLUSDT", 138.0, -1.18, 180_000_000),
         ("BNB", "BNBUSDT", 606.25, -1.51, 90_000_000),
+        ("SOL", "SOLUSDT", 138.0, -1.18, 180_000_000),
+        ("XRP", "XRPUSDT", 2.11, -1.99, 210_000_000),
     ]
     return {
         "source": "sample",
@@ -107,10 +128,11 @@ def sourcearena_metals() -> dict:
     """طلای ۱۸ع (تومان/گرم) + انس طلا و نقره (دلار)."""
     return {
         "source": "sample",
-        "gold_18k": {"name": "طلای ۱۸ عیار", "sub": "هر گرم", "price": 16_470_000, "change_24h": 0.0},
+        "usd_change_24h": 0.42,
+        "gold_18k": {"name": "طلای ۱۸ عیار", "sub": "هر گرم", "price": 16_470_000, "change_24h": 0.65},
         "commodities": {
-            "XAU": {"name": "طلای جهانی", "sub": "اونس", "price": 4326.2, "change_24h": 0.0},
-            "XAG": {"name": "نقره", "sub": "اونس", "price": 69.9, "change_24h": 0.0},
+            "XAU": {"name": "طلای جهانی", "sub": "اونس", "price": 4326.2, "change_24h": 0.31},
+            "XAG": {"name": "نقره", "sub": "اونس", "price": 69.9, "change_24h": -0.58},
         },
     }
 

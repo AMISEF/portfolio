@@ -5,7 +5,9 @@
   const CS = w.CS;
 
   // برچسب‌ها انگلیسی (طبق درخواست) — همان دستهٔ سرور نمایش داده می‌شود
-  const CAT_ORDER = ["Currency", "Smart Contract", "Stablecoin", "DeFi", "Meme", "Other"];
+  // استیبل‌کوین‌ها نمایش داده نمی‌شوند (سمت سرور هم فیلتر می‌شوند).
+  const CAT_ORDER = ["Currency", "Smart Contract", "DeFi", "Meme", "Other"];
+  const STABLE = new Set(["USDT", "USDC", "DAI", "FDUSD", "USDE", "USDS", "TUSD", "USD1", "BUSD", "PYUSD", "USDP"]);
   const CAT_FA = {};  // بدون ترجمه؛ نام دسته همان انگلیسی است
 
   function heatColor(ch) {
@@ -19,7 +21,9 @@
 
   function render(el, items) {
     if (!el) return;
-    if (!items || !items.length) { el.innerHTML = '<span class="src-tag">داده‌ای موجود نیست</span>'; return; }
+    // استیبل‌کوین‌ها حذف می‌شوند (دفاعی؛ سرور هم فیلتر کرده)
+    items = (items || []).filter((it) => it.category !== "Stablecoin" && !STABLE.has((it.symbol || "").toUpperCase()));
+    if (!items.length) { el.innerHTML = '<span class="src-tag">داده‌ای موجود نیست</span>'; return; }
 
     const ranked = items.slice().sort((a, b) => (b.market_cap || 0) - (a.market_cap || 0));
     const rank = new Map(ranked.map((it, i) => [it.symbol, i]));

@@ -1,6 +1,6 @@
 """
 نقطهٔ ورود CryptoSmart Hub (FastAPI).
-اجرا:  uvicorn app.main:app --host 127.0.0.1 --port 8000
+اجرا:  uvicorn app.main:app --host 127.0.0.1 --port 8001
 """
 from __future__ import annotations
 
@@ -19,4 +19,4 @@ app.include_router(market.router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "app": settings.app_name, "build": "p1-live-4"}
+    return {"status": "ok", "app": settings.app_name, "build": "p1-cmc-5"}
