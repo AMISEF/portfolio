@@ -9,6 +9,8 @@
 """
 from __future__ import annotations
 
+import asyncio
+
 import httpx
 from fastapi import APIRouter
 
@@ -57,9 +59,10 @@ def _trim(s: str, n: int = 2500) -> str:
 
 
 async def _raw_get(url: str, params: dict | None = None) -> dict:
-    """درخواست خام برای عیب‌یابی — وضعیت + بدنهٔ کوتاه‌شده را برمی‌گرداند."""
+    """درخواست خام برای عیب‌یابی — وضعیت + بدنهٔ کوتاه‌شده را برمی‌گرداند.
+    مهلت کوتاه تا کل اندپوینت عیب‌یابی زیر تایم‌اوت Nginx بماند."""
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(settings.http_timeout)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(6.0)) as client:
             r = await client.get(url, params=params or {})
             body = r.text
             try:
@@ -93,43 +96,50 @@ async def debug():
 
     out: dict = {"keys": keys, "parsed": {}, "raw": {}}
 
-    # --- پارس‌شدهٔ نهایی (همان چیزی که UI می‌بیند) + برچسب منبع ---
-    try:
-        out["parsed"]["tabdeal_usdt"] = await tabdeal.usdt()
-    except Exception as e:  # noqa: BLE001
-        out["parsed"]["tabdeal_usdt"] = {"error": f"{type(e).__name__}: {e}"}
-    try:
-        out["parsed"]["sourcearena_gold"] = await sourcearena.gold18()
-    except Exception as e:  # noqa: BLE001
-        out["parsed"]["sourcearena_gold"] = {"error": f"{type(e).__name__}: {e}"}
-    try:
-        out["parsed"]["toobit_futures"] = await toobit.futures()
-    except Exception as e:  # noqa: BLE001
-        out["parsed"]["toobit_futures"] = {"error": f"{type(e).__name__}: {e}"}
-    try:
-        g = await toobit.gainers()
-        out["parsed"]["toobit_gainers"] = {"source": g.get("source"), "top": g.get("gainers", [])[:3]}
-    except Exception as e:  # noqa: BLE001
-        out["parsed"]["toobit_gainers"] = {"error": f"{type(e).__name__}: {e}"}
-    try:
-        m = await cryptorank.macro()
+    async def _safe(coro):
+        try:
+            return await coro
+        except Exception as e:  # noqa: BLE001
+            return {"error": f"{type(e).__name__}: {e}"}
+
+    # --- پارس‌شدهٔ نهایی (همان چیزی که UI می‌بیند) + پاسخ خام — همگی هم‌زمان ---
+    raw_calls = [
+        ("tabdeal_usdtirt", _raw_get(f"{settings.tabdeal_base_url}/r/api/v1/depth/", {"symbol": "USDTIRT"})),
+        ("toobit_ticker24", _raw_get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")),
+        ("fng", _raw_get(f"{settings.fng_base_url}/", {"limit": "1"})),
+    ]
+    if settings.sourcearena_token:
+        raw_calls.append(("sourcearena", _raw_get(
+            f"{settings.sourcearena_base_url}/",
+            {"token": settings.sourcearena_token, "currency": "", "v2": ""})))
+
+    results = await asyncio.gather(
+        _safe(tabdeal.usdt()),
+        _safe(sourcearena.gold18()),
+        _safe(toobit.futures()),
+        _safe(toobit.gainers()),
+        _safe(cryptorank.macro()),
+        *[c for _, c in raw_calls],
+    )
+
+    out["parsed"]["tabdeal_usdt"] = results[0]
+    out["parsed"]["sourcearena_gold"] = results[1]
+    out["parsed"]["toobit_futures"] = results[2]
+    g = results[3]
+    out["parsed"]["toobit_gainers"] = (
+        g if "error" in g else {"source": g.get("source"), "top": g.get("gainers", [])[:3]})
+    m = results[4]
+    if "error" in m:
+        out["parsed"]["cryptorank"] = m
+    else:
         hm = m.get("heatmap", [])
         out["parsed"]["cryptorank"] = {
             "source": m.get("source"),
             "btc_eth": [c for c in hm if c.get("symbol") in ("BTC", "ETH")],
         }
-    except Exception as e:  # noqa: BLE001
-        out["parsed"]["cryptorank"] = {"error": f"{type(e).__name__}: {e}"}
 
-    # --- پاسخ خام مستقیم از هر API (برای نگاشت دقیق فیلدها) ---
-    out["raw"]["tabdeal_usdtirt"] = await _raw_get(
-        f"{settings.tabdeal_base_url}/r/api/v1/depth/", {"symbol": "USDTIRT"})
-    out["raw"]["toobit_ticker24"] = await _raw_get(
-        f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
-    if settings.sourcearena_token:
-        out["raw"]["sourcearena"] = await _raw_get(
-            f"{settings.sourcearena_base_url}/", {"token": settings.sourcearena_token, "currency": "", "v2": ""})
-    out["raw"]["fng"] = await _raw_get(f"{settings.fng_base_url}/", {"limit": "1"})
+    for (name, _), res in zip(raw_calls, results[5:]):
+        out["raw"][name] = res
 
     # محدودکردن حجم تیکر توبیت (لیست بزرگ است)
     tb = out["raw"]["toobit_ticker24"].get("json")

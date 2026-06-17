@@ -27,6 +27,22 @@ fi
 if systemctl list-unit-files | grep -q '^cryptosmart-hub.service'; then
   sudo systemctl restart cryptosmart-hub
   echo "✅ سرویس cryptosmart-hub ری‌استارت شد."
+
+  # بررسی سلامت: چند ثانیه صبر کن و /health را بزن تا خطای راه‌اندازی پنهان نماند
+  sleep 3
+  for i in 1 2 3 4 5; do
+    if curl -fsS http://127.0.0.1:8000/health >/dev/null 2>&1; then
+      echo "✅ بررسی سلامت موفق بود (تلاش $i)."
+      # نمایش کامیت در حال اجرا برای اطمینان از به‌روزرسانی
+      git -C "$APP_DIR" log --oneline -1 2>/dev/null || true
+      exit 0
+    fi
+    echo "… انتظار برای بالا آمدن سرویس (تلاش $i)…"
+    sleep 2
+  done
+  echo "❌ سرویس بعد از ری‌استارت پاسخ /health نداد. آخرین لاگ‌ها:"
+  sudo journalctl -u cryptosmart-hub -n 40 --no-pager || true
+  exit 1
 else
   echo "⚠️ سرویس systemd هنوز نصب نشده. یک‌بار راه‌اندازی اولیه را طبق DEPLOY.md انجام دهید."
 fi

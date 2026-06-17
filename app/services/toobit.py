@@ -63,7 +63,8 @@ async def get_futures() -> dict[str, Any]:
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
         resp.raise_for_status()
-        tickers = {(_sym(t)): t for t in (resp.json() if isinstance(resp.json(), list) else [])}
+        data = resp.json()
+        tickers = {_sym(t): t for t in (data if isinstance(data, list) else [])}
 
     for sym, fa in _FUTURES_NAMES.items():
         t = tickers.get(sym)
