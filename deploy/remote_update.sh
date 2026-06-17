@@ -39,14 +39,17 @@ if command -v pm2 >/dev/null 2>&1; then
   pm2 delete "$APP_NAME" 2>/dev/null || true
 fi
 
-# آزادسازی هر پروسه‌ای که هنوز روی پورت 8000 گوش می‌دهد (فقط همین پورت)
+# آزادسازی هر پروسه‌ای که هنوز روی پورت 8000 گوش می‌دهد (فقط همین پورت).
+# نکته: «|| true» و if لازم‌اند تا با set -euo pipefail، نبودِ پروسه (خروجی خالی
+# grep) اسکریپت را متوقف نکند.
 free_port_8000() {
-  local pids
-  pids="$(ss -lptnH 'sport = :8000' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u)"
-  for p in $pids; do kill "$p" 2>/dev/null || true; done
+  local pids p
+  pids="$(ss -lptnH 'sport = :8000' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u || true)"
+  if [ -n "$pids" ]; then for p in $pids; do kill "$p" 2>/dev/null || true; done; fi
   sleep 1
-  pids="$(ss -lptnH 'sport = :8000' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u)"
-  for p in $pids; do kill -9 "$p" 2>/dev/null || true; done
+  pids="$(ss -lptnH 'sport = :8000' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | sort -u || true)"
+  if [ -n "$pids" ]; then for p in $pids; do kill -9 "$p" 2>/dev/null || true; done; fi
+  return 0
 }
 echo "آزادسازی پورت 8000…"
 free_port_8000
