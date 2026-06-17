@@ -1,20 +1,24 @@
-/* ساعت زندهٔ ثانیه‌شمار + تاریخ شمسی و میلادی */
-(function () {
+/* ساعت زنده + تاریخ شمسی و میلادی (هر ثانیه به‌روزرسانی می‌شود). */
+(function (w) {
   "use strict";
-  const elClock = document.getElementById("clock");
-  const elShamsi = document.getElementById("dateShamsi");
-  const elGreg = document.getElementById("dateGregorian");
-  if (!elClock) return;
+  const CS = w.CS;
+  const clockEl = document.getElementById("clock");
+  const shamsiEl = document.getElementById("dateShamsi");
+  const gregEl = document.getElementById("dateGregorian");
+  if (!clockEl) return;
 
-  function pad(n) { return String(n).padStart(2, "0"); }
+  const fmtShamsi = new Intl.DateTimeFormat("fa-IR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const fmtGreg = new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit" });
+
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
 
   function tick() {
-    const d = new Date();
-    elClock.textContent = window.CS.toFa(`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`);
-    if (elShamsi) elShamsi.textContent = window.CS.shamsiString(d);
-    if (elGreg) elGreg.textContent = window.CS.gregorianString(d);
+    const now = new Date();
+    clockEl.textContent = CS.toFa(pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds()));
+    if (shamsiEl) shamsiEl.textContent = fmtShamsi.format(now);
+    if (gregEl) gregEl.textContent = fmtGreg.format(now);
   }
 
   tick();
   setInterval(tick, 1000);
-})();
+})(window);

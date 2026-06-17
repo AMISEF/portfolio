@@ -16,8 +16,7 @@ templates = Jinja2Templates(directory="app/templates")
 
 def _static_version() -> str:
     """نسخهٔ فایل‌های استاتیک = بزرگ‌ترین زمان تغییر در پوشهٔ static.
-    با هر استقرار (که فایل‌ها را به‌روز و سرویس را ری‌استارت می‌کند) عوض می‌شود،
-    پس کش مرورگر/Nginx خودبه‌خود باطل می‌گردد و تغییرات بلافاصله دیده می‌شوند."""
+    با هر استقرار عوض می‌شود و کش مرورگر/Nginx را خودبه‌خود باطل می‌کند."""
     base = Path(__file__).resolve().parent.parent / "static"
     latest = 0.0
     try:
@@ -31,18 +30,19 @@ def _static_version() -> str:
     return str(int(latest))
 
 
-# نسخه یک‌بار هنگام راه‌اندازی محاسبه می‌شود (هر استقرار سرویس را ری‌استارت می‌کند).
 templates.env.globals["static_v"] = _static_version()
+
+
+def _ctx(request: Request, active: str) -> dict:
+    return {
+        "request": request,
+        "brand_fa": settings.app_brand_fa,
+        "title_fa": settings.app_title_fa,
+        "subtitle_fa": settings.app_subtitle_fa,
+        "active": active,
+    }
 
 
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(
-        "home.html",
-        {
-            "request": request,
-            "brand_fa": settings.app_brand_fa,
-            "title_fa": settings.app_title_fa,
-            "active": "home",
-        },
-    )
+    return templates.TemplateResponse("home.html", _ctx(request, "home"))

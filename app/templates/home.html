@@ -12,26 +12,17 @@
 <section class="market-head">
   <div class="market-head__title">نمای کلی <span class="accent">بازار</span></div>
   <div class="market-head__meta">
-    <div class="dt">
-      <span class="dt__label">تاریخ شمسی</span>
-      <span class="dt__val" id="dateShamsi">—</span>
-    </div>
-    <div class="dt">
-      <span class="dt__label">میلادی</span>
-      <span class="dt__val" id="dateGregorian">—</span>
-    </div>
-    <div class="dt">
-      <span class="dt__label">ساعت</span>
-      <span class="dt__val clock" id="clock">--:--:--</span>
-    </div>
+    <div class="dt"><span class="dt__label">تاریخ شمسی</span><span class="dt__val" id="dateShamsi">—</span></div>
+    <div class="dt"><span class="dt__label">میلادی</span><span class="dt__val" id="dateGregorian">—</span></div>
+    <div class="dt"><span class="dt__label">ساعت</span><span class="dt__val clock" id="clock">--:--:--</span></div>
     <span class="live-badge"><span class="live-dot"></span> داده‌های زنده</span>
   </div>
 </section>
 
-<!-- ===== شبکهٔ نمای کلی (سه‌ستونه) ===== -->
+<!-- ===== شبکهٔ سه‌ستونه ===== -->
 <div class="overview">
 
-  <!-- ستون راست (پیشرو RTL): بیشترین رشد -->
+  <!-- ستون راست (پیشرو RTL): بیشترین رشد + قیمت‌های کلیدی -->
   <div class="ov-col rise" style="animation-delay:.05s">
     <div class="card">
       <div class="card__head">
@@ -45,6 +36,19 @@
         <div class="rowlist" id="gainers"><span class="skeleton">بارگذاری…</span></div>
       </div>
     </div>
+
+    <div class="card">
+      <div class="card__head">
+        <span class="card__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 10h4.5a1.5 1.5 0 0 1 0 3H9h5"/></svg>
+          قیمت‌های کلیدی
+        </span>
+        <span class="live-badge live-badge--brand"><span class="live-dot live-dot--brand"></span> لحظه‌ای</span>
+      </div>
+      <div class="card__body">
+        <div class="keyprices" id="keyPrices"><span class="skeleton">بارگذاری…</span></div>
+      </div>
+    </div>
   </div>
 
   <!-- ستون میانی: شاخص‌های کلان + نقشهٔ حرارتی -->
@@ -52,7 +56,7 @@
     <div class="card">
       <div class="card__head">
         <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="3" y="15" width="7" height="6" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg>
           شاخص‌های کلان بازار
         </span>
         <span class="src-tag" id="macroSrc"></span>
@@ -65,7 +69,7 @@
     <div class="card">
       <div class="card__head">
         <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="3" y="15" width="7" height="6" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg>
           نقشهٔ حرارتی بازار
         </span>
         <span class="src-tag" id="heatmapSrc"></span>
@@ -82,7 +86,7 @@
     </div>
   </div>
 
-  <!-- ستون چپ: ترس و طمع + قیمت‌های کلیدی -->
+  <!-- ستون چپ: ترس و طمع -->
   <div class="ov-col rise" style="animation-delay:.19s">
     <div class="card">
       <div class="card__head">
@@ -94,19 +98,6 @@
       </div>
       <div class="card__body">
         <div class="gauge" id="fngGauge"><span class="skeleton">بارگذاری…</span></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card__head">
-        <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 10h4.5a1.5 1.5 0 0 1 0 3H9h5"/></svg>
-          قیمت‌های کلیدی
-        </span>
-        <span class="live-badge"><span class="live-dot live-dot--brand"></span> لحظه‌ای</span>
-      </div>
-      <div class="card__body">
-        <div class="keyprices" id="internalPrices"><span class="skeleton">بارگذاری…</span></div>
       </div>
     </div>
   </div>

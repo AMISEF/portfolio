@@ -1,35 +1,29 @@
-<!-- مودال ورود / ثبت‌نام -->
-<div class="modal" id="authModal" hidden>
-  <div class="modal__backdrop" data-close></div>
-  <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-    <button class="modal__x" type="button" data-close aria-label="بستن">&times;</button>
-    <div class="auth">
-      <img class="auth__logo" src="/static/img/logo.png" onerror="this.onerror=null;this.src='/static/img/logo.svg'" alt="">
-      <h3 class="auth__title" id="authTitle">ورود به حساب</h3>
+<!-- مودال ورود / ثبت‌نام (فاز ۱: رابط آماده؛ اتصال بک‌اند احراز هویت در فاز بعد) -->
+<div class="modal-overlay" id="authModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <button class="modal__close" id="authClose" aria-label="بستن">×</button>
+    <h2 class="modal__title" id="authTitle">ورود به حساب</h2>
+    <p class="modal__sub" id="authSub">به پنل مدیریت سرمایهٔ کریپتو اسمارت خوش آمدید.</p>
 
-      <div class="auth__tabs">
-        <button class="auth__tab is-active" data-tab="login" type="button">ورود</button>
-        <button class="auth__tab" data-tab="register" type="button">ثبت‌نام</button>
+    <form id="authForm">
+      <div class="field" id="nameField" hidden>
+        <label for="authName">نام</label>
+        <input type="text" id="authName" autocomplete="name" placeholder="نام شما">
       </div>
+      <div class="field">
+        <label for="authEmail">ایمیل یا شماره موبایل</label>
+        <input type="text" id="authEmail" autocomplete="username" placeholder="example@mail.com">
+      </div>
+      <div class="field">
+        <label for="authPass">گذرواژه</label>
+        <input type="password" id="authPass" autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button type="submit" class="btn-primary" id="authSubmit">ورود</button>
+    </form>
 
-      <form class="auth__form" id="authForm">
-        <label class="field">
-          <span>ایمیل یا نام کاربری</span>
-          <input type="text" name="login" autocomplete="username" required>
-        </label>
-        <label class="field" id="nameField" hidden>
-          <span>نام نمایشی (اختیاری)</span>
-          <input type="text" name="display_name" autocomplete="name">
-        </label>
-        <label class="field">
-          <span>رمز عبور</span>
-          <input type="password" name="password" autocomplete="current-password" required minlength="6">
-        </label>
-        <p class="auth__error" id="authError" hidden></p>
-        <button class="btn btn--primary auth__submit" type="submit" id="authSubmit">ورود</button>
-      </form>
-
-      <p class="auth__hint">با ورود، شرایط استفادهٔ {{ brand_fa }} را می‌پذیرید.</p>
+    <div class="modal__switch">
+      <span id="switchText">حساب کاربری ندارید؟</span>
+      <button type="button" id="authSwitch">ثبت‌نام</button>
     </div>
   </div>
 </div>

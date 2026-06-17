@@ -1,7 +1,6 @@
 """
-نقطهٔ ورود برنامهٔ CryptoSmart Hub (FastAPI).
-اجرا:  uvicorn app.main:app --reload
-یا:     python run.py
+نقطهٔ ورود CryptoSmart Hub (FastAPI).
+اجرا:  uvicorn app.main:app --host 127.0.0.1 --port 8000
 """
 from __future__ import annotations
 

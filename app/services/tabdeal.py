@@ -1,8 +1,9 @@
 """
 سرویس Tabdeal — قیمت لحظه‌ای تتر تومانی (USDT/IRT).
 
-از اندپوینت عمومی بازارهای تبدیل، جفت USDT-IRT استخراج می‌شود. قیمت تبدیل
-معمولاً به ریال است؛ به تومان (تقسیم بر ۱۰) تبدیل می‌شود.
+⚠️ مهم: طبق درخواست، قیمت بازگشتی همان «تومان» است و هیچ تبدیلی (تقسیم بر ۱۰
+یا مشابه) روی آن انجام نمی‌شود. عدد دقیقاً همان‌طور که از صرافی می‌آید نمایش
+داده می‌شود.
 """
 from __future__ import annotations
 
@@ -17,11 +18,12 @@ from app.services import mock_data
 async def get_usdt() -> dict[str, Any]:
     timeout = httpx.Timeout(settings.http_timeout)
     async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.get(f"{settings.tabdeal_base_url}/r/api/v1/depth/", params={"symbol": "USDTIRT"})
+        resp = await client.get(
+            f"{settings.tabdeal_base_url}/r/api/v1/depth/", params={"symbol": "USDTIRT"}
+        )
         resp.raise_for_status()
         data = resp.json()
 
-    # بهترین خرید/فروش از عمق بازار → میانگین به‌عنوان قیمت لحظه‌ای
     bids = data.get("bids") or []
     asks = data.get("asks") or []
     best_bid = float(bids[0][0]) if bids else 0.0
@@ -30,11 +32,8 @@ async def get_usdt() -> dict[str, Any]:
     if not mid:
         raise RuntimeError("Tabdeal depth empty")
 
-    # تشخیص خودکار واحد: نرخ تتر در ایران (۱۴۰۵) صدها هزار تومان است.
-    # اگر عدد بزرگ‌تر از ۱٬۰۰۰٬۰۰۰ باشد یعنی «ریال» است → تقسیم بر ۱۰ تا «تومان» شود؛
-    # وگرنه همان تومان است (تبدیل مستقیم تومان می‌دهد).
-    price_toman = round(mid / 10) if mid > 1_000_000 else round(mid)
-    return {"source": "live", "usdt_irt": {"name": "تتر / تومان", "price": price_toman, "change_24h": 0.0}}
+    # بدون هیچ تبدیلی — همان تومان.
+    return {"source": "live", "usdt_irt": {"name": "تتر / تومان", "price": round(mid), "change_24h": 0.0}}
 
 
 async def usdt() -> dict[str, Any]:

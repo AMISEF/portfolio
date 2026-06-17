@@ -1,14 +1,13 @@
 """
-سرویس CryptoRank — داده‌های کلان بازار و هیت‌مپ.
+سرویس CryptoRank — شاخص کلان بازار، نقشهٔ حرارتی و کالاها (XAU/XAG/OIL).
 
-نکات مهم:
 * مصرف کردیت با CreditBudget کنترل می‌شود تا از سقف ماهانهٔ ۱۰٬۰۰۰ عبور نکند.
-* داده با TTL ۱۰ دقیقه میان همهٔ کاربران به‌اشتراک گذاشته می‌شود (کش سمت سرور)
-  تا فرانت‌اند هرگز مستقیم به API وصل نشود و کردیت اضافه مصرف نکند.
+* داده با TTL ۱۰ دقیقه میان همهٔ کاربران به‌اشتراک گذاشته می‌شود.
 * در هر خطا یا اتمام بودجه، دادهٔ کش کهنه یا نمونه برگردانده می‌شود.
 
-ساختار دقیق پاسخ‌های v2 ممکن است نیاز به تنظیم جزئی نگاشت فیلدها داشته باشد؛
-کد طوری نوشته شده که در صورت تغییر شکل، به‌جای خطا به نمونه برگردد.
+ساختار دقیق پاسخ v2 ممکن است نیاز به تنظیم جزئی نگاشت فیلد داشته باشد؛ کد
+طوری نوشته شده که در صورت تغییر شکل، به‌جای خطا به نمونه برگردد. خروجی واقعی
+را می‌توان از /api/market/debug بررسی کرد.
 """
 from __future__ import annotations
 
@@ -21,6 +20,14 @@ from app.config import settings
 from app.services import mock_data
 
 _KEY = "cryptorank:macro"
+_STABLE = {"USDT", "USDC", "DAI", "FDUSD", "TUSD", "USDE"}
+_MEME = {"DOGE", "SHIB", "PEPE", "WIF", "BONK", "FLOKI"}
+# نمادهای کالا که از CryptoRank می‌خواهیم
+_COMMODITY_FA = {
+    "XAU": {"name": "طلای جهانی", "sub": "اونس"},
+    "XAG": {"name": "نقره", "sub": "اونس"},
+    "OIL": {"name": "نفت خام", "sub": "بشکه"},
+}
 
 
 def _headers() -> dict[str, str]:
@@ -34,7 +41,8 @@ async def _fetch_global(client: httpx.AsyncClient) -> dict[str, Any]:
     resp = await client.get(f"{settings.cryptorank_base_url}/global", headers=_headers())
     resp.raise_for_status()
     credit_budget.spend(cost)
-    return resp.json().get("data", resp.json())
+    body = resp.json()
+    return body.get("data", body)
 
 
 async def _fetch_currencies(client: httpx.AsyncClient, limit: int = 30) -> list[dict[str, Any]]:
@@ -53,20 +61,18 @@ async def _fetch_currencies(client: httpx.AsyncClient, limit: int = 30) -> list[
 
 
 def _category_of(coin: dict[str, Any]) -> str:
-    """نگاشت تقریبی هر ارز به دستهٔ هیت‌مپ."""
-    cats = coin.get("category") or coin.get("type") or ""
     name = (coin.get("symbol") or "").upper()
-    if name in {"USDT", "USDC", "DAI", "FDUSD", "TUSD"}:
+    if name in _STABLE:
         return "Stablecoin"
-    if name in {"DOGE", "SHIB", "PEPE", "WIF", "BONK"}:
+    if name in _MEME:
         return "Meme"
+    cats = coin.get("category") or coin.get("type") or ""
     if isinstance(cats, str) and cats:
         return cats
     return "Currency"
 
 
 async def get_macro() -> dict[str, Any]:
-    """دادهٔ کلان نرمال‌شده برای فرانت‌اند."""
     if not settings.cryptorank_api_key:
         return mock_data.macro()
 
@@ -76,7 +82,8 @@ async def get_macro() -> dict[str, Any]:
         coins = await _fetch_currencies(client, limit=30)
 
     total_mc = _num(g, "totalMarketCap", "total_market_cap")
-    eth_mc = next((_coin_mc(c) for c in coins if (c.get("symbol") or "").upper() == "ETH"), 0)
+    eth_mc = next((_coin_mc(c) for c in coins if (c.get("symbol") or "").upper() == "ETH"), 0.0)
+    btc_mc = next((_coin_mc(c) for c in coins if (c.get("symbol") or "").upper() == "BTC"), 0.0)
 
     stats = {
         "total_market_cap": {"value": total_mc, "change_24h": _num(g, "totalMarketCapChange24h", "marketCapChange24h")},
@@ -84,7 +91,7 @@ async def get_macro() -> dict[str, Any]:
         "btc_dominance": {"value": _num(g, "btcDominance", "btc_dominance"), "change_24h": _num(g, "btcDominanceChange24h")},
         "eth_dominance": {"value": _num(g, "ethDominance", "eth_dominance"), "change_24h": _num(g, "ethDominanceChange24h")},
         "eth_market_cap": {"value": eth_mc, "change_24h": 0.0},
-        "alt_market_cap": {"value": max(total_mc - _btc_mc(coins), 0), "change_24h": 0.0},
+        "alt_market_cap": {"value": max(total_mc - btc_mc, 0.0), "change_24h": 0.0},
         "usdt_dominance": {"value": _num(g, "usdtDominance", "usdt_dominance"), "change_24h": 0.0},
     }
 
@@ -100,11 +107,26 @@ async def get_macro() -> dict[str, Any]:
         for c in coins
     ]
 
-    return {"source": "live", "stats": stats, "fear_greed": cache.get_stale("fng") or mock_data.macro()["fear_greed"], "heatmap": heatmap}
+    return {"source": "live", "stats": stats, "heatmap": heatmap, "commodities": _extract_commodities(coins)}
+
+
+def _extract_commodities(coins: list[dict]) -> dict[str, Any]:
+    """تلاش برای یافتن XAU/XAG/OIL در فهرست CryptoRank؛ در نبود، نمونه."""
+    out: dict[str, Any] = {}
+    by_sym = {(c.get("symbol") or "").upper(): c for c in coins}
+    for sym, fa in _COMMODITY_FA.items():
+        c = by_sym.get(sym)
+        if c:
+            out[sym] = {"name": fa["name"], "sub": fa["sub"], "price": _coin_price(c), "change_24h": _coin_change(c)}
+    if not out:
+        return mock_data.commodities()["commodities"]
+    # هر نماد یافت‌نشده را از نمونه پر کن تا UI کامل بماند
+    for sym, fa in _COMMODITY_FA.items():
+        out.setdefault(sym, mock_data.commodities()["commodities"][sym])
+    return out
 
 
 async def macro() -> dict[str, Any]:
-    """نقطهٔ ورود با کش. در صورت خطا، کش کهنه یا نمونه."""
     hit = cache.get(_KEY)
     if hit is not None:
         return hit
@@ -116,7 +138,7 @@ async def macro() -> dict[str, Any]:
         return cache.get_stale(_KEY) or mock_data.macro()
 
 
-# ---- کمک‌تابع‌های استخراج امن فیلدها ----
+# ---- کمک‌تابع‌های استخراج امن ----
 def _num(d: dict, *keys: str) -> float:
     for k in keys:
         if k in d and d[k] is not None:
@@ -124,7 +146,6 @@ def _num(d: dict, *keys: str) -> float:
                 return float(d[k])
             except (TypeError, ValueError):
                 continue
-        # شکل تو در تو: data.values.USD
     return 0.0
 
 
@@ -144,7 +165,3 @@ def _coin_change(c: dict) -> float:
 
 def _coin_mc(c: dict) -> float:
     return _num(_coin_values(c), "marketCap", "market_cap") or _num(c, "marketCap", "market_cap")
-
-
-def _btc_mc(coins: list[dict]) -> float:
-    return next((_coin_mc(c) for c in coins if (c.get("symbol") or "").upper() == "BTC"), 0.0)

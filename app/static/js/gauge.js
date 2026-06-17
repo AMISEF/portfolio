@@ -1,56 +1,35 @@
-/* گیج نیم‌دایره‌ای شاخص ترس و طمع (۰ تا ۱۰۰) با عقربه و قوس رنگی */
+/* گیج گرافیکی شاخص ترس و طمع (نیم‌دایره ۰ تا ۱۰۰ با عقربه). */
 (function (w) {
   "use strict";
+  const CS = w.CS;
 
-  function color(v) {
-    if (v <= 25) return "#ea3943";       // ترس شدید
-    if (v <= 45) return "#f59e0b";        // ترس
-    if (v <= 55) return "#eab308";        // خنثی
-    if (v <= 75) return "#84cc16";        // طمع
-    return "#16c784";                     // طمع شدید
+  function arc(cx, cy, r, a) {
+    const rad = (a * Math.PI) / 180;
+    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
   }
 
-  // نقطه روی کمان نیم‌دایره (۱۸۰° از چپ به راست)
-  function polar(cx, cy, r, deg) {
-    const rad = (deg * Math.PI) / 180;
-    return [cx + r * Math.cos(rad), cy - r * Math.sin(rad)];
-  }
-  function arc(cx, cy, r, a0, a1) {
-    const [x0, y0] = polar(cx, cy, r, a0);
-    const [x1, y1] = polar(cx, cy, r, a1);
-    const large = Math.abs(a1 - a0) > 180 ? 1 : 0;
-    const sweep = a1 > a0 ? 0 : 1;
-    return `M ${x0} ${y0} A ${r} ${r} 0 ${large} ${sweep} ${x1} ${y1}`;
-  }
+  function render(el, fng) {
+    if (!el || !fng) return;
+    const value = Math.max(0, Math.min(100, fng.value || 0));
+    const label = fng.label_fa || "";
+    const color = value < 45 ? "var(--down)" : value < 55 ? "var(--warn)" : "var(--up)";
+    const R = 80, cx = 100, cy = 100;
+    const [sx, sy] = arc(cx, cy, R, 180);
+    const [ex, ey] = arc(cx, cy, R, 360);
+    const needleA = 180 + (value / 100) * 180;
+    const [nx, ny] = arc(cx, cy, R - 14, needleA);
 
-  function render(el, data) {
-    const v = Math.max(0, Math.min(100, data.value || 0));
-    const cx = 120, cy = 120, r = 92;
-    // مقدار ۰..۱۰۰ → زاویه ۱۸۰..۰ درجه
-    const ang = 180 - (v / 100) * 180;
-    const segs = [
-      [180, 135, "#ea3943"],
-      [135, 99, "#f59e0b"],
-      [99, 81, "#eab308"],
-      [81, 45, "#84cc16"],
-      [45, 0, "#16c784"],
-    ];
-    const segPaths = segs
-      .map(([a, b, c]) => `<path d="${arc(cx, cy, r, a, b)}" stroke="${c}" stroke-width="18" fill="none" stroke-linecap="round" opacity=".92"/>`)
-      .join("");
-    const [nx, ny] = polar(cx, cy, r - 14, ang);
-    const c = color(v);
-
-    el.innerHTML = `
-      <svg class="gauge__svg" viewBox="0 0 240 160">
-        ${segPaths}
-        <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${c}" stroke-width="5" stroke-linecap="round"/>
-        <circle cx="${cx}" cy="${cy}" r="9" fill="${c}"/>
-        <circle cx="${cx}" cy="${cy}" r="4" fill="#fff"/>
-      </svg>
-      <div class="gauge__value" style="color:${c}">${w.CS.toFa(v)}</div>
-      <div class="gauge__label" style="color:${c}">${data.label_fa || ""}</div>
-    `;
+    el.innerHTML =
+      '<svg class="gauge__svg" viewBox="0 0 200 120" aria-label="شاخص ترس و طمع">' +
+        '<defs><linearGradient id="gaugeg" x1="0" x2="1">' +
+          '<stop offset="0" stop-color="#EA3943"/><stop offset="0.5" stop-color="#F59E0B"/><stop offset="1" stop-color="#16C784"/>' +
+        '</linearGradient></defs>' +
+        '<path d="M ' + sx + ' ' + sy + ' A ' + R + ' ' + R + ' 0 0 1 ' + ex + ' ' + ey + '" fill="none" stroke="url(#gaugeg)" stroke-width="16" stroke-linecap="round"/>' +
+        '<line x1="' + cx + '" y1="' + cy + '" x2="' + nx + '" y2="' + ny + '" stroke="var(--heading)" stroke-width="4" stroke-linecap="round"/>' +
+        '<circle cx="' + cx + '" cy="' + cy + '" r="6" fill="var(--heading)"/>' +
+      '</svg>' +
+      '<div class="gauge__value" style="color:' + color + '">' + CS.toFa(value) + '</div>' +
+      '<div class="gauge__label" style="color:' + color + '">' + label + '</div>';
   }
 
   w.CSGauge = { render };

@@ -1,11 +1,10 @@
 """
-کش سادهٔ درون‌حافظه‌ای با TTL + شمارندهٔ پایدار بودجهٔ کردیت.
+کش درون‌حافظه‌ای با TTL + شمارندهٔ پایدار بودجهٔ کردیت CryptoRank.
 
-در فاز ۱ کش درون‌حافظه‌ای کافی است (یک نمونهٔ سرور). در فازهای بعدی
-می‌توان به‌راحتی این لایه را با Redis جایگزین کرد، چون رابط آن ساده است.
-
-شمارندهٔ کردیت روی دیسک ذخیره می‌شود تا با ری‌استارت سرور هم سقف ماهانهٔ
-CryptoRank (۱۰٬۰۰۰) حفظ شود.
+* کش سمت سرور باعث می‌شود فرانت‌اند هرگز مستقیم به APIها وصل نشود و همهٔ
+  کاربران از یک نتیجهٔ مشترک استفاده کنند (مصرف کردیت کنترل‌شده).
+* شمارندهٔ کردیت روی دیسک ذخیره می‌شود تا با ری‌استارت هم سقف ماهانهٔ
+  ۱۰٬۰۰۰ کردیت CryptoRank حفظ شود.
 """
 from __future__ import annotations
 
@@ -20,8 +19,6 @@ from app.config import settings
 
 
 class TTLCache:
-    """کش کلید/مقدار با زمان انقضا."""
-
     def __init__(self) -> None:
         self._store: dict[str, tuple[float, Any]] = {}
         self._lock = threading.Lock()
@@ -37,7 +34,6 @@ class TTLCache:
             return value
 
     def get_stale(self, key: str) -> Optional[Any]:
-        """مقدار کش حتی اگر منقضی شده باشد (برای fallback هنگام خطای منبع)."""
         with self._lock:
             item = self._store.get(key)
             return item[1] if item else None
@@ -48,10 +44,7 @@ class TTLCache:
 
 
 class CreditBudget:
-    """
-    پایش مصرف کردیت CryptoRank در سه بازه: دقیقه، روز، ماه.
-    قبل از هر فراخوانی، can_spend بررسی می‌کند که از سقف عبور نکنیم.
-    """
+    """پایش مصرف کردیت CryptoRank در سه بازه: دقیقه، روز، ماه."""
 
     def __init__(self, state_file: str) -> None:
         self._path = Path(state_file)
@@ -67,16 +60,15 @@ class CreditBudget:
         return {"minute": {}, "day": {}, "month": {}}
 
     def _save(self) -> None:
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        self._path.write_text(json.dumps(self._state, ensure_ascii=False, indent=2), "utf-8")
+        try:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            self._path.write_text(json.dumps(self._state, ensure_ascii=False, indent=2), "utf-8")
+        except OSError:
+            pass
 
     @staticmethod
     def _keys(now: datetime) -> tuple[str, str, str]:
-        return (
-            now.strftime("%Y-%m-%d %H:%M"),
-            now.strftime("%Y-%m-%d"),
-            now.strftime("%Y-%m"),
-        )
+        return (now.strftime("%Y-%m-%d %H:%M"), now.strftime("%Y-%m-%d"), now.strftime("%Y-%m"))
 
     def _used(self, bucket: str, key: str) -> int:
         return int(self._state.get(bucket, {}).get(key, 0))
@@ -104,8 +96,7 @@ class CreditBudget:
             self._save()
 
     def _prune(self, now: datetime) -> None:
-        """حذف کلیدهای قدیمی برای جلوگیری از رشد بی‌نهایت فایل."""
-        m_key, d_key, mo_key = self._keys(now)
+        m_key, _d_key, mo_key = self._keys(now)
         self._state["minute"] = {m_key: self._state.get("minute", {}).get(m_key, 0)}
         day = self._state.get("day", {})
         self._state["day"] = {k: v for k, v in day.items() if k[:7] == mo_key}
@@ -120,17 +111,12 @@ class CreditBudget:
         }
 
 
-# نمونه‌های سراسری
 cache = TTLCache()
 credit_budget = CreditBudget(settings.credit_state_file)
 
 
 async def cached(key: str, ttl: float, fetcher: Callable, fallback: Callable):
-    """
-    الگوی کمکی: مقدار را از کش بده؛ در صورت نبود، fetcher را صدا بزن.
-    اگر fetcher خطا داد، از کش کهنه یا fallback استفاده کن.
-    fetcher و fallback باید coroutine یا تابع معمولی باشند.
-    """
+    """مقدار را از کش بده؛ در نبود، fetcher را صدا بزن؛ در خطا، کش کهنه یا نمونه."""
     hit = cache.get(key)
     if hit is not None:
         return hit

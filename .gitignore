@@ -1,22 +1,26 @@
-# محیط و کلیدها (هرگز commit نشوند)
+# رازها — هرگز کامیت نشود
 .env
-data/credit_state.json
-data/*.db
-data/*.sqlite
-data/*.sqlite3
+.env.*
+!.env.example
+
+# دادهٔ زمان اجرا
+data/
+*.db
+*.sqlite3
 
 # پایتون
 __pycache__/
 *.py[cod]
-*.egg-info/
 .venv/
 venv/
-env/
-.pytest_cache/
+*.egg-info/
 
-# ابزار/سیستم
+# pm2 / node
+node_modules/
+npm-debug.log*
+
+# ویرایشگر / سیستم
+.vscode/
+.idea/
 .DS_Store
 *.log
-.idea/
-.vscode/
-node_modules/

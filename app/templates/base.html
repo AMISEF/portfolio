@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#162F55">
   <title>{% block title %}{{ brand_fa }} — {{ title_fa }}{% endblock %}</title>
 
-  <!-- فونت فارسی (روی سرور از CDN؛ در نبود شبکه به فونت سیستم برمی‌گردد) -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v={{ static_v }}">
   <link rel="icon" href="/static/img/logo.png" type="image/png">
-  <!-- اتصال SDK مینی‌اپ تلگرام (برای فاز مینی‌اپ) -->
+
+  <!-- SDK مینی‌اپ تلگرام (برای حالت وب‌اپ) -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <!-- جلوگیری از پرش تم: قبل از رندر، تم ذخیره‌شده اعمال می‌شود -->
   <script>
@@ -32,10 +32,12 @@
     </main>
   </div>
   {% include "components/nav.html" %}
+  {% include "components/auth_modal.html" %}
 
   <script src="/static/js/utils.js?v={{ static_v }}"></script>
   <script src="/static/js/clock.js?v={{ static_v }}"></script>
   <script src="/static/js/theme.js?v={{ static_v }}"></script>
+  <script src="/static/js/auth.js?v={{ static_v }}"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
