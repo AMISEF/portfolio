@@ -120,7 +120,7 @@ _STABLES = {
 }
 
 
-async def get_heatmap(limit: int = 48) -> dict[str, Any]:
+async def get_heatmap(limit: int = 40) -> dict[str, Any]:
     """نقشهٔ حرارتی زنده: پرحجم‌ترین جفت‌های USDT (بدون استیبل‌کوین) با قیمت و
     تغییر ۲۴ساعتهٔ لحظه‌ای."""
     timeout = httpx.Timeout(settings.http_timeout)

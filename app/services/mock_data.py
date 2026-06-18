@@ -158,5 +158,14 @@ def etf_flows() -> dict:
     return {"source": "sample", "updated": points[-1]["date"], "points": points}
 
 
+def commodities() -> dict:
+    """کالاهای جهانی نمونه (طلا/نقره/نفت) — هم‌شکل خروجی Yahoo Finance."""
+    return {"source": "sample", "commodities": {
+        "XAU": {"name": "طلای جهانی", "sub": "اونس", "price": 4374.94, "change_24h": 0.31},
+        "XAG": {"name": "نقره", "sub": "اونس", "price": 70.31, "change_24h": -0.58},
+        "OIL": {"name": "نفت خام", "sub": "بشکه", "price": 72.94, "change_24h": 1.21},
+    }}
+
+
 def fear_greed() -> dict:
     return {"value": 22, "label_en": "Extreme Fear", "label_fa": "ترس شدید"}

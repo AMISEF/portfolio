@@ -18,6 +18,7 @@ from fastapi import APIRouter
 from app.cache import cache, cmc_budget, credit_budget
 from app.config import settings
 from app.services import coinmarketcap, etf_flows, mock_data, sourcearena, tabdeal, toobit
+from app.services import commodities as commodities_svc
 
 router = APIRouter(prefix="/api/market", tags=["market"])
 
@@ -68,13 +69,21 @@ async def coins():
 
 @router.get("/prices")
 async def prices():
-    """قیمت‌های کلیدی: تتر تومانی (تبدیل) + طلای ۱۸ع و انس طلا/نقره + نفت خام
-    (همه از سورس‌آرنا). ترس‌وطمع از کش تا گیج هر ۸ ثانیه به‌روز شود."""
-    usdt, metals = await asyncio.gather(
-        _safe(tabdeal.usdt()), _safe(sourcearena.metals())
+    """قیمت‌های کلیدی: تتر تومانی (Tabdeal) + طلای ۱۸ع و دلار آزاد (SourceArena)
+    + انس طلا/نقره و نفت خام (Yahoo Finance، با تغییر ۲۴ساعتهٔ واقعی).
+    ترس‌وطمع از کش تا گیج هر ۸ ثانیه به‌روز شود."""
+    usdt, metals, comm = await asyncio.gather(
+        _safe(tabdeal.usdt()), _safe(sourcearena.metals()),
+        _safe(commodities_svc.commodities()),
     )
 
-    commodities = dict(metals.get("commodities", {})) if isinstance(metals, dict) else {}
+    # کالاهای جهانی از Yahoo (قیمت + تغییر واقعی)؛ در نبود، از SourceArena پر می‌شود.
+    commodities = {}
+    if isinstance(comm, dict) and "error" not in comm:
+        commodities = dict(comm.get("commodities", {}))
+    sa_comm = metals.get("commodities", {}) if isinstance(metals, dict) else {}
+    for k, v in sa_comm.items():
+        commodities.setdefault(k, v)
 
     # تغییر ۲۴ساعتهٔ تتر/تومان از تغییر دلار آزاد (SourceArena) گرفته می‌شود؛
     # اندپوینت عمق Tabdeal خودش درصد تغییر ندارد.
@@ -94,6 +103,7 @@ async def prices():
         "sources": {
             "usdt": usdt.get("source") if isinstance(usdt, dict) else "error",
             "metals": metals.get("source") if isinstance(metals, dict) else "error",
+            "commodities": comm.get("source") if isinstance(comm, dict) else "error",
         },
     }
 
@@ -166,6 +176,7 @@ async def debug():
         _safe(coinmarketcap.altseason()),
         _safe(coinmarketcap.fng()),
         _safe(etf_flows.flows()),
+        _safe(commodities_svc.commodities()),
         *[c for _, c in raw_calls],
     )
 
@@ -183,8 +194,9 @@ async def debug():
     out["parsed"]["etf_flows"] = etf if "error" in etf else {
         "source": etf.get("source"), "updated": etf.get("updated"),
         "count": len(etf.get("points", [])), "last": (etf.get("points") or [{}])[-1]}
+    out["parsed"]["commodities"] = results[9]
 
-    for (name, _), res in zip(raw_calls, results[9:]):
+    for (name, _), res in zip(raw_calls, results[10:]):
         out["raw"][name] = res
 
     # کوتاه‌کردن تیکر بزرگ توبیت
