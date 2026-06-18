@@ -49,6 +49,8 @@
     if (d.dominance) {
       push("دامیننس بیت‌کوین", CS.toFa(d.dominance.btc.toFixed(2)) + "٪", d.dominance.btc_change_24h);
       push("دامیننس اتریوم", CS.toFa(d.dominance.eth.toFixed(2)) + "٪");
+      if (d.dominance.usdt !== undefined && d.dominance.usdt !== null)
+        push("دامیننس تتر", CS.toFa(d.dominance.usdt.toFixed(2)) + "٪");
     }
     if (d.altcoin_season) push("فصل آلت‌کوین", CS.toFa(d.altcoin_season.value) + "/۱۰۰");
     if (d.fear_greed) push("ترس و طمع", CS.toFa(d.fear_greed.value) + " · " + (d.fear_greed.label_fa || ""));
@@ -119,6 +121,81 @@
     } catch (e) { console.warn("heatmap:", e); }
   }
 
+  /* ---------- نمودار جریان خالص ETFها (ستونی انباشته، btc + eth) ---------- */
+  function renderEtf(d) {
+    const el = $("etfChart");
+    if (!el) return;
+    const pts = (d && d.points) || [];
+    if (!pts.length) { el.innerHTML = '<span class="src-tag">داده‌ای موجود نیست</span>'; return; }
+
+    const W = 760, H = 240, padT = 18, padB = 26, padX = 6;
+    const plotH = H - padT - padB;
+    // بیشینهٔ بخش مثبت و منفیِ هر روز (انباشت btc+eth هم‌علامت)
+    let maxPos = 0, maxNeg = 0;
+    pts.forEach((p) => {
+      const pos = Math.max(0, p.btc) + Math.max(0, p.eth);
+      const neg = Math.min(0, p.btc) + Math.min(0, p.eth);
+      if (pos > maxPos) maxPos = pos;
+      if (neg < maxNeg) maxNeg = neg;
+    });
+    const range = (maxPos - maxNeg) || 1;
+    const y0 = padT + (maxPos / range) * plotH;            // خط صفر
+    const sc = plotH / range;                               // مقیاس عمودی
+    const n = pts.length;
+    const slot = (W - padX * 2) / n;
+    const bw = Math.max(3, Math.min(18, slot * 0.62));
+
+    const seg = (x, vTop, vBot, color) => {
+      // مستطیل از vBot تا vTop (مقادیر دلاری، نسبت به صفر)
+      const yTop = y0 - vTop * sc, yBot = y0 - vBot * sc;
+      const h = Math.max(0.6, Math.abs(yBot - yTop));
+      return '<rect x="' + (x - bw / 2).toFixed(1) + '" y="' + Math.min(yTop, yBot).toFixed(1) +
+        '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1" fill="' + color + '"/>';
+    };
+
+    let bars = "";
+    pts.forEach((p, i) => {
+      const x = padX + slot * (i + 0.5);
+      // بخش مثبت: btc از صفر، سپس eth انباشته
+      let up = 0;
+      if (p.btc > 0) { bars += seg(x, up + p.btc, up, "#F7931A"); up += p.btc; }
+      if (p.eth > 0) { bars += seg(x, up + p.eth, up, "#3861FB"); up += p.eth; }
+      // بخش منفی: رو به پایین
+      let dn = 0;
+      if (p.btc < 0) { bars += seg(x, dn, dn + p.btc, "#F7931A"); dn += p.btc; }
+      if (p.eth < 0) { bars += seg(x, dn, dn + p.eth, "#3861FB"); dn += p.eth; }
+    });
+
+    // برچسب‌های محور افقی (حدود ۶ تا، برای جلوگیری از شلوغی)
+    let labels = "";
+    const step = Math.max(1, Math.round(n / 6));
+    for (let i = 0; i < n; i += step) {
+      const x = padX + slot * (i + 0.5);
+      labels += '<text x="' + x.toFixed(1) + '" y="' + (H - 8) +
+        '" text-anchor="middle" class="etf__xlbl">' + pts[i].label + '</text>';
+    }
+
+    const last = pts[pts.length - 1];
+    const totalCls = last.total >= 0 ? "up" : "down";
+    const sign = last.total >= 0 ? "+" : "−";
+    const head = '<div class="etf__head"><span class="etf__total ' + totalCls + '">' + sign + '$' +
+      CS.toFa(Math.abs(last.total).toLocaleString("en-US")) + 'M</span>' +
+      '<span class="etf__date" dir="ltr">' + last.label + '</span></div>';
+
+    el.innerHTML = head +
+      '<svg class="etf__svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
+      '<line x1="' + padX + '" y1="' + y0.toFixed(1) + '" x2="' + (W - padX) + '" y2="' + y0.toFixed(1) +
+      '" stroke="var(--border)" stroke-width="1"/>' + bars + labels + '</svg>';
+  }
+
+  async function loadEtf() {
+    try {
+      const d = await CS.fetchJSON("/api/market/etf");
+      renderEtf(d);
+      srcTag($("etfSrc"), d.source);
+    } catch (e) { console.warn("etf:", e); }
+  }
+
   /* ---------- ۵ ارز برتر بازار (کارت افقی، زنده هر ۵ ثانیه) ---------- */
   async function loadCoins() {
     try {
@@ -171,8 +248,9 @@
   }
 
   /* ---------- راه‌اندازی + پایش لحظه‌ای ---------- */
-  loadMacro();   setInterval(loadMacro, 60 * 1000);   // ۶۰ ثانیه (CoinMarketCap)
-  loadHeatmap(); setInterval(loadHeatmap, 12 * 1000); // ۱۲ ثانیه (زنده)
-  loadCoins();   setInterval(loadCoins, 5 * 1000);    // ۵ ثانیه (زنده — توبیت)
-  loadPrices();  setInterval(loadPrices, 8 * 1000);   // ۸ ثانیه (زنده)
+  loadMacro();   setInterval(loadMacro, 60 * 1000);    // ۶۰ ثانیه (CoinMarketCap)
+  loadHeatmap(); setInterval(loadHeatmap, 12 * 1000);  // ۱۲ ثانیه (زنده)
+  loadCoins();   setInterval(loadCoins, 5 * 1000);     // ۵ ثانیه (زنده — توبیت)
+  loadPrices();  setInterval(loadPrices, 8 * 1000);    // ۸ ثانیه (زنده)
+  loadEtf();     setInterval(loadEtf, 30 * 60 * 1000); // ۳۰ دقیقه (دادهٔ روزانه)
 })(window);

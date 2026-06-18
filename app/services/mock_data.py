@@ -53,7 +53,7 @@ def cmc_macro() -> dict:
         "source": "sample",
         "market_cap": {"value": 2_260_000_000_000, "change_24h": -1.20},
         "volume_24h": {"value": 71_000_000_000, "change_24h": -3.40},
-        "dominance": {"btc": 58.5, "eth": 9.5, "others": 32.0, "btc_change_24h": 0.18},
+        "dominance": {"btc": 58.5, "eth": 9.5, "others": 32.0, "usdt": 5.12, "btc_change_24h": 0.18},
     }
 
 
@@ -133,8 +133,29 @@ def sourcearena_metals() -> dict:
         "commodities": {
             "XAU": {"name": "طلای جهانی", "sub": "اونس", "price": 4326.2, "change_24h": 0.31},
             "XAG": {"name": "نقره", "sub": "اونس", "price": 69.9, "change_24h": -0.58},
+            "OIL": {"name": "نفت خام", "sub": "بشکه", "price": 72.94, "change_24h": 1.21},
         },
     }
+
+
+def etf_flows() -> dict:
+    """جریان خالص ETFهای کریپتو (نمونه) — ۳۰ روز، میلیون دلار (btc + eth)."""
+    seq = [
+        (-310, -22), (-95, -8), (-120, 5), (-60, 12), (-540, -30), (-880, -45),
+        (-180, 18), (-150, -10), (-470, -25), (-520, -35), (-300, 20), (-110, 8),
+        (-330, -15), (130, 22), (-90, 6), (-70, 14), (-260, -12), (95, 18),
+        (-40, 9), (-180, -8), (60, 15), (-120, 7), (-260, -14), (180, 24),
+        (40, 11), (-30, 8), (90, 16), (210, 28), (-50, 9), (12, 5.9),
+    ]
+    from datetime import date, timedelta
+    start = date(2026, 5, 20)
+    points = []
+    for i, (b, e) in enumerate(seq):
+        d = start + timedelta(days=i)
+        points.append({"date": d.strftime("%Y-%m-%d"),
+                       "label": "%d %s" % (d.day, d.strftime("%b")),
+                       "btc": float(b), "eth": float(e), "total": round(b + e, 1)})
+    return {"source": "sample", "updated": points[-1]["date"], "points": points}
 
 
 def fear_greed() -> dict:

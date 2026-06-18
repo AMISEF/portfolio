@@ -42,15 +42,25 @@ async def get_metals() -> dict[str, Any]:
     if gold18 <= 0:
         raise RuntimeError("SourceArena: gold 18k missing")
 
+    commodities = {
+        "XAU": {"name": "طلای جهانی", "sub": "اونس", "price": xau_usd, "change_24h": _ck(data, "usd_xau")},
+        "XAG": {"name": "نقره", "sub": "اونس", "price": xag_usd, "change_24h": _ck(data, "xag")},
+    }
+
+    # نفت خام از همان منبع SourceArena (کلیدهای محتمل بررسی می‌شوند). مقدار ممکن
+    # است به تومان باشد؛ اگر بزرگ بود با نرخ دلار به دلار بشکه تبدیل می‌شود.
+    oil_val, oil_key = _first(data, "oil", "oil_brent", "brent", "oil_wti", "wti", "crude_oil", "naft")
+    if oil_val > 0:
+        oil_usd = round(oil_val / usd_toman, 2) if (oil_val > 1000 and usd_toman) else round(oil_val, 2)
+        commodities["OIL"] = {"name": "نفت خام", "sub": "بشکه", "price": oil_usd,
+                              "change_24h": _ck(data, oil_key)}
+
     return {
         "source": "live",
         # تغییر دلار آزاد (تومان) ≈ تغییر ۲۴ساعتهٔ تتر/تومان — برای ردیف تتر استفاده می‌شود
-        "usd_change_24h": _c(data, "usd") or _c(data, "usd_sherkat"),
-        "gold_18k": {"name": "طلای ۱۸ عیار", "sub": "هر گرم", "price": round(gold18), "change_24h": _c(data, "18ayar")},
-        "commodities": {
-            "XAU": {"name": "طلای جهانی", "sub": "اونس", "price": xau_usd, "change_24h": _c(data, "usd_xau")},
-            "XAG": {"name": "نقره", "sub": "اونس", "price": xag_usd, "change_24h": _c(data, "xag")},
-        },
+        "usd_change_24h": _ck(data, "usd") or _ck(data, "usd_sherkat"),
+        "gold_18k": {"name": "طلای ۱۸ عیار", "sub": "هر گرم", "price": round(gold18), "change_24h": _ck(data, "18ayar")},
+        "commodities": commodities,
     }
 
 
@@ -60,20 +70,57 @@ async def metals() -> dict[str, Any]:
 
 
 def _v(data: dict, key: str) -> float:
-    return _f(data.get(key) or {}, "value")
+    item = data.get(key)
+    if isinstance(item, dict):
+        return _f(item, "value", "price", "last", "p")
+    return _num(item)  # برخی پاسخ‌ها مقدار را مستقیم (نه در dict) می‌دهند
 
 
-def _c(data: dict, key: str) -> float:
-    """درصد تغییر ۲۴ساعته از زیرشاخه‌های محتملِ پاسخ SourceArena."""
-    return _f(data.get(key) or {}, "change_pct", "change_percent", "change",
-              "changePercent", "percent", "diff_percent")
+def _first(data: dict, *keys: str) -> tuple[float, str]:
+    """اولین کلید موجود با مقدار مثبت را برمی‌گرداند: (مقدار، نام‌کلید)."""
+    for k in keys:
+        if k in data:
+            v = _v(data, k)
+            if v > 0:
+                return v, k
+    return 0.0, keys[0]
+
+
+# نام‌های محتملِ فیلد درصد تغییر در پاسخ SourceArena (هم در dict آیتم، هم با
+# پسوند روی کلید سطح‌بالا مثل «18ayar_change»).
+_CHANGE_FIELDS = ("change_pct", "change_percent", "changePercent", "percent",
+                  "diff_percent", "change", "d", "dp", "today_change",
+                  "change_amount", "changeAmount", "p_change", "pc")
+
+
+def _ck(data: dict, key: str) -> float:
+    """درصد تغییر ۲۴ساعتهٔ آیتم key؛ هم داخل dict آیتم، هم کلیدهای هم‌نام با پسوند."""
+    item = data.get(key)
+    if isinstance(item, dict):
+        v = _f(item, *_CHANGE_FIELDS)
+        if v:
+            return v
+    for suf in ("_change_pct", "_change_percent", "_change", "_percent", "_pct"):
+        v = _num(data.get(key + suf))
+        if v:
+            return v
+    return 0.0
+
+
+def _num(x) -> float:
+    if x is None:
+        return 0.0
+    try:
+        return float(str(x).replace(",", "").replace("%", "").strip())
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _f(d: dict, *keys: str) -> float:
     for k in keys:
         if k in d and d[k] is not None:
             try:
-                return float(str(d[k]).replace(",", ""))
+                return float(str(d[k]).replace(",", "").replace("%", "").strip())
             except (TypeError, ValueError):
                 continue
     return 0.0

@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     cmc_base_url: str = "https://pro-api.coinmarketcap.com"
     cmc_macro_ttl: int = 300           # global-metrics هر ۵ دقیقه
     cmc_altseason_ttl: int = 900       # فصل آلت‌کوین (۹۰روزه، کم‌تغییر) هر ۱۵ دقیقه
+    cmc_fng_ttl: int = 300             # ترس و طمع از CMC هر ۵ دقیقه (v3/fear-and-greed)
     # سقف مصرف کردیت پلن Basic (هارد‌کپ ماهانه ۲۰٬۰۰۰ و ۵۰ درخواست/دقیقه)
     cmc_monthly_credits: int = 19_000  # حاشیهٔ ایمنی زیر ۲۰٬۰۰۰
     cmc_daily_credits: int = 600
@@ -69,9 +70,16 @@ class Settings(BaseSettings):
     coingecko_base_url: str = "https://api.coingecko.com/api/v3"
     coingecko_ttl: int = 60
 
-    # ---- شاخص ترس و طمع ----
+    # ---- شاخص ترس و طمع (پشتیبان: alternative.me؛ منبع اصلی CMC v3) ----
     fng_base_url: str = "https://api.alternative.me/fng/"
     fng_ttl: int = 600
+
+    # ---- جریان خالص ETFهای کریپتو (Crypto ETFs Net Flow) ----
+    # منبع رایگان Farside Investors (جدول HTML). میزبان باید در allowlist شبکهٔ
+    # سرور باشد. داده روزانه است؛ کش ۳۰ دقیقه کافی است.
+    farside_base_url: str = "https://farside.co.uk"
+    etf_ttl: int = 1800
+    etf_days: int = 30
 
     # مسیر فایل پایدار شمارندهٔ کردیت
     credit_state_file: str = "data/credit_state.json"

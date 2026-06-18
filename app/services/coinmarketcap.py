@@ -78,6 +78,45 @@ async def macro() -> dict[str, Any]:
     return await cached("cmc:macro", settings.cmc_macro_ttl, get_macro, mock_data.cmc_macro)
 
 
+# ---- شاخص ترس و طمع از CoinMarketCap (v3/fear-and-greed، روی پلن Basic، ۱ کردیت) ----
+_FNG_FA = {
+    "Extreme Fear": "ترس شدید", "Fear": "ترس", "Neutral": "خنثی",
+    "Greed": "طمع", "Extreme Greed": "طمع شدید",
+}
+
+
+async def get_fng() -> dict[str, Any]:
+    """ترس و طمع از CMC؛ در صورت نبود کلید/پر شدن بودجه/خطا، از alternative.me."""
+    from app.cache import cmc_budget
+    if settings.cmc_api_key and cmc_budget.can_spend(1):
+        try:
+            timeout = httpx.Timeout(settings.http_timeout)
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                resp = await client.get(
+                    f"{settings.cmc_base_url}/v3/fear-and-greed/latest",
+                    headers=_headers(),
+                )
+                resp.raise_for_status()
+                payload = resp.json()
+            cmc_budget.spend(int(payload.get("status", {}).get("credit_count", 1)) or 1)
+            d = payload.get("data", {}) or {}
+            value = int(_f(d, "value"))
+            label_en = d.get("value_classification") or "Neutral"
+            if value > 0:
+                return {"value": value, "label_en": label_en,
+                        "label_fa": _FNG_FA.get(label_en, label_en)}
+        except Exception:  # noqa: BLE001 — به پشتیبان می‌افتیم
+            pass
+    # پشتیبان: alternative.me (رایگان، بدون کلید)
+    from app.services import fng as altfng
+    return await altfng.get_fng()
+
+
+async def fng() -> dict[str, Any]:
+    from app.cache import cached
+    return await cached("fng", settings.cmc_fng_ttl, get_fng, mock_data.fear_greed)
+
+
 def _altseason_label(value: int) -> tuple[str, str]:
     if value >= 75:
         return "Altcoin Season", "فصل آلت‌کوین"
@@ -108,10 +147,14 @@ async def get_altseason() -> dict[str, Any]:
 
     coins = payload.get("data", []) or []
     btc_90d = None
+    usdt_mc = 0.0
     for c in coins:
-        if (c.get("symbol") or "").upper() == "BTC":
-            btc_90d = _f((c.get("quote") or {}).get("USD", {}), "percent_change_90d")
-            break
+        sym = (c.get("symbol") or "").upper()
+        q = (c.get("quote") or {}).get("USD", {})
+        if sym == "BTC":
+            btc_90d = _f(q, "percent_change_90d")
+        elif sym == "USDT":
+            usdt_mc = _f(q, "market_cap")
     if btc_90d is None:
         raise RuntimeError("CMC: BTC 90d change missing")
 
@@ -137,8 +180,10 @@ async def get_altseason() -> dict[str, Any]:
     )
     value = round(beat / len(eligible) * 100)
     label_en, label_fa = _altseason_label(value)
-    return {"source": "live", "altcoin_season": {
-        "value": value, "label_en": label_en, "label_fa": label_fa}}
+    return {"source": "live",
+            "altcoin_season": {"value": value, "label_en": label_en, "label_fa": label_fa},
+            # ارزش بازار تتر — برای محاسبهٔ دامیننس تتر در روتر (بدون درخواست اضافه)
+            "usdt_market_cap": usdt_mc}
 
 
 async def altseason() -> dict[str, Any]:

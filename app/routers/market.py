@@ -17,7 +17,7 @@ from fastapi import APIRouter
 
 from app.cache import cache, cmc_budget, credit_budget
 from app.config import settings
-from app.services import coinmarketcap, fng, mock_data, sourcearena, tabdeal, toobit
+from app.services import coinmarketcap, etf_flows, mock_data, sourcearena, tabdeal, toobit
 
 router = APIRouter(prefix="/api/market", tags=["market"])
 
@@ -30,17 +30,28 @@ async def macro():
     data, alt, fg = await asyncio.gather(
         _safe(coinmarketcap.macro()),
         _safe(coinmarketcap.altseason()),
-        _safe(fng.fng()),
+        _safe(coinmarketcap.fng()),
     )
     if not isinstance(data, dict) or "error" in data:
         data = mock_data.cmc_macro()
     if isinstance(alt, dict) and "error" not in alt:
         data["altcoin_season"] = alt.get("altcoin_season")
+        # دامیننس تتر = ارزش بازار تتر ÷ کل بازار (بدون درخواست اضافه)
+        usdt_mc = alt.get("usdt_market_cap") or 0
+        total_mc = (data.get("market_cap") or {}).get("value") or 0
+        if usdt_mc and total_mc and isinstance(data.get("dominance"), dict):
+            data["dominance"]["usdt"] = round(usdt_mc / total_mc * 100, 2)
     else:
         data["altcoin_season"] = mock_data.cmc_altseason()["altcoin_season"]
     if isinstance(fg, dict) and "error" not in fg:
         data["fear_greed"] = fg
     return data
+
+
+@router.get("/etf")
+async def etf():
+    """جریان خالص ETFهای کریپتو (بیت‌کوین + اتریوم) از Farside Investors."""
+    return await etf_flows.flows()
 
 
 @router.get("/heatmap")
@@ -57,15 +68,13 @@ async def coins():
 
 @router.get("/prices")
 async def prices():
-    """قیمت‌های کلیدی: تتر تومانی (تبدیل) + طلای ۱۸ع و انس طلا/نقره (سورس‌آرنا)
-    + نفت (توبیت). ترس‌وطمع از کش تا گیج هر ۲۰ ثانیه به‌روز شود."""
-    usdt, metals, oil = await asyncio.gather(
-        _safe(tabdeal.usdt()), _safe(sourcearena.metals()), _safe(toobit.oil())
+    """قیمت‌های کلیدی: تتر تومانی (تبدیل) + طلای ۱۸ع و انس طلا/نقره + نفت خام
+    (همه از سورس‌آرنا). ترس‌وطمع از کش تا گیج هر ۸ ثانیه به‌روز شود."""
+    usdt, metals = await asyncio.gather(
+        _safe(tabdeal.usdt()), _safe(sourcearena.metals())
     )
 
     commodities = dict(metals.get("commodities", {})) if isinstance(metals, dict) else {}
-    if isinstance(oil, dict) and oil.get("oil"):
-        commodities["OIL"] = oil["oil"]
 
     # تغییر ۲۴ساعتهٔ تتر/تومان از تغییر دلار آزاد (SourceArena) گرفته می‌شود؛
     # اندپوینت عمق Tabdeal خودش درصد تغییر ندارد.
@@ -85,7 +94,6 @@ async def prices():
         "sources": {
             "usdt": usdt.get("source") if isinstance(usdt, dict) else "error",
             "metals": metals.get("source") if isinstance(metals, dict) else "error",
-            "oil": oil.get("source") if isinstance(oil, dict) else "error",
         },
     }
 
@@ -156,7 +164,8 @@ async def debug():
         _safe(toobit.heatmap()),
         _safe(coinmarketcap.macro()),
         _safe(coinmarketcap.altseason()),
-        _safe(fng.fng()),
+        _safe(coinmarketcap.fng()),
+        _safe(etf_flows.flows()),
         *[c for _, c in raw_calls],
     )
 
@@ -170,8 +179,12 @@ async def debug():
     out["parsed"]["cmc_macro"] = results[5]
     out["parsed"]["cmc_altseason"] = results[6]
     out["parsed"]["fear_greed"] = results[7]
+    etf = results[8]
+    out["parsed"]["etf_flows"] = etf if "error" in etf else {
+        "source": etf.get("source"), "updated": etf.get("updated"),
+        "count": len(etf.get("points", [])), "last": (etf.get("points") or [{}])[-1]}
 
-    for (name, _), res in zip(raw_calls, results[8:]):
+    for (name, _), res in zip(raw_calls, results[9:]):
         out["raw"][name] = res
 
     # کوتاه‌کردن تیکر بزرگ توبیت
