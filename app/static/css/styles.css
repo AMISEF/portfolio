@@ -124,6 +124,11 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 640px) {
   .account-btn { width: 44px; padding: 0; justify-content: center; }
   .account-btn span { display: none; }
+  /* عنوان وسط (nowrap) ردیف هدر را پهن‌تر از عرض گوشی می‌کرد و سمت چپ را
+     بیرون می‌انداخت؛ روی موبایل پنهان می‌شود (نام برند کافی است). */
+  .header__title { display: none; }
+  .header__inner { grid-template-columns: 1fr auto; }
+  .brand__logo { width: 40px; height: 40px; }
 }
 
 /* ==========================================================================
@@ -274,8 +279,9 @@ a { color: inherit; text-decoration: none; }
 .alt__num { font-size: 2rem; font-weight: 900; color: var(--heading); font-family: var(--font-mono); line-height: 1; }
 .alt__den { font-size: .9rem; color: var(--text-dim); font-weight: 700; }
 .alt__label { margin-right: auto; font-size: .8rem; font-weight: 800; color: var(--brand-dark); }
+/* RTL: سمت راست = فصل بیت‌کوین (نارنجی)، سمت چپ = فصل آلت‌کوین (آبی) */
 .alt__bar { position: relative; height: 10px; border-radius: var(--radius-pill);
-  background: linear-gradient(to left, #2D63B0 0%, #6F95C8 35%, #DCE2E7 50%, #F5B86B 65%, #F7931A 100%); }
+  background: linear-gradient(to left, #F7931A 0%, #F5B86B 35%, #DCE2E7 50%, #6F95C8 65%, #2D63B0 100%); }
 .alt__knob { position: absolute; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--heading); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
 .alt__ends { display: flex; justify-content: space-between; font-size: .66rem; font-weight: 700; color: var(--text-dim); }
 

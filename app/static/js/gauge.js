@@ -27,7 +27,7 @@
         '<defs><linearGradient id="gaugeg" x1="0" x2="1">' +
           '<stop offset="0" stop-color="#EA3943"/><stop offset="0.5" stop-color="#F59E0B"/><stop offset="1" stop-color="#16C784"/>' +
         '</linearGradient></defs>' +
-        '<path d="M ' + sx + ' ' + sy + ' A ' + R + ' ' + R + ' 0 0 1 ' + ex + ' ' + ey + '" fill="none" stroke="url(#gaugeg)" stroke-width="14" stroke-linecap="round"/>' +
+        '<path d="M ' + sx + ' ' + sy + ' A ' + R + ' ' + R + ' 0 0 1 ' + ex + ' ' + ey + '" fill="none" stroke="url(#gaugeg)" stroke-width="13" stroke-linecap="butt" stroke-dasharray="11 5"/>' +
         '<circle cx="' + mx + '" cy="' + my + '" r="9" fill="#fff" stroke="var(--heading)" stroke-width="3"/>' +
       '</svg>' +
       '<div class="gauge__value" style="color:' + color + '">' + CS.toFa(value) + '</div>' +

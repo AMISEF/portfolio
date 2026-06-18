@@ -99,8 +99,8 @@
     $("boxAltseason").innerHTML =
       '<div class="alt__top"><span class="alt__num">' + CS.toFa(v) + '</span><span class="alt__den">/۱۰۰</span>' +
         '<span class="alt__label">' + (a.label_fa || "") + '</span></div>' +
-      '<div class="alt__bar"><span class="alt__knob" style="right:calc(' + v + '% - 9px)"></span></div>' +
-      '<div class="alt__ends"><span>فصل بیت‌کوین</span><span>فصل آلت‌کوین</span></div>';
+      '<div class="alt__ends"><span>فصل بیت‌کوین</span><span>فصل آلت‌کوین</span></div>' +
+      '<div class="alt__bar"><span class="alt__knob" style="right:calc(' + v + '% - 9px)"></span></div>';
   }
 
   async function loadMacro() {
