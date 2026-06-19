@@ -17,7 +17,7 @@ from fastapi import APIRouter
 
 from app.cache import cache, cmc_budget, credit_budget
 from app.config import settings
-from app.services import coinmarketcap, etf_flows, mock_data, sourcearena, tabdeal, toobit
+from app.services import coinmarketcap, mock_data, sourcearena, tabdeal, toobit
 from app.services import commodities as commodities_svc
 
 router = APIRouter(prefix="/api/market", tags=["market"])
@@ -50,12 +50,6 @@ async def macro():
     if isinstance(rsi, dict) and "error" not in rsi:
         data["rsi"] = rsi
     return data
-
-
-@router.get("/etf")
-async def etf():
-    """جریان خالص ETFهای کریپتو (بیت‌کوین + اتریوم) از Farside Investors."""
-    return await etf_flows.flows()
 
 
 @router.get("/heatmap")
@@ -225,7 +219,6 @@ async def debug():
         _safe(coinmarketcap.macro()),
         _safe(coinmarketcap.altseason()),
         _safe(coinmarketcap.fng()),
-        _safe(etf_flows.flows()),
         _safe(commodities_svc.commodities()),
         *[c for _, c in raw_calls],
     )
@@ -240,13 +233,9 @@ async def debug():
     out["parsed"]["cmc_macro"] = results[5]
     out["parsed"]["cmc_altseason"] = results[6]
     out["parsed"]["fear_greed"] = results[7]
-    etf = results[8]
-    out["parsed"]["etf_flows"] = etf if "error" in etf else {
-        "source": etf.get("source"), "updated": etf.get("updated"),
-        "count": len(etf.get("points", [])), "last": (etf.get("points") or [{}])[-1]}
-    out["parsed"]["commodities"] = results[9]
+    out["parsed"]["commodities"] = results[8]
 
-    for (name, _), res in zip(raw_calls, results[10:]):
+    for (name, _), res in zip(raw_calls, results[9:]):
         out["raw"][name] = res
 
     # نقشهٔ حرارتی CMC (دسته/مارکت‌کپ/تغییر چنددوره‌ای) — خلاصهٔ پارس‌شده

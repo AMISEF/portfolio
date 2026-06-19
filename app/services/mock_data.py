@@ -160,25 +160,6 @@ def sourcearena_metals() -> dict:
     }
 
 
-def etf_flows() -> dict:
-    """جریان خالص ETFهای کریپتو (نمونه) — ۳۰ روز، میلیون دلار (btc + eth)."""
-    seq = [
-        (-310, -22), (-95, -8), (-120, 5), (-60, 12), (-540, -30), (-880, -45),
-        (-180, 18), (-150, -10), (-470, -25), (-520, -35), (-300, 20), (-110, 8),
-        (-330, -15), (130, 22), (-90, 6), (-70, 14), (-260, -12), (95, 18),
-        (-40, 9), (-180, -8), (60, 15), (-120, 7), (-260, -14), (180, 24),
-        (40, 11), (-30, 8), (90, 16), (210, 28), (-50, 9), (12, 5.9),
-    ]
-    from datetime import date, timedelta
-    start = date(2026, 5, 20)
-    points = []
-    for i, (b, e) in enumerate(seq):
-        d = start + timedelta(days=i)
-        points.append({"date": d.strftime("%Y-%m-%d"),
-                       "label": "%d %s" % (d.day, d.strftime("%b")),
-                       "btc": float(b), "eth": float(e), "total": round(b + e, 1)})
-    return {"source": "sample", "updated": points[-1]["date"], "points": points}
-
 
 def cr_heatmap() -> dict:
     """نقشهٔ حرارتی غنی نمونه (هم‌شکل خروجی CryptoRank): دسته + مارکت‌کپ + حجم +
