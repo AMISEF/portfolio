@@ -309,12 +309,14 @@
   }
 
   /* ---------- قیمت‌های کلیدی (تتر/طلا/نقره/نفت) ---------- */
-  function keyRow(id, ic, color, name, sub, priceStr, ch) {
+  function keyRow(id, ic, color, name, sub, priceStr, ch, spark) {
     const chHtml = (ch === undefined || ch === null) ? "" :
       '<span class="chg ' + CS.chgClass(ch) + '">' + CS.faPct(ch) + '</span>';
+    const sp = (spark && spark.length > 1) ?
+      '<div class="kp-spark">' + sparkSVG(spark, (ch || 0) >= 0) + '</div>' : "";
     return '<div class="rowitem" data-kp="' + id + '"><span class="kp-ic" style="background:' + color + '">' + ic + '</span>' +
       '<div class="rowitem__main"><div class="rowitem__name">' + name + '</div>' +
-      '<div class="rowitem__sub">' + sub + '</div></div>' +
+      '<div class="rowitem__sub">' + sub + '</div></div>' + sp +
       '<div class="rowitem__right"><div class="rowitem__price" data-price>' + priceStr + '</div>' + chHtml + '</div></div>';
   }
 
@@ -329,9 +331,9 @@
         rows.push(keyRow("g18", "ط", "#D4AF37", "طلای ۱۸ عیار", d.gold_18k.sub || "هر گرم",
           CS.faNum(d.gold_18k.price) + " ت", d.gold_18k.change_24h));
       const c = d.commodities || {};
-      if (c.XAU) rows.push(keyRow("xau", "Au", "#C9A227", c.XAU.name || "طلای جهانی", c.XAU.sub || "اونس", CS.faPriceUsd(c.XAU.price), c.XAU.change_24h));
-      if (c.XAG) rows.push(keyRow("xag", "Ag", "#9AA3AC", c.XAG.name || "نقره", c.XAG.sub || "اونس", CS.faPriceUsd(c.XAG.price), c.XAG.change_24h));
-      if (c.OIL) rows.push(keyRow("oil", "O", "#1B1B1B", c.OIL.name || "نفت خام", c.OIL.sub || "بشکه", CS.faPriceUsd(c.OIL.price), c.OIL.change_24h));
+      if (c.XAU) rows.push(keyRow("xau", "Au", "#C9A227", c.XAU.name || "طلای جهانی", c.XAU.sub || "اونس", CS.faPriceUsd(c.XAU.price), c.XAU.change_24h, c.XAU.spark));
+      if (c.XAG) rows.push(keyRow("xag", "Ag", "#9AA3AC", c.XAG.name || "نقره", c.XAG.sub || "اونس", CS.faPriceUsd(c.XAG.price), c.XAG.change_24h, c.XAG.spark));
+      if (c.OIL) rows.push(keyRow("oil", "O", "#1B1B1B", c.OIL.name || "نفت خام", c.OIL.sub || "بشکه", CS.faPriceUsd(c.OIL.price), c.OIL.change_24h, c.OIL.spark));
       $("keyPrices").innerHTML = rows.join("") || '<span class="src-tag">داده‌ای موجود نیست</span>';
 
       if (d.usdt_irt) flash(document.querySelector('#keyPrices .rowitem[data-kp="usdt"] [data-price]'), "usdt", d.usdt_irt.price);

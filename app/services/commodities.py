@@ -33,7 +33,7 @@ _SYMS = {
 async def _one(client: httpx.AsyncClient, key: str, sym: str, name: str, sub: str):
     resp = await client.get(
         f"{settings.yahoo_base_url}/v8/finance/chart/{sym}",
-        params={"interval": "1d", "range": "5d"},
+        params={"interval": "1d", "range": "1mo"},
     )
     resp.raise_for_status()
     result = (((resp.json().get("chart") or {}).get("result") or [{}])[0]) or {}
@@ -43,7 +43,11 @@ async def _one(client: httpx.AsyncClient, key: str, sym: str, name: str, sub: st
     if price <= 0:
         raise RuntimeError(f"Yahoo: empty price for {sym}")
     change = round((price - prev) / prev * 100, 2) if prev else 0.0
-    return key, {"name": name, "sub": sub, "price": round(price, 2), "change_24h": change}
+    # سری قیمت برای اسپارک‌لاین (تا ۳۰ نقطهٔ آخر)
+    quote = (((result.get("indicators") or {}).get("quote") or [{}])[0]) or {}
+    spark = [round(float(x), 4) for x in (quote.get("close") or []) if x is not None][-30:]
+    return key, {"name": name, "sub": sub, "price": round(price, 2),
+                 "change_24h": change, "spark": spark}
 
 
 async def get_commodities() -> dict[str, Any]:

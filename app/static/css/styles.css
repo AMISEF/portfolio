@@ -228,9 +228,10 @@ a { color: inherit; text-decoration: none; }
 /* چیدمان تک‌ستونه تمام‌عرض (ترتیب: قیمت‌ها، هیت‌مپ، شاخص‌ها، ETF) */
 .page-stack { display: flex; flex-direction: column; align-items: stretch; gap: 16px; width: 100%; }
 .page-stack > * { width: 100%; }
-/* قیمت‌های کلیدی تمام‌عرض → کارت‌های کنار هم که عرض را پر می‌کنند */
-.page-stack .keyprices { display: flex; flex-wrap: wrap; gap: 10px; }
-.page-stack .keyprices .rowitem { flex: 1 1 200px; }
+/* ردیف هیت‌مپ: قیمت‌های کلیدی (کنار) + نقشهٔ حرارتی (اصلی) */
+.hm-row { display: grid; gap: 16px; grid-template-columns: 340px minmax(0, 1fr); align-items: start; }
+@media (max-width: 980px) { .hm-row { grid-template-columns: 1fr; } }
+.page-stack .keyprices { display: flex; flex-direction: column; gap: 9px; }
 
 /* ---------- ردیف ۵ ارز برتر بازار (کارت افقی) ---------- */
 .topcoins { margin-bottom: 16px; min-width: 0; }
@@ -345,6 +346,8 @@ a { color: inherit; text-decoration: none; }
 .rowitem__name { font-weight: 800; font-size: .92rem; color: var(--heading); }
 .rowitem__sub { font-size: .68rem; color: var(--text-dim); white-space: nowrap; }
 .rowitem__right { text-align: left; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+.kp-spark { width: 50px; height: 26px; flex-shrink: 0; opacity: .9; }
+.kp-spark .spark { width: 100%; height: 100%; }
 .rowitem__price { font-weight: 800; font-size: .92rem; color: var(--heading); font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; padding: 0 3px; border-radius: 6px; }
 .rowitem__vol { font-size: .62rem; color: var(--text-dim); font-family: var(--font-mono); white-space: nowrap; }
 
