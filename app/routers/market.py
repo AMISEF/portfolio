@@ -17,7 +17,7 @@ from fastapi import APIRouter
 
 from app.cache import cache, cmc_budget, credit_budget
 from app.config import settings
-from app.services import coinmarketcap, etf_flows, mock_data, sourcearena, tabdeal, toobit
+from app.services import coinmarketcap, cryptorank, etf_flows, mock_data, sourcearena, tabdeal, toobit
 from app.services import commodities as commodities_svc
 
 router = APIRouter(prefix="/api/market", tags=["market"])
@@ -57,8 +57,37 @@ async def etf():
 
 @router.get("/heatmap")
 async def heatmap():
-    """نقشهٔ حرارتی زنده از توبیت (قیمت و تغییر ۲۴ساعتهٔ لحظه‌ای)."""
-    return await toobit.heatmap()
+    """نقشهٔ حرارتی به‌سبک CryptoRank: ساختار (دسته/مارکت‌کپ/حجم/تغییر چنددوره‌ای)
+    از CryptoRank + قیمت و تغییر ۲۴ساعتهٔ زندهٔ توبیت روی آن (هر ۵ ثانیه).
+    در نبود CryptoRank، به دادهٔ زندهٔ توبیت (فقط ۲۴ساعته) برمی‌گردد."""
+    cr, tb = await asyncio.gather(_safe(cryptorank.heatmap()), _safe(toobit.heatmap()))
+
+    # نگاشت قیمت/تغییر زندهٔ ۲۴ساعته از توبیت
+    live = {}
+    if isinstance(tb, dict) and tb.get("heatmap"):
+        live = {x["symbol"]: x for x in tb["heatmap"]}
+
+    if isinstance(cr, dict) and "error" not in cr and cr.get("items"):
+        for it in cr["items"]:
+            lv = live.get(it["symbol"])
+            if lv:
+                it["price"] = lv["price"]
+                ch = dict(it.get("changes") or {})
+                ch["h24"] = lv["change_24h"]
+                it["changes"] = ch
+        return {"source": cr.get("source", "live"), "items": cr["items"]}
+
+    # پشتیبان: فقط توبیت (تغییر ۲۴ساعته)
+    if live:
+        items = [{
+            "symbol": x["symbol"], "name": x.get("name", x["symbol"]),
+            "category": x.get("category", "Other"), "type": "coin",
+            "price": x["price"], "market_cap": x["market_cap"], "volume": x["market_cap"],
+            "changes": {"h24": x["change_24h"], "d7": 0, "d30": 0, "m3": 0, "y1": 0, "ytd": 0},
+        } for x in tb["heatmap"]]
+        return {"source": tb.get("source", "live"), "items": items}
+
+    return mock_data.cr_heatmap()
 
 
 @router.get("/coins")
@@ -209,6 +238,13 @@ async def debug():
 
     for (name, _), res in zip(raw_calls, results[10:]):
         out["raw"][name] = res
+
+    # CryptoRank: پاسخ خام /currencies برای تثبیت نگاشت دسته/دوره‌ها + خلاصهٔ پارس‌شده
+    out["raw"]["cryptorank"] = await _safe(cryptorank.raw_debug())
+    crh = await _safe(cryptorank.heatmap())
+    out["parsed"]["cr_heatmap"] = crh if "error" in crh else {
+        "source": crh.get("source"), "count": len(crh.get("items", [])),
+        "sample": (crh.get("items") or [])[:3]}
 
     # کوتاه‌کردن تیکر بزرگ توبیت
     tb = out["raw"].get("toobit_ticker24", {}).get("json")

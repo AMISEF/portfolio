@@ -103,13 +103,25 @@
         <span class="src-tag" id="heatmapSrc"></span>
       </div>
       <div class="card__body">
-        <div class="heatmap" id="heatmap"><span class="skeleton">Loading…</span></div>
-        <div class="heatmap-legend" dir="ltr">
-          <span><i style="background:var(--down)"></i> Down</span>
-          <span><i style="background:var(--warn)"></i> Flat</span>
-          <span><i style="background:var(--up)"></i> Up</span>
-          <span class="heatmap-legend__src">Size = 24h volume · Source: Toobit</span>
+        <div class="hm-controls" dir="ltr">
+          <div class="hm-seg" id="hmPeriod">
+            <button data-p="h24" class="is-active">24H</button>
+            <button data-p="d7">7D</button>
+            <button data-p="d30">30D</button>
+            <button data-p="m3">3M</button>
+            <button data-p="y1">1Y</button>
+            <button data-p="ytd">YTD</button>
+          </div>
+          <div class="hm-seg" id="hmSize">
+            <button data-s="mcap" class="is-active">Market Cap</button>
+            <button data-s="volume">Volume</button>
+            <button data-s="equal">Category</button>
+          </div>
+          <label class="hm-chk"><input type="checkbox" id="hmExBtc"> Exclude Bitcoin</label>
+          <label class="hm-chk"><input type="checkbox" id="hmExStable" checked> Exclude Stablecoins</label>
         </div>
+        <div class="heatmap" id="heatmap"><span class="skeleton">Loading…</span></div>
+        <div class="hm-legend" id="hmLegend" dir="ltr"></div>
       </div>
     </div>
 

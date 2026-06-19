@@ -130,6 +130,60 @@ async def macro() -> dict[str, Any]:
         return cache.get_stale(_KEY) or mock_data.macro()
 
 
+# ---- نقشهٔ حرارتی غنی (به‌سبک cryptorank.io/heatmaps) ----
+# دسته‌بندی + مارکت‌کپ + حجم + تغییر چنددوره‌ای. ساختار هر ۵ دقیقه کش می‌شود
+# (بودجه‌محور)؛ قیمت زندهٔ ۲۴ساعته در روتر با توبیت روی آن سوار می‌شود.
+async def get_heatmap() -> dict[str, Any]:
+    if not settings.cryptorank_api_key:
+        return mock_data.cr_heatmap()
+    timeout = httpx.Timeout(settings.http_timeout)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        coins = await _fetch_currencies(client, limit=settings.cryptorank_heatmap_limit)
+
+    items = []
+    for c in coins:
+        sym = (c.get("symbol") or "").upper()
+        if not sym:
+            continue
+        mc = _coin_mc(c)
+        items.append({
+            "symbol": sym,
+            "name": c.get("name") or sym,
+            "category": _category_of(c),
+            "type": (c.get("type") or "").lower(),
+            "price": _coin_price(c),
+            "market_cap": mc,
+            "volume": _coin_vol(c),
+            "changes": _changes(c),
+        })
+    items = [i for i in items if i["market_cap"] > 0]
+    if not items:
+        raise RuntimeError("CryptoRank heatmap: empty/unexpected currencies shape")
+    return {"source": "live", "items": items}
+
+
+async def heatmap() -> dict[str, Any]:
+    from app.cache import cached
+    return await cached("cryptorank:heatmap", settings.cryptorank_heatmap_ttl,
+                        get_heatmap, mock_data.cr_heatmap)
+
+
+def _changes(c: dict) -> dict[str, float]:
+    """درصد تغییر چنددوره‌ای؛ مقاوم به هر دو شکل (شیء percentChange یا فیلدهای تخت)."""
+    v = _coin_values(c)
+    pc = v.get("percentChange") if isinstance(v.get("percentChange"), dict) else None
+    if pc is None:
+        pc = c.get("percentChange") if isinstance(c.get("percentChange"), dict) else {}
+    return {
+        "h24": _num(pc, "h24", "24h", "d1") or _num(v, "percentChange24h", "change24h") or _num(c, "percentChange24h"),
+        "d7": _num(pc, "d7", "7d", "w1") or _num(v, "percentChange7d") or _num(c, "percentChange7d"),
+        "d30": _num(pc, "d30", "30d", "m1") or _num(v, "percentChange30d") or _num(c, "percentChange30d"),
+        "m3": _num(pc, "m3", "3m", "d90") or _num(v, "percentChange3m") or _num(c, "percentChange3m"),
+        "y1": _num(pc, "y1", "1y", "d365") or _num(v, "percentChange1y") or _num(c, "percentChange1y"),
+        "ytd": _num(pc, "ytd", "YTD") or _num(v, "percentChangeYtd") or _num(c, "percentChangeYtd"),
+    }
+
+
 async def raw_debug() -> dict[str, Any]:
     """پاسخ خام /global و /currencies برای عیب‌یابی (وضعیت + نمونهٔ کوتاه)."""
     out: dict[str, Any] = {"api_key_set": bool(settings.cryptorank_api_key)}

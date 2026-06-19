@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     cryptorank_cost_currencies: int = 1
     # کش ۱۰ دقیقه ⇒ حدود ۸٬۶۴۰ کردیت در ماه (< ۱۰٬۰۰۰)
     cryptorank_ttl: int = 600
+    # نقشهٔ حرارتی: ساختار (دسته/مارکت‌کپ/حجم/تغییر چنددوره‌ای) هر ۵ دقیقه از
+    # CryptoRank (۱ کردیت، ۲۸۸/روز < ۴۰۰). قیمت زندهٔ ۲۴ساعته هر ۵ ثانیه از توبیت.
+    cryptorank_heatmap_ttl: int = 300
+    cryptorank_heatmap_limit: int = 100
 
     # ---- Toobit (ارزهای برتر + هیت‌مپ + نفت + تصاویر ارز) ----
     toobit_access_key: str = ""
@@ -37,7 +41,7 @@ class Settings(BaseSettings):
     toobit_base_url: str = "https://api.toobit.com"
     toobit_ttl: int = 12               # سازگاری عقب‌رو
     toobit_coins_ttl: int = 5          # ۵ ارز برتر — هر ۵ ثانیه (زنده)
-    toobit_heatmap_ttl: int = 10       # نقشهٔ حرارتی
+    toobit_heatmap_ttl: int = 5        # قیمت زندهٔ نقشهٔ حرارتی (هر ۵ ثانیه)
     toobit_oil_ttl: int = 120          # نفت کم‌نوسان‌تر
     toobit_gainers_count: int = 5
 

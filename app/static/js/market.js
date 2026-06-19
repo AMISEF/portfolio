@@ -116,7 +116,7 @@
   async function loadHeatmap() {
     try {
       const d = await CS.fetchJSON("/api/market/heatmap");
-      w.CSHeatmap.render($("heatmap"), d.heatmap);
+      w.CSHeatmap.render($("heatmap"), d.items || d.heatmap);
       srcTag($("heatmapSrc"), d.source);
     } catch (e) { console.warn("heatmap:", e); }
   }
@@ -302,7 +302,7 @@
 
   /* ---------- راه‌اندازی + پایش لحظه‌ای ---------- */
   loadMacro();   setInterval(loadMacro, 60 * 1000);    // ۶۰ ثانیه (CoinMarketCap)
-  loadHeatmap(); setInterval(loadHeatmap, 12 * 1000);  // ۱۲ ثانیه (زنده)
+  loadHeatmap(); setInterval(loadHeatmap, 5 * 1000);   // ۵ ثانیه (قیمت زندهٔ توبیت)
   loadCoins();   setInterval(loadCoins, 5 * 1000);     // ۵ ثانیه (زنده — توبیت)
   loadPrices();  setInterval(loadPrices, 8 * 1000);    // ۸ ثانیه (زنده)
   loadEtf();     setInterval(loadEtf, 30 * 60 * 1000); // ۳۰ دقیقه (دادهٔ روزانه)
