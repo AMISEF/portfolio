@@ -19,17 +19,28 @@
 """
 from __future__ import annotations
 
+import asyncio
 import re
+import urllib.parse
 from datetime import datetime
 from typing import Any
 
 import httpx
 
+from app.cache import cache
 from app.config import settings
-from app.services import mock_data
 
 _UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+
+# Farside پشت Cloudflare است و درخواست مستقیم سرور را ۴۰۳ می‌کند؛ پس از چند
+# پراکسی عمومی هم به‌عنوان پشتیبان استفاده می‌کنیم. اولی تلاش مستقیم است.
+_PROXIES = [
+    "",
+    "https://api.allorigins.win/raw?url=",
+    "https://corsproxy.io/?url=",
+    "https://thingproxy.freeboard.io/fetch/",
+]
 
 _ROW_RE = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S | re.I)
 _CELL_RE = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.S | re.I)
@@ -71,17 +82,26 @@ def _parse_table(html: str) -> dict[str, float]:
 
 
 async def _fetch(path: str) -> str:
-    timeout = httpx.Timeout(settings.http_timeout)
-    headers = {"User-Agent": _UA, "Accept": "text/html"}
+    """صفحهٔ Farside را مستقیم و سپس از طریق پراکسی‌های عمومی تلاش می‌کند."""
+    timeout = httpx.Timeout(7.0)
+    headers = {"User-Agent": _UA, "Accept": "text/html,application/xhtml+xml"}
+    target = f"{settings.farside_base_url}{path}"
+    last = "?"
     async with httpx.AsyncClient(timeout=timeout, headers=headers, follow_redirects=True) as client:
-        resp = await client.get(f"{settings.farside_base_url}{path}")
-        resp.raise_for_status()
-        return resp.text
+        for px in _PROXIES:
+            url = (px + urllib.parse.quote(target, safe="")) if px else target
+            try:
+                resp = await client.get(url)
+                if resp.status_code == 200 and "<tr" in resp.text.lower():
+                    return resp.text
+                last = str(resp.status_code)
+            except Exception as e:  # noqa: BLE001
+                last = f"{type(e).__name__}"
+    raise RuntimeError(f"Farside unreachable (last={last})")
 
 
 async def get_flows() -> dict[str, Any]:
-    btc_html = await _fetch("/btc/")
-    eth_html = await _fetch("/eth/")
+    btc_html, eth_html = await asyncio.gather(_fetch("/btc/"), _fetch("/eth/"))
     btc = _parse_table(btc_html)
     eth = _parse_table(eth_html)
     if not btc and not eth:
@@ -111,5 +131,14 @@ async def get_flows() -> dict[str, Any]:
 
 
 async def flows() -> dict[str, Any]:
-    from app.cache import cached
-    return await cached("etf:flows", settings.etf_ttl, get_flows, mock_data.etf_flows)
+    """بدون دادهٔ نمونه: اگر Farside در دسترس نبود، «بدون داده» برمی‌گردد."""
+    hit = cache.get("etf:flows")
+    if hit is not None:
+        return hit
+    try:
+        value = await get_flows()
+        cache.set("etf:flows", value, settings.etf_ttl)
+        return value
+    except Exception:
+        stale = cache.get_stale("etf:flows")
+        return stale if stale is not None else {"source": "unavailable", "points": []}

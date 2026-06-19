@@ -275,7 +275,11 @@
     try {
       const d = await CS.fetchJSON("/api/market/etf");
       renderEtf(d);
-      srcTag($("etfSrc"), d.source);
+      const el = $("etfSrc");
+      if (el) {
+        if (d.source === "live") { el.className = "src-tag live"; el.textContent = "● live"; }
+        else { el.className = "src-tag"; el.textContent = ""; }   // بدون نمونه
+      }
     } catch (e) { console.warn("etf:", e); }
   }
 

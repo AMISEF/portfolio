@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- ===== تیکر متحرک شاخص‌های کلیدی ===== -->
+<!-- ۱) تیکر متحرک شاخص‌های کلیدی -->
 <div class="ticker rise" aria-label="شاخص‌های کلیدی بازار">
   <div class="ticker__track" id="tickerTrack">
     <span class="ticker__item skeleton">در حال بارگذاری شاخص‌ها…</span>
   </div>
 </div>
 
-<!-- ===== عنوان + تاریخ/ساعت ===== -->
+<!-- ۲) عنوان + تاریخ/ساعت -->
 <section class="market-head">
   <div class="market-head__title">نمای کلی <span class="accent">بازار</span></div>
   <div class="market-head__meta">
@@ -19,7 +19,7 @@
   </div>
 </section>
 
-<!-- ===== ردیف ۵ ارز برتر بازار (زنده از توبیت، هر ۵ ثانیه) ===== -->
+<!-- ۳) ردیف ۵ ارز برتر بازار (زنده از توبیت، هر ۵ ثانیه) -->
 <section class="topcoins rise" style="animation-delay:.04s">
   <div class="topcoins__head">
     <span class="topcoins__title">ارزهای برتر بازار</span>
@@ -28,160 +28,154 @@
   <div class="topcoins__row" id="topCoins"><span class="skeleton">بارگذاری…</span></div>
 </section>
 
-<!-- ===== شبکهٔ نمای کلی ===== -->
-<div class="overview">
+<!-- چیدمان تک‌ستونه طبق ترتیب درخواستی -->
+<div class="overview overview--stack rise" style="animation-delay:.1s">
 
-  <!-- ستون اصلی: کارت‌های شاخص + نقشهٔ حرارتی -->
-  <div class="ov-main rise" style="animation-delay:.1s">
-
-    <!-- چهار کارت شاخص: ارزش بازار، دامیننس، فصل آلت‌کوین، ترس و طمع -->
-    <div class="index-grid">
-
-      <!-- ارزش کل بازار + حجم -->
-      <div class="card index-card">
-        <div class="card__head">
-          <span class="card__title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
-            ارزش کل بازار
-          </span>
-          <span class="src-tag" id="macroSrc"></span>
-        </div>
-        <div class="card__body">
-          <div class="mcap" id="boxMarketCap"><span class="skeleton">بارگذاری…</span></div>
-        </div>
-      </div>
-
-      <!-- دامیننس بیت‌کوین / اتریوم / سایر -->
-      <div class="card index-card">
-        <div class="card__head">
-          <span class="card__title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18"/></svg>
-            دامیننس بیت‌کوین
-          </span>
-        </div>
-        <div class="card__body">
-          <div class="dom" id="boxDominance"><span class="skeleton">بارگذاری…</span></div>
-        </div>
-      </div>
-
-      <!-- شاخص فصل آلت‌کوین -->
-      <div class="card index-card">
-        <div class="card__head">
-          <span class="card__title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><circle cx="9" cy="12" r="3"/><path d="M14 7l5 5-5 5"/></svg>
-            شاخص آلت‌سیزن
-          </span>
-        </div>
-        <div class="card__body">
-          <div class="alt" id="boxAltseason"><span class="skeleton">بارگذاری…</span></div>
-        </div>
-      </div>
-
-      <!-- شاخص ترس و طمع -->
-      <div class="card index-card">
-        <div class="card__head">
-          <span class="card__title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 0 0-9 9h18a9 9 0 0 0-9-9z"/><path d="M12 12l5-3"/></svg>
-            شاخص ترس و طمع
-          </span>
-          <span class="live-dot"></span>
-        </div>
-        <div class="card__body">
-          <div class="gauge" id="fngGauge"><span class="skeleton">بارگذاری…</span></div>
-        </div>
-      </div>
-
-      <!-- میانگین RSI بازار -->
-      <div class="card index-card">
-        <div class="card__head">
-          <span class="card__title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 16l4-6 4 3 5-8 5 7"/></svg>
-            میانگین RSI بازار
-          </span>
-          <span class="live-dot"></span>
-        </div>
-        <div class="card__body">
-          <div class="rsi" id="boxRsi"><span class="skeleton">بارگذاری…</span></div>
-        </div>
-      </div>
-
+  <!-- ۴) قیمت‌های کلیدی -->
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 10h4.5a1.5 1.5 0 0 1 0 3H9h5"/></svg>
+        قیمت‌های کلیدی
+      </span>
+      <span class="live-badge live-badge--brand"><span class="live-dot live-dot--brand"></span> لحظه‌ای</span>
     </div>
-
-    <!-- نقشهٔ حرارتی -->
-    <div class="card">
-      <div class="card__head">
-        <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="3" y="15" width="7" height="6" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg>
-          <span dir="ltr">Market Heatmap</span>
-        </span>
-        <span class="src-tag" id="heatmapSrc"></span>
-      </div>
-      <div class="card__body">
-        <div class="hm-controls" dir="ltr">
-          <div class="hm-seg" id="hmPeriod">
-            <button data-p="h24" class="is-active">24H</button>
-            <button data-p="d7">7D</button>
-            <button data-p="d30">30D</button>
-            <button data-p="m3">3M</button>
-          </div>
-          <select class="hm-select" id="hmTop" aria-label="تعداد نمایش">
-            <option value="all">All</option>
-            <option value="10">Top-10</option>
-            <option value="100" selected>Top-100</option>
-            <option value="150">Top-150</option>
-            <option value="200">Top-200</option>
-            <option value="500">Top-500</option>
-            <option value="coins">Coins</option>
-            <option value="tokens">Tokens</option>
-          </select>
-          <div class="hm-seg" id="hmSize">
-            <button data-s="mcap" class="is-active">Market Cap</button>
-            <button data-s="volume">Volume</button>
-            <button data-s="equal">Category</button>
-          </div>
-          <label class="hm-chk"><input type="checkbox" id="hmExBtc"> Exclude Bitcoin</label>
-          <label class="hm-chk"><input type="checkbox" id="hmExStable" checked> Exclude Stablecoins</label>
-        </div>
-        <div class="heatmap" id="heatmap"><span class="skeleton">Loading…</span></div>
-        <div class="hm-legend" id="hmLegend" dir="ltr"></div>
-      </div>
-    </div>
-
-    <!-- جریان خالص ETFهای کریپتو (Crypto ETFs Net Flow) -->
-    <div class="card">
-      <div class="card__head">
-        <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="3" y2="21"/><line x1="9" y1="6" x2="9" y2="21"/><line x1="15" y1="9" x2="15" y2="21"/><line x1="21" y1="4" x2="21" y2="21"/><line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="2 2" opacity=".5"/></svg>
-          <span dir="ltr">Crypto ETFs Net Flow</span>
-        </span>
-        <span class="src-tag" id="etfSrc"></span>
-      </div>
-      <div class="card__body">
-        <div class="etf" id="etfChart"><span class="skeleton">Loading…</span></div>
-        <div class="etf-legend" dir="ltr">
-          <span><i style="background:#F7931A"></i> Bitcoin ETFs</span>
-          <span><i style="background:#3861FB"></i> Ethereum ETFs</span>
-          <span class="etf-legend__src">US$ million · Source: Farside Investors</span>
-        </div>
-      </div>
+    <div class="card__body">
+      <div class="keyprices" id="keyPrices"><span class="skeleton">بارگذاری…</span></div>
     </div>
   </div>
 
-  <!-- ستون کناری: قیمت‌های کلیدی -->
-  <aside class="ov-side rise" style="animation-delay:.16s">
-    <div class="card">
+  <!-- ۵) نقشهٔ حرارتی -->
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="3" y="15" width="7" height="6" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg>
+        <span dir="ltr">Market Heatmap</span>
+      </span>
+      <span class="src-tag" id="heatmapSrc"></span>
+    </div>
+    <div class="card__body">
+      <div class="hm-controls" dir="ltr">
+        <div class="hm-seg" id="hmPeriod">
+          <button data-p="h24" class="is-active">24H</button>
+          <button data-p="d7">7D</button>
+          <button data-p="d30">30D</button>
+          <button data-p="m3">3M</button>
+        </div>
+        <select class="hm-select" id="hmTop" aria-label="تعداد نمایش">
+          <option value="all">All</option>
+          <option value="10">Top-10</option>
+          <option value="100" selected>Top-100</option>
+          <option value="150">Top-150</option>
+          <option value="200">Top-200</option>
+          <option value="500">Top-500</option>
+          <option value="coins">Coins</option>
+          <option value="tokens">Tokens</option>
+        </select>
+        <div class="hm-seg" id="hmSize">
+          <button data-s="mcap" class="is-active">Market Cap</button>
+          <button data-s="volume">Volume</button>
+          <button data-s="equal">Category</button>
+        </div>
+        <label class="hm-chk"><input type="checkbox" id="hmExBtc"> Exclude Bitcoin</label>
+        <label class="hm-chk"><input type="checkbox" id="hmExStable" checked> Exclude Stablecoins</label>
+      </div>
+      <div class="heatmap" id="heatmap"><span class="skeleton">Loading…</span></div>
+      <div class="hm-legend" id="hmLegend" dir="ltr"></div>
+    </div>
+  </div>
+
+  <!-- ۶..۱۰) کارت‌های شاخص: ارزش بازار، دامیننس، آلت‌سیزن، ترس‌وطمع، میانگین RSI -->
+  <div class="index-grid">
+
+    <!-- ۶) ارزش کل بازار + حجم -->
+    <div class="card index-card">
       <div class="card__head">
         <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 10h4.5a1.5 1.5 0 0 1 0 3H9h5"/></svg>
-          قیمت‌های کلیدی
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+          ارزش کل بازار
         </span>
-        <span class="live-badge live-badge--brand"><span class="live-dot live-dot--brand"></span> لحظه‌ای</span>
+        <span class="src-tag" id="macroSrc"></span>
       </div>
       <div class="card__body">
-        <div class="keyprices" id="keyPrices"><span class="skeleton">بارگذاری…</span></div>
+        <div class="mcap" id="boxMarketCap"><span class="skeleton">بارگذاری…</span></div>
       </div>
     </div>
-  </aside>
+
+    <!-- ۷) دامیننس بیت‌کوین / اتریوم / سایر -->
+    <div class="card index-card">
+      <div class="card__head">
+        <span class="card__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18"/></svg>
+          دامیننس بیت‌کوین
+        </span>
+      </div>
+      <div class="card__body">
+        <div class="dom" id="boxDominance"><span class="skeleton">بارگذاری…</span></div>
+      </div>
+    </div>
+
+    <!-- ۸) شاخص آلت‌سیزن -->
+    <div class="card index-card">
+      <div class="card__head">
+        <span class="card__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h16"/><circle cx="9" cy="12" r="3"/><path d="M14 7l5 5-5 5"/></svg>
+          شاخص آلت‌سیزن
+        </span>
+      </div>
+      <div class="card__body">
+        <div class="alt" id="boxAltseason"><span class="skeleton">بارگذاری…</span></div>
+      </div>
+    </div>
+
+    <!-- ۹) شاخص ترس و طمع -->
+    <div class="card index-card">
+      <div class="card__head">
+        <span class="card__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 0 0-9 9h18a9 9 0 0 0-9-9z"/><path d="M12 12l5-3"/></svg>
+          شاخص ترس و طمع
+        </span>
+        <span class="live-dot"></span>
+      </div>
+      <div class="card__body">
+        <div class="gauge" id="fngGauge"><span class="skeleton">بارگذاری…</span></div>
+      </div>
+    </div>
+
+    <!-- ۱۰) میانگین RSI بازار -->
+    <div class="card index-card">
+      <div class="card__head">
+        <span class="card__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 16l4-6 4 3 5-8 5 7"/></svg>
+          میانگین RSI بازار
+        </span>
+        <span class="live-dot"></span>
+      </div>
+      <div class="card__body">
+        <div class="rsi" id="boxRsi"><span class="skeleton">بارگذاری…</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ۱۱) جریان خالص ETFهای کریپتو (Crypto ETFs Net Flow) -->
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="3" y2="21"/><line x1="9" y1="6" x2="9" y2="21"/><line x1="15" y1="9" x2="15" y2="21"/><line x1="21" y1="4" x2="21" y2="21"/><line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="2 2" opacity=".5"/></svg>
+        <span dir="ltr">Crypto ETFs Net Flow</span>
+      </span>
+      <span class="src-tag" id="etfSrc"></span>
+    </div>
+    <div class="card__body">
+      <div class="etf" id="etfChart"><span class="skeleton">Loading…</span></div>
+      <div class="etf-legend" dir="ltr">
+        <span><i style="background:#F7931A"></i> Bitcoin ETFs</span>
+        <span><i style="background:#3861FB"></i> Ethereum ETFs</span>
+        <span class="etf-legend__src">US$ million · Source: Farside Investors</span>
+      </div>
+    </div>
+  </div>
 
 </div>
 
