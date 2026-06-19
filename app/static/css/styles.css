@@ -349,6 +349,9 @@ a { color: inherit; text-decoration: none; }
 .hm-seg button.is-active { background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%); color: var(--on-brand); }
 .hm-chk { display: inline-flex; align-items: center; gap: 6px; font-size: .76rem; font-weight: 700; color: var(--text-soft); cursor: pointer; }
 .hm-chk input { accent-color: var(--brand); width: 15px; height: 15px; }
+.hm-select { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text);
+  font-weight: 800; font-size: .76rem; padding: 6px 10px; cursor: pointer; font-family: var(--font); }
+.hm-select:focus { outline: none; border-color: var(--brand); }
 
 .heatmap { position: relative; width: 100%; overflow: hidden; border-radius: 8px; }
 .hm-cat { position: absolute; overflow: hidden; }

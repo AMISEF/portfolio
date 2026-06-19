@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     # نقشهٔ حرارتی: ساختار (دسته/مارکت‌کپ/حجم/تغییر چنددوره‌ای) هر ۵ دقیقه از
     # CryptoRank (۱ کردیت، ۲۸۸/روز < ۴۰۰). قیمت زندهٔ ۲۴ساعته هر ۵ ثانیه از توبیت.
     cryptorank_heatmap_ttl: int = 300
-    cryptorank_heatmap_limit: int = 100
+    cryptorank_heatmap_limit: int = 500
 
     # ---- Toobit (ارزهای برتر + هیت‌مپ + نفت + تصاویر ارز) ----
     toobit_access_key: str = ""

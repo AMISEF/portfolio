@@ -169,19 +169,32 @@ async def heatmap() -> dict[str, Any]:
 
 
 def _changes(c: dict) -> dict[str, float]:
-    """درصد تغییر چنددوره‌ای؛ مقاوم به هر دو شکل (شیء percentChange یا فیلدهای تخت)."""
+    """درصد تغییر چنددوره‌ای. ساختار v2: percentChange:{h24,d7,d30,m3,m6} با
+    مقادیر رشته‌ای (در سطح ارز). با fallback به values.USD و فیلدهای تخت."""
     v = _coin_values(c)
-    pc = v.get("percentChange") if isinstance(v.get("percentChange"), dict) else None
-    if pc is None:
-        pc = c.get("percentChange") if isinstance(c.get("percentChange"), dict) else {}
+    pc = c.get("percentChange")
+    if not isinstance(pc, dict):
+        pc = v.get("percentChange") if isinstance(v.get("percentChange"), dict) else {}
+
+    def g(okey: str, *flat: str) -> float:
+        if okey in pc and pc[okey] is not None:
+            return _f1(pc[okey])
+        return _num(v, *flat) or _num(c, *flat)
+
     return {
-        "h24": _num(pc, "h24", "24h", "d1") or _num(v, "percentChange24h", "change24h") or _num(c, "percentChange24h"),
-        "d7": _num(pc, "d7", "7d", "w1") or _num(v, "percentChange7d") or _num(c, "percentChange7d"),
-        "d30": _num(pc, "d30", "30d", "m1") or _num(v, "percentChange30d") or _num(c, "percentChange30d"),
-        "m3": _num(pc, "m3", "3m", "d90") or _num(v, "percentChange3m") or _num(c, "percentChange3m"),
-        "y1": _num(pc, "y1", "1y", "d365") or _num(v, "percentChange1y") or _num(c, "percentChange1y"),
-        "ytd": _num(pc, "ytd", "YTD") or _num(v, "percentChangeYtd") or _num(c, "percentChangeYtd"),
+        "h24": g("h24", "percentChange24h", "change24h"),
+        "d7": g("d7", "percentChange7d"),
+        "d30": g("d30", "percentChange30d"),
+        "m3": g("m3", "percentChange3m"),
+        "m6": g("m6", "percentChange6m"),
     }
+
+
+def _f1(x) -> float:
+    try:
+        return round(float(str(x).replace(",", "").replace("%", "").strip()), 2)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 async def raw_debug() -> dict[str, Any]:

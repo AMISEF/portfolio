@@ -190,9 +190,9 @@ def cr_heatmap() -> dict:
         ("LAB", "LayerAI", "Exchange", 15.0, 1_100_000_000, 60_000_000, -3.31, -6.0, -9.0, -2.0, 8.0, -4.0),
     ]
     return {"source": "sample", "items": [
-        {"symbol": s, "name": n, "category": cat, "type": "coin", "price": p,
-         "market_cap": mc, "volume": vol,
-         "changes": {"h24": h24, "d7": d7, "d30": d30, "m3": m3, "y1": y1, "ytd": ytd}}
+        {"symbol": s, "name": n, "category": cat, "type": ("token" if s in ("HYPE", "ONDO", "LINK", "UNI", "AAVE", "SHIB", "PEPE", "DOGE", "LAB") else "coin"),
+         "price": p, "market_cap": mc, "volume": vol,
+         "changes": {"h24": h24, "d7": d7, "d30": d30, "m3": m3, "m6": y1}}
         for (s, n, cat, p, mc, vol, h24, d7, d30, m3, y1, ytd) in rows
     ]}
 

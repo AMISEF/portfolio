@@ -7,13 +7,11 @@
   const CS = w.CS;
   const STABLE = new Set(["USDT", "USDC", "DAI", "FDUSD", "USDE", "USDS", "TUSD",
     "USD1", "BUSD", "PYUSD", "USDP", "GUSD", "USDD", "FRAX", "LUSD", "USDG"]);
-  const PERIODS = [["h24", "24H"], ["d7", "7D"], ["d30", "30D"], ["m3", "3M"], ["y1", "1Y"], ["ytd", "YTD"]];
-
   let _items = [];
   let _wired = false;
   let _sig = "";
   let _tiles = {};            // symbol → عنصر کاشی (برای به‌روزرسانی بدون بازچینش)
-  const state = { period: "h24", size: "mcap", exBTC: false, exStable: true };
+  const state = { period: "h24", size: "mcap", top: "100", exBTC: false, exStable: true };
 
   // سطل‌های رنگ مطابق راهنمای CryptoRank (-12/-7/-3/<0/0/>0/+3/+7/+12)
   function colorFor(ch) {
@@ -75,11 +73,17 @@
     return it.market_cap || 0;
   }
   function filtered() {
-    return _items.filter((it) => {
+    let list = _items.filter((it) => {
       if (state.exStable && (it.category === "Stablecoin" || STABLE.has((it.symbol || "").toUpperCase()))) return false;
       if (state.exBTC && (it.symbol || "").toUpperCase() === "BTC") return false;
+      if (state.top === "coins" && (it.type || "") !== "coin") return false;
+      if (state.top === "tokens" && (it.type || "") !== "token") return false;
       return (it.market_cap || 0) > 0;
     });
+    list.sort((a, b) => (b.market_cap || 0) - (a.market_cap || 0));
+    const n = parseInt(state.top, 10);
+    if (!isNaN(n)) list = list.slice(0, n);
+    return list;
   }
 
   function tileHTML(it, rc) {
@@ -181,6 +185,8 @@
     };
     seg("hmPeriod", "data-p", "period");
     seg("hmSize", "data-s", "size");
+    const top = document.getElementById("hmTop");
+    if (top) top.addEventListener("change", () => { state.top = top.value; _sig = ""; render(el); });
     const exB = document.getElementById("hmExBtc"), exS = document.getElementById("hmExStable");
     if (exB) exB.addEventListener("change", () => { state.exBTC = exB.checked; _sig = ""; render(el); });
     if (exS) exS.addEventListener("change", () => { state.exStable = exS.checked; _sig = ""; render(el); });
