@@ -90,13 +90,6 @@ class Settings(BaseSettings):
     yahoo_base_url: str = "https://query1.finance.yahoo.com"
     commodities_ttl: int = 300
 
-    # ---- جریان خالص ETFهای کریپتو (Crypto ETFs Net Flow) ----
-    # منبع رایگان Farside Investors (جدول HTML). میزبان باید در allowlist شبکهٔ
-    # سرور باشد. داده روزانه است؛ کش ۳۰ دقیقه کافی است.
-    farside_base_url: str = "https://farside.co.uk"
-    etf_ttl: int = 86400          # ۲۴ ساعت (دادهٔ روزانه)
-    etf_days: int = 30
-
     # مسیر فایل پایدار شمارندهٔ کردیت
     credit_state_file: str = "data/credit_state.json"
 
