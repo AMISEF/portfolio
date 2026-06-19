@@ -192,6 +192,108 @@ async def altseason() -> dict[str, Any]:
                         mock_data.cmc_altseason)
 
 
+# ---- نقشهٔ حرارتی از listings/latest (قیمت/مارکت‌کپ/حجم + تغییر چنددوره‌ای) ----
+_STABLE = {"USDT", "USDC", "DAI", "FDUSD", "USDE", "USDS", "TUSD", "USD1", "BUSD",
+           "PYUSD", "USDP", "GUSD", "USDD", "FRAX", "LUSD", "USDG", "USD0"}
+# نگاشت برچسب CMC → دستهٔ نمایشی (به ترتیب اولویت)
+_CAT_TAGS = [
+    ("stablecoin", "Stablecoin"),
+    ("memes", "Meme"),
+    ("decentralized-exchange", "DeFi"), ("defi", "DeFi"), ("yield", "DeFi"),
+    ("lending", "DeFi"), ("liquid-staking", "DeFi"), ("derivatives", "DeFi"), ("dao", "DeFi"),
+    ("centralized-exchange", "CeFi"), ("exchange-token", "CeFi"), ("exchange-based-tokens", "CeFi"),
+    ("artificial-intelligence", "AI"), ("ai-big-data", "AI"), ("ai-agents", "AI"),
+    ("gaming", "GameFi"), ("metaverse", "GameFi"),
+    ("oracles", "Infrastructure"), ("interoperability", "Infrastructure"),
+    ("infrastructure", "Infrastructure"), ("data-availability", "Infrastructure"),
+    ("real-world-assets", "RWA"), ("tokenized", "RWA"),
+    ("smart-contracts", "Blockchain"), ("layer-1", "Blockchain"), ("layer-2", "Blockchain"),
+    ("store-of-value", "Currency"), ("payments", "Currency"),
+]
+# بازنویسی دستی برای ارزهای بزرگ (وقتی برچسب‌ها مبهم‌اند)
+_SYMBOL_CAT = {
+    "BTC": "Currency", "XRP": "Currency", "LTC": "Currency", "BCH": "Currency",
+    "XMR": "Currency", "ZEC": "Currency", "DASH": "Currency",
+    "ETH": "Blockchain", "BNB": "Blockchain", "SOL": "Blockchain", "ADA": "Blockchain",
+    "TRX": "Blockchain", "AVAX": "Blockchain", "NEAR": "Blockchain", "DOT": "Blockchain",
+    "SUI": "Blockchain", "TON": "Blockchain", "APT": "Blockchain", "HBAR": "Blockchain",
+    "ICP": "Blockchain", "ETC": "Blockchain", "XLM": "Blockchain", "ALGO": "Blockchain",
+    "ATOM": "Blockchain", "SEI": "Blockchain", "KAS": "Blockchain", "TAO": "AI",
+    "LINK": "Infrastructure", "HYPE": "DeFi", "UNI": "DeFi", "AAVE": "DeFi", "ENA": "DeFi",
+    "DOGE": "Meme", "SHIB": "Meme", "PEPE": "Meme", "WIF": "Meme", "BONK": "Meme", "FLOKI": "Meme",
+    "WBT": "CeFi", "LEO": "CeFi", "OKB": "CeFi", "CRO": "CeFi", "BGB": "CeFi", "KCS": "CeFi", "GT": "CeFi",
+    "RENDER": "AI", "FET": "AI", "ONDO": "RWA",
+}
+
+
+def _category_from(symbol: str, tags: list) -> str:
+    s = (symbol or "").upper()
+    if s in _STABLE:
+        return "Stablecoin"
+    if s in _SYMBOL_CAT:
+        return _SYMBOL_CAT[s]
+    tl = [str(t).lower() for t in (tags or [])]
+    for sub, cat in _CAT_TAGS:
+        if any(sub in t for t in tl):
+            return cat
+    return "Other"
+
+
+async def get_heatmap() -> dict[str, Any]:
+    """نقشهٔ حرارتی از listings/latest: مارکت‌کپ/حجم/قیمت + تغییر ۲۴ساعته/۷روزه/
+    ۳۰روزه/۹۰روزه + دسته از برچسب‌ها."""
+    if not settings.cmc_api_key:
+        return mock_data.cr_heatmap()
+    from app.cache import cmc_budget
+    if not cmc_budget.can_spend(1):
+        raise RuntimeError("CMC: credit budget exhausted (heatmap)")
+
+    timeout = httpx.Timeout(settings.http_timeout)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        resp = await client.get(
+            f"{settings.cmc_base_url}/v1/cryptocurrency/listings/latest",
+            params={"start": "1", "limit": str(settings.cmc_heatmap_limit),
+                    "convert": "USD", "sort": "market_cap"},
+            headers=_headers(),
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+    cmc_budget.spend(int(payload.get("status", {}).get("credit_count", 1)) or 1)
+
+    items = []
+    for c in payload.get("data", []) or []:
+        sym = (c.get("symbol") or "").upper()
+        if not sym:
+            continue
+        q = (c.get("quote") or {}).get("USD", {})
+        mc = _f(q, "market_cap")
+        if mc <= 0:
+            continue
+        items.append({
+            "symbol": sym,
+            "name": c.get("name") or sym,
+            "category": _category_from(sym, c.get("tags")),
+            "type": "coin" if c.get("platform") is None else "token",
+            "price": _f(q, "price"),
+            "market_cap": mc,
+            "volume": _f(q, "volume_24h"),
+            "changes": {
+                "h24": round(_f(q, "percent_change_24h"), 2),
+                "d7": round(_f(q, "percent_change_7d"), 2),
+                "d30": round(_f(q, "percent_change_30d"), 2),
+                "m3": round(_f(q, "percent_change_90d"), 2),
+            },
+        })
+    if not items:
+        raise RuntimeError("CMC heatmap: empty listings")
+    return {"source": "live", "items": items}
+
+
+async def heatmap() -> dict[str, Any]:
+    from app.cache import cached
+    return await cached("cmc:heatmap", settings.cmc_heatmap_ttl, get_heatmap, mock_data.cr_heatmap)
+
+
 def _f(d: dict, *keys: str) -> float:
     for k in keys:
         if k in d and d[k] is not None:

@@ -17,7 +17,7 @@ from fastapi import APIRouter
 
 from app.cache import cache, cmc_budget, credit_budget
 from app.config import settings
-from app.services import coinmarketcap, cryptorank, etf_flows, mock_data, sourcearena, tabdeal, toobit
+from app.services import coinmarketcap, etf_flows, mock_data, sourcearena, tabdeal, toobit
 from app.services import commodities as commodities_svc
 
 router = APIRouter(prefix="/api/market", tags=["market"])
@@ -57,10 +57,12 @@ async def etf():
 
 @router.get("/heatmap")
 async def heatmap():
-    """نقشهٔ حرارتی به‌سبک CryptoRank: ساختار (دسته/مارکت‌کپ/حجم/تغییر چنددوره‌ای)
-    از CryptoRank + قیمت و تغییر ۲۴ساعتهٔ زندهٔ توبیت روی آن (هر ۵ ثانیه).
-    در نبود CryptoRank، به دادهٔ زندهٔ توبیت (فقط ۲۴ساعته) برمی‌گردد."""
-    cr, tb = await asyncio.gather(_safe(cryptorank.heatmap()), _safe(toobit.heatmap()))
+    """نقشهٔ حرارتی به‌سبک CryptoRank: ساختار (دسته/مارکت‌کپ/حجم/تغییر ۲۴س/۷ر/۳۰ر/۹۰ر)
+    از CoinMarketCap (listings) + قیمت و تغییر ۲۴ساعتهٔ زندهٔ توبیت روی آن (هر ۵ ثانیه).
+    در نبود CMC، به دادهٔ زندهٔ توبیت (فقط ۲۴ساعته) برمی‌گردد.
+    (توجه: API رایگان CryptoRank در لیست، تغییر چنددوره‌ای ندارد؛ برای همین داده
+    از CMC گرفته می‌شود اما ظاهر کاملاً مثل CryptoRank است.)"""
+    cr, tb = await asyncio.gather(_safe(coinmarketcap.heatmap()), _safe(toobit.heatmap()))
 
     # نگاشت قیمت/تغییر زندهٔ ۲۴ساعته از توبیت
     live = {}
@@ -239,11 +241,11 @@ async def debug():
     for (name, _), res in zip(raw_calls, results[10:]):
         out["raw"][name] = res
 
-    # CryptoRank: پاسخ خام /currencies برای تثبیت نگاشت دسته/دوره‌ها + خلاصهٔ پارس‌شده
-    out["raw"]["cryptorank"] = await _safe(cryptorank.raw_debug())
-    crh = await _safe(cryptorank.heatmap())
-    out["parsed"]["cr_heatmap"] = crh if "error" in crh else {
+    # نقشهٔ حرارتی CMC (دسته/مارکت‌کپ/تغییر چنددوره‌ای) — خلاصهٔ پارس‌شده
+    crh = await _safe(coinmarketcap.heatmap())
+    out["parsed"]["heatmap_cmc"] = crh if "error" in crh else {
         "source": crh.get("source"), "count": len(crh.get("items", [])),
+        "cats": sorted({i.get("category") for i in (crh.get("items") or [])}),
         "sample": (crh.get("items") or [])[:3]}
 
     # کوتاه‌کردن تیکر بزرگ توبیت

@@ -164,7 +164,7 @@
     const stops = [["−۱۲٪", -12], ["−۷٪", -7], ["−۳٪", -3], ["<۰٪", -1], ["۰٪", 0], [">۰٪", 1], ["+۳٪", 3], ["+۷٪", 7], ["+۱۲٪", 12]];
     el.innerHTML = stops.map(([lbl, v]) =>
       '<span class="hm-leg"><i style="background:' + colorFor(v).bg + '"></i>' + lbl + "</span>").join("") +
-      '<span class="heatmap-legend__src">Source: CryptoRank · live: Toobit</span>';
+      '<span class="heatmap-legend__src">Source: CoinMarketCap · live: Toobit</span>';
   }
 
   function wire(el) {

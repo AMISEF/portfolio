@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     cmc_daily_credits: int = 600
     cmc_per_min_credits: int = 40      # زیر ۵۰/دقیقه
     cmc_state_file: str = "data/cmc_credit_state.json"
+    # نقشهٔ حرارتی از listings/latest کوین‌مارکت‌کپ (قیمت/مارکت‌کپ/حجم + تغییر
+    # چنددوره‌ای ۲۴ساعته/۷روزه/۳۰روزه/۹۰روزه + برچسب دسته). کش ۱۰ دقیقه.
+    cmc_heatmap_ttl: int = 600
+    cmc_heatmap_limit: int = 200
 
     # ---- Tabdeal (تتر تومانی — بدون هیچ تبدیلی) ----
     tabdeal_api_key: str = ""
