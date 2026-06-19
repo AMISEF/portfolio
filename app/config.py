@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     toobit_coins_ttl: int = 5          # ۵ ارز برتر — هر ۵ ثانیه (زنده)
     toobit_heatmap_ttl: int = 5        # قیمت زندهٔ نقشهٔ حرارتی (هر ۵ ثانیه)
     toobit_oil_ttl: int = 120          # نفت کم‌نوسان‌تر
+    toobit_sparkline_ttl: int = 60     # شِماتیک قیمت ۵ ارز برتر (هر ۶۰ ثانیه)
+    toobit_rsi_ttl: int = 600          # میانگین RSI بازار (هر ۱۰ دقیقه)
     toobit_gainers_count: int = 5
 
     # ---- CoinMarketCap (شاخص‌های کلان + فصل آلت‌کوین) ----

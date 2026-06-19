@@ -8,14 +8,22 @@
   if (!clockEl) return;
 
   const fmtShamsi = new Intl.DateTimeFormat("fa-IR", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  const fmtGreg = new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "short", day: "2-digit" });
+  const fmtGreg = new Intl.DateTimeFormat("en-GB", { year: "numeric", month: "long", day: "numeric" });
 
   function pad(n) { return (n < 10 ? "0" : "") + n; }
+
+  // «جمعه، ۲۹ خرداد، ۱۴۰۵»
+  function shamsi(now) {
+    const p = fmtShamsi.formatToParts(now);
+    const g = (t) => { const x = p.find((e) => e.type === t); return x ? x.value : ""; };
+    return g("weekday") + "، " + g("day") + " " + g("month") + "، " + g("year");
+  }
 
   function tick() {
     const now = new Date();
     clockEl.textContent = CS.toFa(pad(now.getHours()) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds()));
-    if (shamsiEl) shamsiEl.textContent = fmtShamsi.format(now);
+    if (shamsiEl) shamsiEl.textContent = shamsi(now);
+    // میلادی: «19 June 2026»
     if (gregEl) gregEl.textContent = fmtGreg.format(now);
   }
 

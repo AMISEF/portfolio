@@ -242,8 +242,11 @@ a { color: inherit; text-decoration: none; }
 .coincard__icon img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .coincard__icon.badge { color: #fff; font-weight: 900; font-size: .62rem; background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); }
 .coincard__name { font-weight: 800; font-size: .92rem; color: var(--heading); }
+.coincard__body { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.coincard__left { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .coincard__price { font-weight: 900; font-size: 1.02rem; color: var(--heading); font-family: var(--font-mono); font-variant-numeric: tabular-nums; padding: 0 3px; border-radius: 6px; }
 .coincard .chg { align-self: flex-start; }
+.coincard .spark { width: 56%; max-width: 120px; height: 40px; flex: none; }
 @media (max-width: 880px) {
   /* کاروسل افقی درون‌محصور (صفحه افقی اسکرول نمی‌خورد) */
   .topcoins__row { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
@@ -284,6 +287,14 @@ a { color: inherit; text-decoration: none; }
   background: linear-gradient(to left, #F7931A 0%, #F5B86B 35%, #DCE2E7 50%, #6F95C8 65%, #2D63B0 100%); }
 .alt__knob { position: absolute; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--heading); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
 .alt__ends { display: flex; justify-content: space-between; font-size: .66rem; font-weight: 700; color: var(--text-dim); }
+
+/* کارت میانگین RSI بازار */
+.rsi { display: flex; flex-direction: column; gap: 10px; }
+.rsi__num { font-size: 2rem; font-weight: 900; font-family: var(--font-mono); line-height: 1; }
+.rsi__ends { display: flex; justify-content: space-between; font-size: .66rem; font-weight: 700; color: var(--text-dim); }
+.rsi__bar { position: relative; height: 10px; border-radius: var(--radius-pill);
+  background: linear-gradient(to right, var(--up) 0%, #16a34a 18%, var(--text-dim) 50%, #dc2626 82%, var(--down) 100%); }
+.rsi__knob { position: absolute; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--heading); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
 
 /* ---------- کارت شیشه‌ای ---------- */
 .card {

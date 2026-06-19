@@ -163,6 +163,90 @@ async def heatmap() -> dict[str, Any]:
     return await cached("toobit:heatmap", settings.toobit_heatmap_ttl, get_heatmap, mock_data.toobit_heatmap)
 
 
+# ---- اسپارک‌لاین (شِماتیک قیمت) ۵ ارز برتر از کندل‌های توبیت ----
+async def _closes(client: httpx.AsyncClient, sym: str, interval: str, limit: int) -> list[float]:
+    r = await client.get(f"{settings.toobit_base_url}/quote/v1/klines",
+                         params={"symbol": sym + "USDT", "interval": interval, "limit": str(limit)})
+    r.raise_for_status()
+    data = r.json()
+    rows = data if isinstance(data, list) else (data.get("data") if isinstance(data, dict) else []) or []
+    closes = []
+    for k in rows:
+        if isinstance(k, list) and len(k) >= 5:
+            closes.append(float(k[4]))                      # [t,o,h,l,c,...]
+        elif isinstance(k, dict):
+            closes.append(float(k.get("c") or k.get("close") or 0))
+    return [c for c in closes if c > 0]
+
+
+async def get_sparklines() -> dict[str, Any]:
+    timeout = httpx.Timeout(settings.http_timeout)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        import asyncio
+        res = await asyncio.gather(*[_closes(client, s, "15m", 24) for s in TOP_SYMBOLS],
+                                   return_exceptions=True)
+    out = {}
+    for s, r in zip(TOP_SYMBOLS, res):
+        if isinstance(r, list) and len(r) >= 3:
+            out[s] = [round(x, 6) for x in r]
+    if not out:
+        raise RuntimeError("Toobit: no kline data for sparklines")
+    return {"source": "live", "sparklines": out}
+
+
+async def sparklines() -> dict[str, Any]:
+    from app.cache import cached
+    return await cached("toobit:sparklines", settings.toobit_sparkline_ttl, get_sparklines,
+                        mock_data.toobit_sparklines)
+
+
+# ---- میانگین RSI بازار (RSI-14 روی کندل روزانهٔ ارزهای برتر) ----
+_RSI_SYMS = ["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "TRX", "AVAX", "LINK", "DOT", "LTC"]
+
+
+def _rsi(closes: list[float], period: int = 14) -> float | None:
+    if len(closes) < period + 1:
+        return None
+    gains = losses = 0.0
+    for i in range(1, period + 1):
+        d = closes[i] - closes[i - 1]
+        if d >= 0:
+            gains += d
+        else:
+            losses -= d
+    avg_g, avg_l = gains / period, losses / period
+    for i in range(period + 1, len(closes)):
+        d = closes[i] - closes[i - 1]
+        avg_g = (avg_g * (period - 1) + (d if d > 0 else 0)) / period
+        avg_l = (avg_l * (period - 1) + (-d if d < 0 else 0)) / period
+    if avg_l == 0:
+        return 100.0
+    rs = avg_g / avg_l
+    return 100 - 100 / (1 + rs)
+
+
+async def get_avg_rsi() -> dict[str, Any]:
+    timeout = httpx.Timeout(settings.http_timeout)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        import asyncio
+        res = await asyncio.gather(*[_closes(client, s, "1d", 20) for s in _RSI_SYMS],
+                                   return_exceptions=True)
+    vals = []
+    for r in res:
+        if isinstance(r, list):
+            v = _rsi(r)
+            if v is not None:
+                vals.append(v)
+    if not vals:
+        raise RuntimeError("Toobit: no kline data for RSI")
+    return {"source": "live", "value": round(sum(vals) / len(vals), 2)}
+
+
+async def avg_rsi() -> dict[str, Any]:
+    from app.cache import cached
+    return await cached("toobit:avg_rsi", settings.toobit_rsi_ttl, get_avg_rsi, mock_data.avg_rsi)
+
+
 def _pct(t: dict) -> float:
     """درصد تغییر ۲۴ساعته. pcp کسری است (مثلاً -0.0183 ⇒ -1.83٪)."""
     v = _f(t, "pcp", "priceChangePercent", "P", "changeRate")

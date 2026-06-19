@@ -28,10 +28,11 @@ async def macro():
     """شاخص‌های کلان از CoinMarketCap (ارزش بازار، حجم، دامیننس) + فصل آلت‌کوین
     + شاخص ترس و طمع. هر بخش به‌طور مستقل امن می‌شود تا خطای یک منبع کل پاسخ را
     خراب نکند."""
-    data, alt, fg = await asyncio.gather(
+    data, alt, fg, rsi = await asyncio.gather(
         _safe(coinmarketcap.macro()),
         _safe(coinmarketcap.altseason()),
         _safe(coinmarketcap.fng()),
+        _safe(toobit.avg_rsi()),
     )
     if not isinstance(data, dict) or "error" in data:
         data = mock_data.cmc_macro()
@@ -46,6 +47,8 @@ async def macro():
         data["altcoin_season"] = mock_data.cmc_altseason()["altcoin_season"]
     if isinstance(fg, dict) and "error" not in fg:
         data["fear_greed"] = fg
+    if isinstance(rsi, dict) and "error" not in rsi:
+        data["rsi"] = rsi
     return data
 
 
@@ -94,8 +97,13 @@ async def heatmap():
 
 @router.get("/coins")
 async def coins():
-    """ارزهای برتر بازار (مارکت‌کپ بالا) از توبیت."""
-    return await toobit.top_coins()
+    """۵ ارز برتر از توبیت (قیمت زندهٔ ۵ثانیه) + شِماتیک قیمت (اسپارک‌لاین، ۶۰ثانیه)."""
+    c, sp = await asyncio.gather(_safe(toobit.top_coins()), _safe(toobit.sparklines()))
+    data = c if isinstance(c, dict) and "error" not in c else mock_data.toobit_top_coins()
+    spmap = sp.get("sparklines", {}) if isinstance(sp, dict) and "error" not in sp else {}
+    for coin in data.get("coins", []):
+        coin["spark"] = spmap.get(coin["symbol"], [])
+    return data
 
 
 @router.get("/prices")

@@ -92,6 +92,36 @@
       '</div>';
   }
 
+  /* ---------- شِماتیک قیمت (اسپارک‌لاین) ---------- */
+  function sparkSVG(arr, up) {
+    if (!arr || arr.length < 2) return "";
+    const W = 120, H = 40, p = 3;
+    let min = Infinity, max = -Infinity;
+    arr.forEach((v) => { if (v < min) min = v; if (v > max) max = v; });
+    const rng = (max - min) || 1;
+    const pts = arr.map((v, i) => {
+      const x = p + (i / (arr.length - 1)) * (W - 2 * p);
+      const y = p + (1 - (v - min) / rng) * (H - 2 * p);
+      return x.toFixed(1) + "," + y.toFixed(1);
+    }).join(" ");
+    const col = up ? "var(--up)" : "var(--down)";
+    return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+      '<polyline points="' + pts + '" fill="none" stroke="' + col +
+      '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+  }
+
+  /* ---------- کارت میانگین RSI بازار ---------- */
+  function renderRsi(d) {
+    const r = d.rsi || {};
+    if (!r.value) return;
+    const v = Math.max(0, Math.min(100, r.value));
+    const col = v < 30 ? "var(--up)" : v > 70 ? "var(--down)" : "var(--heading)";
+    $("boxRsi").innerHTML =
+      '<div class="rsi__top"><span class="rsi__num" style="color:' + col + '">' + CS.toFa(v.toFixed(2)) + '</span></div>' +
+      '<div class="rsi__ends" dir="ltr"><span>Oversold</span><span>Overbought</span></div>' +
+      '<div class="rsi__bar"><span class="rsi__knob" style="left:calc(' + v + '% - 9px)"></span></div>';
+  }
+
   /* ---------- کارت فصل آلت‌کوین (نوار رنگی + نشانگر) ---------- */
   function renderAltseason(d) {
     const a = d.altcoin_season || { value: 0, label_fa: "" };
@@ -106,7 +136,7 @@
   async function loadMacro() {
     try {
       const d = await CS.fetchJSON("/api/market/macro");
-      renderTicker(d); renderMarketCap(d); renderDominance(d); renderAltseason(d);
+      renderTicker(d); renderMarketCap(d); renderDominance(d); renderAltseason(d); renderRsi(d);
       if (d.fear_greed) w.CSGauge.render($("fngGauge"), d.fear_greed);
       srcTag($("macroSrc"), d.source);
     } catch (e) { console.warn("macro:", e); }
@@ -257,8 +287,13 @@
         '<div class="coincard" data-sym="' + g.symbol + '">' +
         '<div class="coincard__head">' + coinIcon(g.symbol, "coincard__icon") +
           '<span class="coincard__name">' + g.symbol + '</span></div>' +
-        '<div class="coincard__price" data-price>' + CS.faPriceUsd(g.price) + '</div>' +
-        '<span class="chg ' + CS.chgClass(g.change_24h) + '">' + CS.faPct(g.change_24h) + '</span>' +
+        '<div class="coincard__body">' +
+          '<div class="coincard__left">' +
+            '<div class="coincard__price" data-price>' + CS.faPriceUsd(g.price) + '</div>' +
+            '<span class="chg ' + CS.chgClass(g.change_24h) + '">' + CS.faPct(g.change_24h) + '</span>' +
+          '</div>' +
+          sparkSVG(g.spark, g.change_24h >= 0) +
+        '</div>' +
         '</div>'
       ).join("");
       d.coins.forEach((g) => {
