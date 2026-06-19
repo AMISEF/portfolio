@@ -175,6 +175,14 @@
         '" text-anchor="middle" class="etf__xlbl">' + pts[i].label + '</text>';
     }
 
+    // نواحی شفاف برای hover (کل ارتفاع ستون) تا تولتیپ نمایش داده شود
+    let hits = "";
+    pts.forEach((p, i) => {
+      const x = padX + slot * i;
+      hits += '<rect class="etf__hit" x="' + x.toFixed(1) + '" y="' + padT +
+        '" width="' + slot.toFixed(1) + '" height="' + plotH + '" fill="transparent" data-i="' + i + '"/>';
+    });
+
     const last = pts[pts.length - 1];
     const totalCls = last.total >= 0 ? "up" : "down";
     const sign = last.total >= 0 ? "+" : "−";
@@ -182,10 +190,55 @@
       CS.toFa(Math.abs(last.total).toLocaleString("en-US")) + 'M</span>' +
       '<span class="etf__date" dir="ltr">' + last.label + '</span></div>';
 
-    el.innerHTML = head +
+    _etfPts = pts;
+    el.innerHTML = head + '<div class="etf-tip" id="etfTip" hidden></div>' +
       '<svg class="etf__svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet">' +
       '<line x1="' + padX + '" y1="' + y0.toFixed(1) + '" x2="' + (W - padX) + '" y2="' + y0.toFixed(1) +
-      '" stroke="var(--border)" stroke-width="1"/>' + bars + labels + '</svg>';
+      '" stroke="var(--border)" stroke-width="1"/>' + bars + labels + hits + '</svg>';
+    attachEtfHover(el);
+  }
+
+  // فرمت دلاری کامل از مقدار میلیون‌دلاری (مثلاً ‎-101.1 ⇒ ‎−$۱۰۱٬۱۰۰٬۰۰۰)
+  function etfUsd(m) {
+    const n = Math.round(m * 1e6);
+    return (n < 0 ? "−$" : "$") + CS.toFa(Math.abs(n).toLocaleString("en-US"));
+  }
+  function etfDate(iso) {
+    const p = String(iso || "").split("-");
+    return p.length === 3 ? CS.toFa(p[1] + "/" + p[2] + "/" + p[0]) : CS.toFa(iso || "");
+  }
+
+  let _etfPts = [];
+  function attachEtfHover(root) {
+    const tip = root.querySelector("#etfTip");
+    if (!tip) return;
+    const showAt = (e, i) => {
+      const p = _etfPts[i];
+      if (!p) return;
+      tip.innerHTML =
+        '<div class="etf-tip__date" dir="ltr">' + etfDate(p.date) + '</div>' +
+        '<div class="etf-tip__row"><span class="etf-tip__dot" style="background:#F7931A"></span>' +
+          '<span>Bitcoin</span><b dir="ltr">' + etfUsd(p.btc) + '</b></div>' +
+        '<div class="etf-tip__row"><span class="etf-tip__dot" style="background:#3861FB"></span>' +
+          '<span>Ethereum</span><b dir="ltr">' + etfUsd(p.eth) + '</b></div>' +
+        '<div class="etf-tip__row etf-tip__total"><span class="etf-tip__dot" style="background:transparent"></span>' +
+          '<span>Total</span><b dir="ltr">' + etfUsd(p.total) + '</b></div>';
+      tip.hidden = false;
+      const r = root.getBoundingClientRect();
+      const cx = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+      const cy = (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+      let left = cx + 14;
+      if (left + tip.offsetWidth > r.width) left = cx - tip.offsetWidth - 14;
+      tip.style.left = Math.max(4, left) + "px";
+      tip.style.top = Math.max(4, cy - tip.offsetHeight / 2) + "px";
+    };
+    root.querySelectorAll(".etf__hit").forEach((hit) => {
+      const i = +hit.dataset.i;
+      hit.addEventListener("mouseenter", (e) => showAt(e, i));
+      hit.addEventListener("mousemove", (e) => showAt(e, i));
+      hit.addEventListener("mouseleave", () => { tip.hidden = true; });
+      hit.addEventListener("touchstart", (e) => { showAt(e, i); }, { passive: true });
+    });
   }
 
   async function loadEtf() {

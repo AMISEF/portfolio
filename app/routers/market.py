@@ -93,11 +93,22 @@ async def prices():
         if usd_chg and not usdt_irt.get("change_24h"):
             usdt_irt["change_24h"] = usd_chg
 
+    # طلای ۱۸ عیار: قیمت از SourceArena. درصد تغییر هم از SourceArena؛ اما وقتی
+    # بازار طلای ایران بسته است SourceArena صفر می‌دهد — در آن صورت تغییر را از
+    # «تغییر انس جهانی + تغییر دلار آزاد» تخمین می‌زنیم تا ثابت نماند.
+    gold_18k = metals.get("gold_18k") if isinstance(metals, dict) else None
+    if isinstance(gold_18k, dict) and not gold_18k.get("change_24h"):
+        xau_chg = (commodities.get("XAU") or {}).get("change_24h") or 0
+        usd_chg = metals.get("usd_change_24h") if isinstance(metals, dict) else 0
+        est = round((xau_chg or 0) + (usd_chg or 0), 2)
+        if est:
+            gold_18k["change_24h"] = est
+
     fg = cache.get("fng") or mock_data.fear_greed()
 
     return {
         "usdt_irt": usdt_irt,
-        "gold_18k": metals.get("gold_18k") if isinstance(metals, dict) else None,
+        "gold_18k": gold_18k,
         "commodities": commodities,
         "fear_greed": fg,
         "sources": {

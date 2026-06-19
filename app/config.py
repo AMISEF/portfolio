@@ -60,11 +60,11 @@ class Settings(BaseSettings):
     tabdeal_base_url: str = "https://api.tabdeal.org"
     tabdeal_ttl: int = 15
 
-    # ---- SourceArena (طلای ۱۸ عیار — هر نیم ساعت) ----
+    # ---- SourceArena (طلای ۱۸ عیار + دلار آزاد — هر ۱۵ دقیقه) ----
     sourcearena_token: str = ""
     # برای دسترسی از سرور خارج از ایران
     sourcearena_base_url: str = "https://sa.resicard.ir/api"
-    sourcearena_ttl: int = 1800
+    sourcearena_ttl: int = 900
 
     # ---- CoinGecko (شاخص‌های کلان دقیق — بدون کلید) ----
     coingecko_base_url: str = "https://api.coingecko.com/api/v3"

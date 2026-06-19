@@ -371,7 +371,18 @@ a { color: inherit; text-decoration: none; }
 /* ==========================================================================
    نمودار جریان خالص ETFها
    ========================================================================== */
-.etf { width: 100%; }
+.etf { width: 100%; position: relative; }
+.etf__hit { cursor: crosshair; }
+.etf__hit:hover { fill: rgba(127,127,127,.08); }
+.etf-tip { position: absolute; z-index: 6; min-width: 200px; padding: 10px 12px; border-radius: 10px;
+  background: var(--surface-solid, #0d1b30); border: 1px solid var(--border); box-shadow: var(--shadow-pop);
+  pointer-events: none; font-size: .78rem; }
+.etf-tip__date { font-weight: 800; color: var(--heading); margin-bottom: 6px; }
+.etf-tip__row { display: flex; align-items: center; gap: 7px; line-height: 1.7; color: var(--text-soft); }
+.etf-tip__row b { margin-inline-start: auto; font-family: var(--font-mono); color: var(--text); font-weight: 800; }
+.etf-tip__dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.etf-tip__total { border-top: 1px solid var(--border); margin-top: 5px; padding-top: 5px; }
+.etf-tip__total b { color: var(--heading); }
 .etf__head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
 .etf__total { font-size: 1.5rem; font-weight: 900; font-family: var(--font-mono); line-height: 1; }
 .etf__total.up { color: var(--up); } .etf__total.down { color: var(--down); }
