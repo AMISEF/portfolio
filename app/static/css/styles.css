@@ -228,8 +228,9 @@ a { color: inherit; text-decoration: none; }
 /* چیدمان تک‌ستونه تمام‌عرض (ترتیب: قیمت‌ها، هیت‌مپ، شاخص‌ها، ETF) */
 .page-stack { display: flex; flex-direction: column; align-items: stretch; gap: 16px; width: 100%; }
 .page-stack > * { width: 100%; }
-/* ردیف هیت‌مپ: قیمت‌های کلیدی (کنار) + نقشهٔ حرارتی (اصلی) */
+/* ردیف هیت‌مپ: ستون کناری (قیمت‌ها + ارزش بازار) + نقشهٔ حرارتی (اصلی) */
 .hm-row { display: grid; gap: 16px; grid-template-columns: 340px minmax(0, 1fr); align-items: start; }
+.hm-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 @media (max-width: 980px) { .hm-row { grid-template-columns: 1fr; } }
 .page-stack .keyprices { display: flex; flex-direction: column; gap: 9px; }
 

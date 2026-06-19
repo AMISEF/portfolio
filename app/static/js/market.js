@@ -346,5 +346,5 @@
   loadHeatmap(); setInterval(loadHeatmap, 5 * 1000);   // ۵ ثانیه (قیمت زندهٔ توبیت)
   loadCoins();   setInterval(loadCoins, 5 * 1000);     // ۵ ثانیه (زنده — توبیت)
   loadPrices();  setInterval(loadPrices, 8 * 1000);    // ۸ ثانیه (زنده)
-  loadEtf();     setInterval(loadEtf, 30 * 60 * 1000); // ۳۰ دقیقه (دادهٔ روزانه)
+  loadEtf();     setInterval(loadEtf, 24 * 60 * 60 * 1000); // ۲۴ ساعت (دادهٔ روزانه)
 })(window);

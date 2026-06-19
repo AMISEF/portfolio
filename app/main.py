@@ -19,4 +19,4 @@ app.include_router(market.router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "app": settings.app_name, "build": "p1-cmc-16"}
+    return {"status": "ok", "app": settings.app_name, "build": "p1-cmc-17"}

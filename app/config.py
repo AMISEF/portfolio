@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     # منبع رایگان Farside Investors (جدول HTML). میزبان باید در allowlist شبکهٔ
     # سرور باشد. داده روزانه است؛ کش ۳۰ دقیقه کافی است.
     farside_base_url: str = "https://farside.co.uk"
-    etf_ttl: int = 1800
+    etf_ttl: int = 86400          # ۲۴ ساعت (دادهٔ روزانه)
     etf_days: int = 30
 
     # مسیر فایل پایدار شمارندهٔ کردیت

@@ -34,7 +34,10 @@
   <!-- ۴+۵) قیمت‌های کلیدی + نقشهٔ حرارتی در یک ردیف -->
   <div class="hm-row">
 
-  <!-- قیمت‌های کلیدی (ستون کناری) -->
+  <!-- ستون کناری: قیمت‌های کلیدی + ارزش کل بازار -->
+  <div class="hm-side">
+
+  <!-- قیمت‌های کلیدی -->
   <div class="card">
     <div class="card__head">
       <span class="card__title">
@@ -47,6 +50,22 @@
       <div class="keyprices" id="keyPrices"><span class="skeleton">بارگذاری…</span></div>
     </div>
   </div>
+
+  <!-- ارزش کل بازار + حجم (زیر قیمت‌های کلیدی) -->
+  <div class="card">
+    <div class="card__head">
+      <span class="card__title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+        ارزش کل بازار
+      </span>
+      <span class="src-tag" id="macroSrc"></span>
+    </div>
+    <div class="card__body">
+      <div class="mcap" id="boxMarketCap"><span class="skeleton">بارگذاری…</span></div>
+    </div>
+  </div>
+
+  </div><!-- /hm-side -->
 
   <!-- نقشهٔ حرارتی (ستون اصلی) -->
   <div class="card">
@@ -90,24 +109,10 @@
 
   </div><!-- /hm-row -->
 
-  <!-- ۶..۱۰) کارت‌های شاخص: ارزش بازار، دامیننس، آلت‌سیزن، ترس‌وطمع، میانگین RSI -->
-  <div class="index-grid">
+  <!-- ردیف شاخص‌ها: دامیننس، آلت‌سیزن، ترس‌وطمع، میانگین RSI (یک ردیف) -->
+  <div class="index-grid index-grid--4">
 
-    <!-- ۶) ارزش کل بازار + حجم -->
-    <div class="card index-card">
-      <div class="card__head">
-        <span class="card__title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
-          ارزش کل بازار
-        </span>
-        <span class="src-tag" id="macroSrc"></span>
-      </div>
-      <div class="card__body">
-        <div class="mcap" id="boxMarketCap"><span class="skeleton">بارگذاری…</span></div>
-      </div>
-    </div>
-
-    <!-- ۷) دامیننس بیت‌کوین / اتریوم / سایر -->
+    <!-- دامیننس بیت‌کوین / اتریوم / سایر -->
     <div class="card index-card">
       <div class="card__head">
         <span class="card__title">
