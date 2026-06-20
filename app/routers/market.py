@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as _dt
 
 import httpx
 from fastapi import APIRouter
@@ -143,7 +144,16 @@ async def prices():
         # کالیبراسیون ضریب بازار ایران از دادهٔ تازه (یک هفته ماندگار)
         if melt > 0:
             cache.set("gold18k:factor", gold_18k["price"] / melt, 7 * 24 * 3600)
-        # وقتی SA تازه است، change_24h=0 یعنی بازار بسته — همان صفر را نگه می‌داریم
+        # پراکسی sa.resicard.ir فیلد change سورس‌آرنا را صفر می‌دهد. پس درصد تغییر
+        # ۲۴ساعته را خودمان محاسبه می‌کنیم: قیمتِ امروز نسبت به آخرین قیمتِ روز قبل.
+        # قیمت هر روز ذخیره می‌شود (۳ روز ماندگار)؛ کلیدِ روز قبل = بستهٔ آن روز.
+        if not gold_18k.get("change_24h"):
+            today = _dt.date.today()
+            price = gold_18k["price"]
+            cache.set(f"gold18k:day:{today.isoformat()}", price, 3 * 24 * 3600)
+            prev = cache.get_stale(f"gold18k:day:{(today - _dt.timedelta(days=1)).isoformat()}")
+            if prev:
+                gold_18k["change_24h"] = round((price - prev) / prev * 100, 2)
     else:
         # SourceArena کهنه/خطا ⇒ تخمین زنده فقط اگر قبلاً با دادهٔ واقعی کالیبره
         # شده باشیم (وگرنه واحد/ضریب نامعلوم است و عددِ پرت می‌دهد). در نبود ضریب،
