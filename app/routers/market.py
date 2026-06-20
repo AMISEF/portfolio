@@ -143,12 +143,7 @@ async def prices():
         # کالیبراسیون ضریب بازار ایران از دادهٔ تازه (یک هفته ماندگار)
         if melt > 0:
             cache.set("gold18k:factor", gold_18k["price"] / melt, 7 * 24 * 3600)
-        # بازار بستهٔ ایران ⇒ تغییر صفر؛ از انس+دلار تخمین می‌زنیم
-        if not gold_18k.get("change_24h"):
-            usd_chg = metals.get("usd_change_24h") if isinstance(metals, dict) else 0
-            est = round((xau_chg or 0) + (usd_chg or 0), 2)
-            if est:
-                gold_18k["change_24h"] = est
+        # وقتی SA تازه است، change_24h=0 یعنی بازار بسته — همان صفر را نگه می‌داریم
     else:
         # SourceArena کهنه/خطا ⇒ تخمین زنده فقط اگر قبلاً با دادهٔ واقعی کالیبره
         # شده باشیم (وگرنه واحد/ضریب نامعلوم است و عددِ پرت می‌دهد). در نبود ضریب،
