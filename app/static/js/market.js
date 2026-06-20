@@ -197,9 +197,13 @@
       '<div class="rowitem__right"><div class="rowitem__price" data-price>' + priceStr + '</div>' + chHtml + '</div></div>';
   }
 
+  // آخرین داده‌های قیمت (برای به‌روزرسانی جداگانهٔ تتر)
+  let _lastPriceData = null;
+
   async function loadPrices() {
     try {
       const d = await CS.fetchJSON("/api/market/prices");
+      _lastPriceData = d;
       const rows = [];
       if (d.usdt_irt)
         rows.push(keyRow("usdt", _KP.usdt, d.usdt_irt.name || "تتر / تومان", "تومان",
@@ -218,9 +222,23 @@
     } catch (e) { console.warn("prices:", e); }
   }
 
+  // تتر را هر ۱۵ ثانیه زنده به‌روز می‌کند بدون بازسازی کل لیست
+  async function refreshUsdt() {
+    try {
+      const d = await CS.fetchJSON("/api/market/prices");
+      if (!d.usdt_irt) return;
+      const el = document.querySelector('#keyPrices .rowitem[data-kp="usdt"] [data-price]');
+      if (el) {
+        el.textContent = CS.faNum(d.usdt_irt.price) + " ت";
+        flash(el, "usdt", d.usdt_irt.price);
+      }
+    } catch (e) { /* silent */ }
+  }
+
   /* ---------- راه‌اندازی + پایش لحظه‌ای ---------- */
-  loadMacro();   setInterval(loadMacro, 60 * 1000);    // ۶۰ ثانیه (CoinMarketCap)
-  loadHeatmap(); setInterval(loadHeatmap, 5 * 1000);   // ۵ ثانیه (قیمت زندهٔ توبیت)
-  loadCoins();   setInterval(loadCoins, 5 * 1000);     // ۵ ثانیه (زنده — توبیت)
-  loadPrices();  setInterval(loadPrices, 8 * 1000);    // ۸ ثانیه (زنده)
+  loadMacro();   setInterval(loadMacro, 60 * 1000);         // ۶۰ ثانیه (CoinMarketCap)
+  loadHeatmap(); setInterval(loadHeatmap, 5 * 1000);        // ۵ ثانیه (قیمت زندهٔ توبیت)
+  loadCoins();   setInterval(loadCoins, 5 * 1000);          // ۵ ثانیه (زنده — توبیت)
+  loadPrices();  setInterval(loadPrices, 15 * 60 * 1000);   // ۱۵ دقیقه (طلا / SourceArena)
+  setTimeout(function() { setInterval(refreshUsdt, 15 * 1000); }, 3000); // ۱۵ ثانیه (تتر زنده)
 })(window);
