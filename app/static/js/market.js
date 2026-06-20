@@ -177,6 +177,18 @@
   }
 
   /* ---------- قیمت‌های کلیدی (تتر/طلا/نقره/نفت) ---------- */
+  // SVG icons for each key-price row (white on coloured background)
+  const _KP = {
+    // Tether logo: wide T-bar + stem + two underlines
+    usdt: '<svg viewBox="0 0 24 24" width="20" height="20"><rect x="3.5" y="4.5" width="17" height="2.8" rx="1.4" fill="white"/><rect x="10.6" y="7.3" width="2.8" height="5" fill="white"/><rect x="4.5" y="14.5" width="15" height="2" rx="1" fill="white"/><rect x="4.5" y="17.8" width="15" height="2" rx="1" fill="white"/></svg>',
+    // Gold jewellery: ring body + flat-top setting
+    g18:  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M9 10.5L7.5 7h9L15 10.5M9 10.5h6" stroke="white" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/><circle cx="12" cy="17" r="4.8" stroke="white" stroke-width="2.3"/></svg>',
+    // Gold / silver ingot bar (background colour tells them apart)
+    bar:  '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M4.5 9.5L7 5h10l2.5 4.5v8.5L17 20H7l-2.5-1.5V9.5z" fill="white" opacity="0.88"/><path d="M7 5h10l2.5 4.5H4.5L7 5z" fill="rgba(255,255,255,0.35)"/></svg>',
+    // Oil barrel: cylinder with two horizontal bands
+    oil:  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none"><ellipse cx="12" cy="5.2" rx="7" ry="2.4" fill="white"/><path d="M5 5.2v13.6M19 5.2v13.6" stroke="white" stroke-width="2.2"/><ellipse cx="12" cy="18.8" rx="7" ry="2.4" fill="white"/><line x1="5" y1="9.5" x2="19" y2="9.5" stroke="rgba(0,0,0,0.28)" stroke-width="1.6"/><line x1="5" y1="14.5" x2="19" y2="14.5" stroke="rgba(0,0,0,0.28)" stroke-width="1.6"/></svg>',
+  };
+
   function keyRow(id, ic, color, name, sub, priceStr, ch, spark) {
     const chHtml = (ch === undefined || ch === null) ? "" :
       '<span class="chg ' + CS.chgClass(ch) + '">' + CS.faPct(ch) + '</span>';
@@ -193,15 +205,15 @@
       const d = await CS.fetchJSON("/api/market/prices");
       const rows = [];
       if (d.usdt_irt)
-        rows.push(keyRow("usdt", "₮", "#26A17B", d.usdt_irt.name || "تتر / تومان", "تومان",
+        rows.push(keyRow("usdt", _KP.usdt, "#26A17B", d.usdt_irt.name || "تتر / تومان", "تومان",
           CS.faNum(d.usdt_irt.price) + " ت", d.usdt_irt.change_24h));
       if (d.gold_18k)
-        rows.push(keyRow("g18", "ط", "#D4AF37", "طلای ۱۸ عیار", d.gold_18k.sub || "هر گرم",
+        rows.push(keyRow("g18", _KP.g18, "#D4AF37", "طلای ۱۸ عیار", d.gold_18k.sub || "هر گرم",
           CS.faNum(d.gold_18k.price) + " ت", d.gold_18k.change_24h));
       const c = d.commodities || {};
-      if (c.XAU) rows.push(keyRow("xau", "Au", "#C9A227", c.XAU.name || "طلای جهانی", c.XAU.sub || "اونس", CS.faPriceUsd(c.XAU.price), c.XAU.change_24h, c.XAU.spark));
-      if (c.XAG) rows.push(keyRow("xag", "Ag", "#9AA3AC", c.XAG.name || "نقره", c.XAG.sub || "اونس", CS.faPriceUsd(c.XAG.price), c.XAG.change_24h, c.XAG.spark));
-      if (c.OIL) rows.push(keyRow("oil", "O", "#1B1B1B", c.OIL.name || "نفت خام", c.OIL.sub || "بشکه", CS.faPriceUsd(c.OIL.price), c.OIL.change_24h, c.OIL.spark));
+      if (c.XAU) rows.push(keyRow("xau", _KP.bar, "#C9A227", c.XAU.name || "طلای جهانی", c.XAU.sub || "اونس", CS.faPriceUsd(c.XAU.price), c.XAU.change_24h, c.XAU.spark));
+      if (c.XAG) rows.push(keyRow("xag", _KP.bar, "#9AA3AC", c.XAG.name || "نقره", c.XAG.sub || "اونس", CS.faPriceUsd(c.XAG.price), c.XAG.change_24h, c.XAG.spark));
+      if (c.OIL) rows.push(keyRow("oil", _KP.oil, "#1B1B1B", c.OIL.name || "نفت خام", c.OIL.sub || "بشکه", CS.faPriceUsd(c.OIL.price), c.OIL.change_24h, c.OIL.spark));
       $("keyPrices").innerHTML = rows.join("") || '<span class="src-tag">داده‌ای موجود نیست</span>';
 
       if (d.usdt_irt) flash(document.querySelector('#keyPrices .rowitem[data-kp="usdt"] [data-price]'), "usdt", d.usdt_irt.price);
