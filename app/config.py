@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     # GC=F طلا، SI=F نقره، CL=F نفت خام WTI — قیمت + تغییر ۲۴ساعته.
     # میزبان query1.finance.yahoo.com باید در allowlist شبکهٔ سرور باشد.
     yahoo_base_url: str = "https://query1.finance.yahoo.com"
-    commodities_ttl: int = 300
+    commodities_ttl: int = 15
 
     # مسیر فایل پایدار شمارندهٔ کردیت
     credit_state_file: str = "data/credit_state.json"

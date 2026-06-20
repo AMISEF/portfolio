@@ -222,16 +222,30 @@
     } catch (e) { console.warn("prices:", e); }
   }
 
-  // تتر را هر ۱۵ ثانیه زنده به‌روز می‌کند بدون بازسازی کل لیست
-  async function refreshUsdt() {
+  // تتر + طلای جهانی + نقره + نفت را هر ۱۵ ثانیه in-place به‌روز می‌کند
+  function _updateRow(kp, priceText, ch) {
+    const row = document.querySelector('#keyPrices .rowitem[data-kp="' + kp + '"]');
+    if (!row) return;
+    const priceEl = row.querySelector('[data-price]');
+    if (priceEl) priceEl.textContent = priceText;
+    const chEl = row.querySelector('.chg');
+    if (chEl && ch !== undefined && ch !== null) {
+      chEl.className = 'chg ' + CS.chgClass(ch);
+      chEl.textContent = CS.faPct(ch);
+    }
+  }
+
+  async function refreshLive() {
     try {
       const d = await CS.fetchJSON("/api/market/prices");
-      if (!d.usdt_irt) return;
-      const el = document.querySelector('#keyPrices .rowitem[data-kp="usdt"] [data-price]');
-      if (el) {
-        el.textContent = CS.faNum(d.usdt_irt.price) + " ت";
-        flash(el, "usdt", d.usdt_irt.price);
+      if (d.usdt_irt) {
+        const el = document.querySelector('#keyPrices .rowitem[data-kp="usdt"] [data-price]');
+        if (el) { el.textContent = CS.faNum(d.usdt_irt.price) + " ت"; flash(el, "usdt", d.usdt_irt.price); }
       }
+      const c = d.commodities || {};
+      if (c.XAU) _updateRow("xau", CS.faPriceUsd(c.XAU.price), c.XAU.change_24h);
+      if (c.XAG) _updateRow("xag", CS.faPriceUsd(c.XAG.price), c.XAG.change_24h);
+      if (c.OIL) _updateRow("oil", CS.faPriceUsd(c.OIL.price), c.OIL.change_24h);
     } catch (e) { /* silent */ }
   }
 
@@ -239,6 +253,6 @@
   loadMacro();   setInterval(loadMacro, 60 * 1000);         // ۶۰ ثانیه (CoinMarketCap)
   loadHeatmap(); setInterval(loadHeatmap, 5 * 1000);        // ۵ ثانیه (قیمت زندهٔ توبیت)
   loadCoins();   setInterval(loadCoins, 5 * 1000);          // ۵ ثانیه (زنده — توبیت)
-  loadPrices();  setInterval(loadPrices, 15 * 60 * 1000);   // ۱۵ دقیقه (طلا / SourceArena)
-  setTimeout(function() { setInterval(refreshUsdt, 15 * 1000); }, 3000); // ۱۵ ثانیه (تتر زنده)
+  loadPrices();  setInterval(loadPrices, 15 * 60 * 1000);   // ۱۵ دقیقه (طلای ۱۸ع / SourceArena)
+  setTimeout(function() { setInterval(refreshLive, 15 * 1000); }, 3000); // ۱۵ ثانیه (زنده)
 })(window);
