@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ brand_fa }} — مدیریت سرمایه{% endblock %}
+{% block content %}
+
+<section class="pf-head rise">
+  <div class="pf-head__title">مدیریت <span class="accent">سرمایه</span></div>
+  <p class="pf-head__sub">برای ارائهٔ بهترین پیشنهاد سبد، ابتدا میزان ریسک‌پذیری شما را می‌سنجیم.</p>
+</section>
+
+<!-- مرحلهٔ ۱: معرفی آزمون -->
+<div class="card pf-card rise" id="introCard">
+  <div class="card__body pf-intro">
+    <div class="pf-intro__icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    </div>
+    <h2 class="pf-intro__h">آزمون ریسک‌پذیری سرمایه‌گذاری</h2>
+    <p class="pf-intro__p">
+      این آزمون بر پایهٔ معتبرترین پرسش‌نامهٔ علمی سنجش تحمل ریسک مالی
+      (Grable &amp; Lytton) طراحی شده است. ۱۳ پرسش کوتاه که کمتر از ۳ دقیقه
+      زمان می‌برد و نتیجهٔ آن برای شما ذخیره می‌شود.
+    </p>
+    <button class="btn btn--brand" id="startTestBtn">شروع آزمون</button>
+  </div>
+</div>
+
+<!-- مرحلهٔ ۲: پرسش‌ها (تک‌مرحله‌ای) -->
+<div class="card pf-card" id="quizCard" hidden>
+  <div class="card__body">
+    <div class="quiz__top">
+      <span class="quiz__count" id="quizCount">پرسش ۱ از ۱۳</span>
+      <div class="quiz__bar"><span class="quiz__bar-fill" id="quizBar"></span></div>
+    </div>
+    <h3 class="quiz__q" id="quizQ">…</h3>
+    <div class="quiz__opts" id="quizOpts"></div>
+    <div class="quiz__nav">
+      <button class="btn btn--ghost" id="quizPrev">قبلی</button>
+      <button class="btn btn--brand" id="quizNext" disabled>بعدی</button>
+    </div>
+  </div>
+</div>
+
+<!-- مرحلهٔ ۳: نتیجه -->
+<div class="card pf-card" id="resultCard" hidden>
+  <div class="card__body pf-result">
+    <span class="pf-result__tag">نتیجهٔ ریسک‌پذیری شما</span>
+    <div class="pf-result__gauge">
+      <svg viewBox="0 0 120 120" id="riskRing">
+        <circle cx="60" cy="60" r="52" class="pf-ring__bg"/>
+        <circle cx="60" cy="60" r="52" class="pf-ring__fg" id="riskRingFg"/>
+      </svg>
+      <div class="pf-result__pct"><span id="riskPct">۰</span><i>٪</i></div>
+    </div>
+    <h2 class="pf-result__label" id="riskLabel">—</h2>
+    <p class="pf-result__desc" id="riskDesc"></p>
+    <div class="pf-result__actions">
+      <a class="btn btn--brand btn--lg" href="/portfolio/assistant" id="startMgmtBtn">شروع مدیریت سرمایه</a>
+      <button class="btn btn--ghost" id="retakeBtn">آزمون مجدد</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/portfolio.js?v={{ static_v }}"></script>
+{% endblock %}

@@ -60,6 +60,31 @@ async def top_coins() -> dict[str, Any]:
     return await cached("toobit:top_coins", settings.toobit_coins_ttl, get_top_coins, mock_data.toobit_top_coins)
 
 
+async def get_price_map() -> dict[str, Any]:
+    """نگاشت نماد ارز (بدون USDT) → قیمت دلاری زنده، برای ارزش‌گذاری پورتفولیو."""
+    timeout = httpx.Timeout(settings.http_timeout)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        resp = await client.get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
+        resp.raise_for_status()
+        data = resp.json()
+    prices: dict[str, float] = {}
+    for t in (data if isinstance(data, list) else []):
+        sym = (t.get("s") or t.get("symbol") or "").upper()
+        if sym.endswith("USDT"):
+            p = _f(t, "c", "lastPrice", "close")
+            if p > 0:
+                prices[sym[:-4]] = p
+    if not prices:
+        raise RuntimeError("Toobit: empty price map")
+    return {"source": "live", "prices": prices}
+
+
+async def price_map() -> dict[str, Any]:
+    from app.cache import cached
+    return await cached("toobit:price_map", settings.toobit_coins_ttl, get_price_map,
+                        lambda: {"source": "mock", "prices": {}})
+
+
 # نمادهای محتمل نفت در توبیت (به ترتیب اولویت) + جست‌وجوی زیررشته‌ای
 _OIL_SYMBOLS = ["OILUSDT", "OILBRENTUSDT", "USOILUSDT", "WTIUSDT", "BRENTUSDT", "UKOILUSDT", "USOUSDT", "CRUDEOILUSDT"]
 

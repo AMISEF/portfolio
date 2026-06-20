@@ -93,6 +93,13 @@ class Settings(BaseSettings):
     # مسیر فایل پایدار شمارندهٔ کردیت
     credit_state_file: str = "data/credit_state.json"
 
+    # ---- پورتفولیو / مدیریت سرمایه ----
+    # دیتابیس SQLite پروفایل ریسک و دارایی‌ها (طبق .gitignore کامیت نمی‌شود).
+    portfolio_db_file: str = "data/portfolio.db"
+    # چت‌بات مدیریت سرمایه از پلتفرم Dify (اتصال در فاز بعد؛ کلید در .env سرور).
+    dify_api_base: str = "https://api.dify.ai/v1"
+    dify_api_key: str = ""
+
     http_timeout: float = 10.0
 
 

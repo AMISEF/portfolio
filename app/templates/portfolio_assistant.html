@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ brand_fa }} — دستیار مدیریت سرمایه{% endblock %}
+{% block content %}
+
+<section class="pf-head rise">
+  <div class="pf-head__title">دستیار <span class="accent">مدیریت سرمایه</span></div>
+  <p class="pf-head__sub">دارایی‌هایت را وارد کن تا ارزش زنده و سبد پیشنهادی را ببینی.</p>
+</section>
+
+<div class="asst-grid rise">
+
+  <!-- چت‌بات -->
+  <div class="card asst-chat">
+    <div class="card__head">
+      <span class="card__title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        چت‌بات کریپتو اسمارت
+      </span>
+      <span class="live-badge live-badge--brand"><span class="live-dot live-dot--brand"></span> آنلاین</span>
+    </div>
+    <div class="card__body">
+      <div class="chat" id="chat"></div>
+      <div class="chat__input" id="chatInput"></div>
+    </div>
+  </div>
+
+  <!-- سبد دارایی -->
+  <div class="card asst-port">
+    <div class="card__head">
+      <span class="card__title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+        سبد دارایی شما
+      </span>
+      <span class="src-tag" id="portSrc"></span>
+    </div>
+    <div class="card__body">
+      <div class="port-summary">
+        <div class="port-chart">
+          <svg viewBox="0 0 120 120" id="donut"></svg>
+          <div class="port-chart__center">
+            <span class="port-chart__lbl">ارزش کل</span>
+            <span class="port-chart__toman" id="totalToman">—</span>
+            <span class="port-chart__usd" id="totalUsd">—</span>
+          </div>
+        </div>
+        <div class="port-legend" id="portLegend"></div>
+      </div>
+      <div class="port-list" id="portList">
+        <p class="port-empty">هنوز دارایی‌ای اضافه نشده است.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/portfolio_assistant.js?v={{ static_v }}"></script>
+{% endblock %}
