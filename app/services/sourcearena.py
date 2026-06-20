@@ -65,8 +65,39 @@ async def get_metals() -> dict[str, Any]:
 
 
 async def metals() -> dict[str, Any]:
-    from app.cache import cached
-    return await cached("sourcearena:metals", settings.sourcearena_ttl, get_metals, mock_data.sourcearena_metals)
+    """طلا/فلزات با نشانگر «تازگی». داخل TTL ⇒ تازه. پس از انقضا تلاش مجدد؛ در
+    صورت خطا، آخرین دادهٔ کش با fresh=False برمی‌گردد (برای کوتاه‌مدت دوباره کش
+    می‌شود تا API ازکارافتاده هر درخواست صدا زده نشود)."""
+    from app.cache import cache
+    hit = cache.get("sourcearena:metals")
+    if hit is not None:
+        return hit
+    try:
+        value = await get_metals()
+        value["fresh"] = True
+        cache.set("sourcearena:metals", value, settings.sourcearena_ttl)
+        return value
+    except Exception:
+        stale = cache.get_stale("sourcearena:metals")
+        result = dict(stale) if isinstance(stale, dict) else dict(mock_data.sourcearena_metals())
+        result["fresh"] = False
+        # تلاش مجدد حداکثر هر ۶۰ ثانیه (نه هر درخواست)
+        cache.set("sourcearena:metals", result, 60)
+        return result
+
+
+# ─── تخمین زندهٔ طلای ۱۸ عیار از انس جهانی + دلار (برای وقتی SourceArena کهنه است) ───
+GRAMS_PER_OUNCE = 31.1034768
+PURITY_18K = 0.750
+
+
+def estimate_gold_18k_toman(xau_usd: float, usd_toman: float, factor: float = 1.0) -> float:
+    """ارزش ذوبِ هر گرم طلای ۱۸ عیار (تومان) از انس جهانی (دلار) و نرخ دلار (تومان).
+    ضریب factor پرمیوم بازار ایران را اعمال می‌کند (از آخرین دادهٔ تازهٔ SourceArena)."""
+    if xau_usd <= 0 or usd_toman <= 0:
+        return 0.0
+    return xau_usd / GRAMS_PER_OUNCE * PURITY_18K * usd_toman * factor
+
 
 
 def _v(data: dict, key: str) -> float:

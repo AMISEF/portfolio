@@ -126,16 +126,35 @@ async def prices():
         if usd_chg and not usdt_irt.get("change_24h"):
             usdt_irt["change_24h"] = usd_chg
 
-    # طلای ۱۸ عیار: قیمت از SourceArena. درصد تغییر هم از SourceArena؛ اما وقتی
-    # بازار طلای ایران بسته است SourceArena صفر می‌دهد — در آن صورت تغییر را از
-    # «تغییر انس جهانی + تغییر دلار آزاد» تخمین می‌زنیم تا ثابت نماند.
+    # طلای ۱۸ عیار: وقتی دادهٔ SourceArena «تازه» است، قیمت واقعی بازار ایران را
+    # نشان می‌دهیم و ضریب پرمیوم (قیمت واقعی ÷ ارزش ذوب) را ذخیره می‌کنیم. اگر
+    # SourceArena در دسترس نباشد یا کهنه شود (مثلاً چند روز قطع)، قیمت را از انس
+    # جهانیِ زندهٔ Yahoo × دلار زندهٔ Tabdeal × همان ضریب محاسبه می‌کنیم تا هرگز
+    # منجمد نماند و با حرکت بازار به‌روز بماند.
     gold_18k = metals.get("gold_18k") if isinstance(metals, dict) else None
-    if isinstance(gold_18k, dict) and not gold_18k.get("change_24h"):
-        xau_chg = (commodities.get("XAU") or {}).get("change_24h") or 0
-        usd_chg = metals.get("usd_change_24h") if isinstance(metals, dict) else 0
-        est = round((xau_chg or 0) + (usd_chg or 0), 2)
-        if est:
-            gold_18k["change_24h"] = est
+    sa_fresh = bool(metals.get("fresh")) if isinstance(metals, dict) else False
+    xau = commodities.get("XAU") or {}
+    xau_usd = xau.get("price") or 0
+    xau_chg = xau.get("change_24h") or 0
+    usd_toman = (usdt_irt.get("price") or 0) if isinstance(usdt_irt, dict) else 0
+    melt = sourcearena.estimate_gold_18k_toman(xau_usd, usd_toman)
+
+    if sa_fresh and isinstance(gold_18k, dict) and gold_18k.get("price"):
+        # کالیبراسیون ضریب بازار ایران از دادهٔ تازه (یک هفته ماندگار)
+        if melt > 0:
+            cache.set("gold18k:factor", gold_18k["price"] / melt, 7 * 24 * 3600)
+        # بازار بستهٔ ایران ⇒ تغییر صفر؛ از انس+دلار تخمین می‌زنیم
+        if not gold_18k.get("change_24h"):
+            usd_chg = metals.get("usd_change_24h") if isinstance(metals, dict) else 0
+            est = round((xau_chg or 0) + (usd_chg or 0), 2)
+            if est:
+                gold_18k["change_24h"] = est
+    elif melt > 0:
+        # SourceArena کهنه/خطا ⇒ تخمین زندهٔ کالیبره‌شده (هیچ‌وقت ثابت نمی‌ماند)
+        factor = cache.get_stale("gold18k:factor") or 1.0
+        gold_18k = {"name": "طلای ۱۸ عیار", "sub": "هر گرم",
+                    "price": round(melt * factor), "change_24h": round(xau_chg or 0, 2),
+                    "estimated": True}
 
     fg = cache.get("fng") or mock_data.fear_greed()
 
