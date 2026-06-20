@@ -149,12 +149,15 @@ async def prices():
             est = round((xau_chg or 0) + (usd_chg or 0), 2)
             if est:
                 gold_18k["change_24h"] = est
-    elif melt > 0:
-        # SourceArena کهنه/خطا ⇒ تخمین زندهٔ کالیبره‌شده (هیچ‌وقت ثابت نمی‌ماند)
-        factor = cache.get_stale("gold18k:factor") or 1.0
-        gold_18k = {"name": "طلای ۱۸ عیار", "sub": "هر گرم",
-                    "price": round(melt * factor), "change_24h": round(xau_chg or 0, 2),
-                    "estimated": True}
+    else:
+        # SourceArena کهنه/خطا ⇒ تخمین زنده فقط اگر قبلاً با دادهٔ واقعی کالیبره
+        # شده باشیم (وگرنه واحد/ضریب نامعلوم است و عددِ پرت می‌دهد). در نبود ضریب،
+        # آخرین قیمت واقعیِ کش‌شده حفظ می‌شود.
+        factor = cache.get_stale("gold18k:factor")
+        if melt > 0 and factor:
+            gold_18k = {"name": "طلای ۱۸ عیار", "sub": "هر گرم",
+                        "price": round(melt * factor), "change_24h": round(xau_chg or 0, 2),
+                        "estimated": True}
 
     fg = cache.get("fng") or mock_data.fear_greed()
 
