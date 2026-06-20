@@ -9,7 +9,7 @@
 <nav class="nav nav--bottom">
   <div class="nav__bar">
     <button class="nav__item" data-nav="portfolio" title="پورتفولیو" aria-label="پورتفولیو"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ items[0][2]|safe }}</svg></button>
-    <button class="nav__item" data-nav="journal" title="ژورنال" aria-label="ژورنال"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ items[1][2]|safe }}</svg></button>
+    <a class="nav__item" href="https://trading-journal.cryptosmart.site/" data-nav="journal" title="ژورنال معاملاتی" aria-label="ژورنال معاملاتی"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ items[1][2]|safe }}</svg></a>
     <button class="nav__item nav__item--home {% if active=='home' %}is-active{% endif %}" data-nav="home" title="خانه" aria-label="خانه"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">{{ home_svg|safe }}</svg></button>
     <button class="nav__item" data-nav="settings" title="تنظیمات" aria-label="تنظیمات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ items[2][2]|safe }}</svg></button>
   </div>
@@ -20,6 +20,6 @@
   <img class="nav__logo" src="/static/img/logo.png" alt="CryptoSmart">
   <button class="nav__item nav__item--home {% if active=='home' %}is-active{% endif %}" data-nav="home" title="خانه" aria-label="خانه"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">{{ home_svg|safe }}</svg></button>
   <button class="nav__item" data-nav="portfolio" title="پورتفولیو" aria-label="پورتفولیو"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ items[0][2]|safe }}</svg></button>
-  <button class="nav__item" data-nav="journal" title="ژورنال" aria-label="ژورنال"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ items[1][2]|safe }}</svg></button>
+  <a class="nav__item" href="https://trading-journal.cryptosmart.site/" data-nav="journal" title="ژورنال معاملاتی" aria-label="ژورنال معاملاتی"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ items[1][2]|safe }}</svg></a>
   <button class="nav__item" data-nav="settings" title="تنظیمات" aria-label="تنظیمات"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ items[2][2]|safe }}</svg></button>
 </nav>
