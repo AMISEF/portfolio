@@ -1,24 +1,18 @@
-/* دستیار مدیریت سرمایه — چت‌بات اسکریپتی (فاز اول) + ارزش‌گذاری زندهٔ سبد.
-   اتصال به مدل هوش مصنوعی از پلتفرم Dify در فاز بعد جایگزین این جریان می‌شود. */
+/* دستیار چت‌بات «کریپتو اسمارت» — اتصال به Dify + نمایش زنده‌ی سبد دارایی. */
 (function (w) {
   "use strict";
   const CS = w.CS;
   const $ = (id) => document.getElementById(id);
   const chat = $("chat"), inputArea = $("chatInput");
 
-  const HORIZONS = [
-    { label: "کوتاه‌مدت (زیر ۶ ماه)", value: "کوتاه‌مدت" },
-    { label: "میان‌مدت (۶ تا ۱۸ ماه)", value: "میان‌مدت" },
-    { label: "بلندمدت (بیش از ۱۸ ماه)", value: "بلندمدت" },
-  ];
   const PALETTE = ["#2D63B0", "#19C3B3", "#F59E0B", "#EA3943", "#6F95C8",
                    "#4ED9CC", "#128F84", "#A6F0E8", "#214E8A", "#16C784"];
 
-  // ---------- ابزار چت ----------
-  function bubble(text, who) {
+  // ───── ابزار چت ─────
+  function bubble(html, who) {
     const d = document.createElement("div");
     d.className = "chat__msg chat__msg--" + who;
-    d.innerHTML = '<div class="chat__bubble">' + text + "</div>";
+    d.innerHTML = '<div class="chat__bubble">' + html + "</div>";
     chat.appendChild(d);
     chat.scrollTop = chat.scrollHeight;
     return d;
@@ -26,161 +20,144 @@
   const bot = (t) => bubble(t, "bot");
   const me = (t) => bubble(t, "me");
 
-  function clearInput() { inputArea.innerHTML = ""; }
-
-  function choices(options, onPick) {
-    clearInput();
-    options.forEach(o => {
-      const b = document.createElement("button");
-      b.className = "chip-btn";
-      b.textContent = o.label;
-      b.addEventListener("click", () => { me(o.label); onPick(o.value); });
-      inputArea.appendChild(b);
-    });
+  // تبدیل markdown ساده → HTML (برای پاسخ Dify)
+  function mdToHtml(text) {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      // جداول markdown
+      .replace(/^\|(.+)\|$/gm, (line) => {
+        const cols = line.slice(1, -1).split("|").map(c => c.trim());
+        return "<tr>" + cols.map(c => "<td>" + c + "</td>").join("") + "</tr>";
+      })
+      .replace(/(<tr>.*<\/tr>\n?)+/gs, (rows) => {
+        // اولین سطر = سرستون
+        const lines = rows.trim().split("\n").filter(l => l.startsWith("<tr>"));
+        if (lines.length < 2) return "<table>" + rows + "</table>";
+        const head = lines[0].replace(/<td>/g, "<th>").replace(/<\/td>/g, "</th>");
+        const body = lines.slice(2).join("\n"); // سطر ۲ (جداکننده) را حذف کن
+        return '<table class="dify-table"><thead>' + head + "</thead><tbody>" + body + "</tbody></table>";
+      })
+      .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+      .replace(/^###\s(.+)$/gm, "<h3>$1</h3>")
+      .replace(/^##\s(.+)$/gm, "<h4>$1</h4>")
+      .replace(/^>\s(.+)$/gm, "<blockquote>$1</blockquote>")
+      .replace(/\n{2,}/g, "<br><br>")
+      .replace(/\n/g, "<br>");
   }
 
-  function prompt(placeholder, onSubmit, opts) {
-    opts = opts || {};
-    clearInput();
-    const wrap = document.createElement("form");
-    wrap.className = "chat__form";
-    const inp = document.createElement("input");
-    inp.className = "chat__field";
-    inp.placeholder = placeholder;
-    inp.type = opts.numeric ? "text" : "text";
-    inp.inputMode = opts.numeric ? "decimal" : "text";
-    const send = document.createElement("button");
-    send.className = "btn btn--brand";
-    send.type = "submit";
-    send.textContent = "ثبت";
-    wrap.appendChild(inp); wrap.appendChild(send);
-    inputArea.appendChild(wrap);
-    inp.focus();
-    wrap.addEventListener("submit", (e) => {
-      e.preventDefault();
-      let v = inp.value.trim();
-      if (!v) return;
-      if (opts.numeric) {
-        v = v.replace(/[٬,،\s]/g, "");
-        const n = parseFloat(v);
-        if (isNaN(n) || n <= 0) { inp.classList.add("is-err"); return; }
-        me(CS.faNum(n) + (opts.unit ? " " + opts.unit : ""));
-        onSubmit(n);
-      } else {
-        me(v); onSubmit(v);
-      }
-    });
+  // ───── وضعیت مکالمه ─────
+  let convId = null;
+  let waiting = false;
+
+  function setWaiting(on) {
+    waiting = on;
+    const send = $("chatSend");
+    const inp = $("chatTextInput");
+    if (send) send.disabled = on;
+    if (inp) inp.disabled = on;
   }
 
-  // ---------- جریان گفتگو ----------
-  let draft = {};
-
-  function intro() {
-    bot("سلام! من چت‌بات مدیریت سرمایهٔ <b>کریپتو اسمارت</b> هستم. 👋");
-    setTimeout(() => {
-      bot("اینجا قراره بهت پیشنهاد بدم چه سبدی برای رشد سرمایه‌ت ببندی.<br>" +
-          "فقط کافیه بهم بگی چه دارایی‌هایی داری، روی چه قیمتی خریدی و چه مدت می‌خوای سرمایه‌گذاری کنی.");
-      setTimeout(askKind, 500);
-    }, 500);
+  function showTyping() {
+    const d = document.createElement("div");
+    d.id = "typingBubble";
+    d.className = "chat__msg chat__msg--bot";
+    d.innerHTML = '<div class="chat__bubble chat__typing"><span></span><span></span><span></span></div>';
+    chat.appendChild(d);
+    chat.scrollTop = chat.scrollHeight;
   }
 
-  function askKind() {
-    draft = {};
-    bot("چه نوع دارایی‌ای می‌خوای اضافه کنی؟");
-    choices([
-      { label: "ارز دیجیتال", value: "crypto" },
-      { label: "طلا", value: "gold" },
-      { label: "تتر (USDT)", value: "usdt" },
-      { label: "تومان نقد", value: "toman" },
-    ], onKind);
+  function hideTyping() {
+    const d = $("typingBubble");
+    if (d) d.remove();
   }
 
-  function onKind(kind) {
-    draft.kind = kind;
-    if (kind === "crypto") {
-      bot("اسم یا نماد ارز رو بنویس (مثلاً BTC یا ETH):");
-      prompt("BTC", (sym) => {
-        draft.symbol = sym.toUpperCase(); draft.name = draft.symbol;
-        askAmount("چه مقدار " + draft.symbol + " داری؟", "واحد");
-      });
-    } else if (kind === "gold") {
-      bot("طلا رو به چه صورت داری؟");
-      choices([
-        { label: "۱۸ عیار", value: "18" },
-        { label: "۲۴ عیار", value: "24" },
-        { label: "انس", value: "ounce" },
-      ], (purity) => {
-        draft.purity = purity;
-        draft.symbol = "GOLD";
-        draft.name = purity === "ounce" ? "انس طلا" : (purity === "24" ? "طلای ۲۴ عیار" : "طلای ۱۸ عیار");
-        askAmount("چه مقدار داری؟", purity === "ounce" ? "انس" : "گرم");
-      });
-    } else if (kind === "usdt") {
-      draft.symbol = "USDT"; draft.name = "تتر";
-      askAmount("چه مقدار تتر داری؟", "USDT");
-    } else { // toman
-      draft.symbol = "TOMAN"; draft.name = "تومان نقد";
-      bot("چه مبلغی تومان نقد داری؟");
-      prompt("مبلغ به تومان", (amt) => {
-        draft.amount = amt;
-        saveAsset(); // تومان: بدون قیمت خرید و افق
-      }, { numeric: true, unit: "تومان" });
-    }
-  }
-
-  function askAmount(q, unit) {
-    bot(q);
-    prompt("مقدار", (amt) => {
-      draft.amount = amt;
-      draft.unit = unit;
-      bot("روی چه قیمتی خریدی؟ (تومان به ازای هر " + unit + ")");
-      prompt("قیمت خرید (تومان)", (bp) => {
-        draft.buy_price = bp;
-        askHorizon();
-      }, { numeric: true, unit: "تومان" });
-    }, { numeric: true, unit: unit });
-  }
-
-  function askHorizon() {
-    bot("چه مدت می‌خوای روی این دارایی سرمایه‌گذاری کنی؟");
-    choices(HORIZONS, (h) => { draft.horizon = h; saveAsset(); });
-  }
-
-  async function saveAsset() {
-    clearInput();
+  // ───── ارسال پیام به Dify ─────
+  async function sendMessage(text) {
+    if (waiting || !text.trim()) return;
+    me(text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+    setWaiting(true);
+    showTyping();
     try {
-      const res = await fetch("/api/portfolio/assets", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft)
+      const res = await fetch("/api/portfolio/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, conversation_id: convId || null }),
       });
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      bot("✅ <b>" + draft.name + "</b> به سبدت اضافه شد.");
-      await loadPortfolio();
+      hideTyping();
+      if (data.error) {
+        bot("⚠️ " + data.error);
+      } else {
+        if (data.conversation_id) convId = data.conversation_id;
+        bot(mdToHtml(data.answer || ""));
+        if (data.assets_saved) {
+          await loadPortfolio();
+        }
+      }
     } catch (e) {
-      bot("⚠️ خطا در ثبت دارایی: " + e.message);
+      hideTyping();
+      bot("⚠️ خطا در ارتباط با سرور: " + e.message);
+    } finally {
+      setWaiting(false);
     }
-    setTimeout(() => {
-      bot("دارایی دیگه‌ای اضافه کنم؟");
-      choices([
-        { label: "بله، یکی دیگه", value: "more" },
-        { label: "نه، همین کافیه", value: "done" },
-      ], (v) => v === "more" ? askKind() : finish());
-    }, 400);
   }
 
-  function finish() {
-    bot("عالی! سبدت در سمت ☚ نمایش داده شده و ارزش هر دارایی به‌صورت زنده به‌روز می‌شه.<br>" +
-        "به‌زودی دستیار هوشمند، سبد بهینهٔ متناسب با ریسک‌پذیری‌ت رو پیشنهاد می‌ده.");
-    clearInput();
-    const b = document.createElement("button");
-    b.className = "chip-btn";
-    b.textContent = "افزودن دارایی جدید";
-    b.addEventListener("click", askKind);
-    inputArea.appendChild(b);
+  // ───── ورودی چت ─────
+  function buildInput() {
+    inputArea.innerHTML = "";
+    const form = document.createElement("form");
+    form.className = "chat__form";
+
+    const inp = document.createElement("input");
+    inp.id = "chatTextInput";
+    inp.className = "chat__field";
+    inp.placeholder = "دارایی‌هایتان را بنویسید...";
+    inp.type = "text";
+    inp.autocomplete = "off";
+    inp.dir = "rtl";
+
+    const btn = document.createElement("button");
+    btn.id = "chatSend";
+    btn.className = "btn btn--brand";
+    btn.type = "submit";
+    btn.textContent = "ارسال";
+
+    form.appendChild(inp);
+    form.appendChild(btn);
+    inputArea.appendChild(form);
+    inp.focus();
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const v = inp.value.trim();
+      if (!v) return;
+      inp.value = "";
+      sendMessage(v);
+    });
+
+    // دکمهٔ پیشنهادی
+    const suggestions = [
+      "۵۰۰ تتر روی ۷۵ هزار تومان دارم",
+      "۰.۵ اتریوم روی ۲۵۰۰ دلار دارم",
+      "۱۰۰ گرم طلای ۱۸ عیار روی ۴۰ میلیون تومان",
+    ];
+    const sg = document.createElement("div");
+    sg.className = "chat__suggestions";
+    suggestions.forEach(s => {
+      const b = document.createElement("button");
+      b.className = "chip-btn chip-btn--sm";
+      b.type = "button";
+      b.textContent = s;
+      b.addEventListener("click", () => { inp.value = s; inp.focus(); });
+      sg.appendChild(b);
+    });
+    inputArea.appendChild(sg);
   }
 
-  // ---------- نمایش سبد + ارزش‌گذاری زنده ----------
+  // ───── سبد دارایی + نمودار ─────
   function donutSegments(items) {
     const svg = $("donut");
     svg.innerHTML = "";
@@ -252,8 +229,8 @@
     } catch (e) { console.warn("portfolio:", e); }
   }
 
-  // ---------- راه‌اندازی ----------
-  intro();
+  // ───── راه‌اندازی ─────
+  buildInput();
   loadPortfolio();
-  setInterval(loadPortfolio, 15 * 1000);   // ارزش‌گذاری زنده هر ۱۵ ثانیه
+  setInterval(loadPortfolio, 15_000);
 })(window);

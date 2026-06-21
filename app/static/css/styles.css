@@ -565,3 +565,22 @@ a { color: inherit; text-decoration: none; }
   background: var(--chip); color: var(--text-dim); font-size: 1.1rem; cursor: pointer; line-height: 1;
   transition: var(--trans); }
 .port-item__del:hover { background: rgba(234,57,67,.14); color: var(--down); }
+
+/* اندیکاتور تایپ */
+.chat__typing { display: flex; gap: 5px; align-items: center; padding: 14px 18px !important; }
+.chat__typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--brand);
+  animation: typing-bounce 1.2s infinite; }
+.chat__typing span:nth-child(2) { animation-delay: .2s; }
+.chat__typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes typing-bounce { 0%,60%,100% { transform: translateY(0); opacity:.5; }
+  30% { transform: translateY(-6px); opacity:1; } }
+
+/* پیشنهادات چت */
+.chat__suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; width: 100%; }
+.chip-btn--sm { padding: 6px 12px; font-size: .78rem; }
+
+/* جدول markdown از Dify */
+.dify-table { border-collapse: collapse; width: 100%; font-size: .82rem; margin: 8px 0; }
+.dify-table th, .dify-table td { border: 1px solid var(--border); padding: 6px 10px; text-align: right; }
+.dify-table th { background: var(--surface-2); font-weight: 700; }
+.dify-table tr:nth-child(even) td { background: rgba(var(--brand-rgb, 25,195,179),.04); }

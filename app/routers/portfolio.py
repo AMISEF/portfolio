@@ -19,9 +19,11 @@ API (فرانت‌اند فقط با این‌ها صحبت می‌کند):
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Body, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
@@ -105,6 +107,141 @@ async def submit_risk(request: Request, payload: dict[str, Any] = Body(...)):
 async def get_risk(request: Request):
     uid, is_new = _uid(request)
     return _json({"profile": db.get_risk(uid)}, uid, is_new)
+
+
+# ───────────────────────── API: چت Dify ─────────────────────────
+
+# نگاشت نوع دارایی Dify → نوع داخلی + عیار طلا
+_DIFY_KIND: dict[str, str] = {
+    "tether": "usdt",
+    "paper_dollar": "toman",
+    "gold18": "gold",
+    "gold24": "gold",
+    "gold_coin": "gold",
+    "crypto": "crypto",
+    "other": "toman",
+}
+_DIFY_PURITY: dict[str, str] = {
+    "gold18": "18",
+    "gold24": "24",
+    "gold_coin": "coin",
+}
+_DIFY_SYMBOL: dict[str, str] = {
+    "usdt": "USDT",
+    "toman": "TOMAN",
+    "gold": "GOLD",
+}
+
+_ASSETS_RE = re.compile(r"<!--\s*ASSETS:(.*?)\s*-->", re.DOTALL)
+
+
+def _parse_dify_assets(uid: str, raw_json: str) -> bool:
+    """پارس JSON دارایی‌های Dify، ذخیره در DB و بازگشت True در صورت موفقیت."""
+    try:
+        assets = json.loads(raw_json)
+    except Exception:
+        return False
+    if not isinstance(assets, list) or not assets:
+        return False
+
+    db.clear_assets(uid)
+    for a in assets:
+        kind_dify = (a.get("kind") or "other").lower()
+        kind = _DIFY_KIND.get(kind_dify, "toman")
+        symbol = (a.get("symbol") or "").strip().upper() or _DIFY_SYMBOL.get(kind, kind.upper())
+        name = (a.get("name") or symbol).strip()
+        try:
+            amount = float(a.get("amount") or 0)
+        except (TypeError, ValueError):
+            continue
+        if amount <= 0:
+            continue
+
+        buy_value = a.get("buy_value")
+        buy_currency = (a.get("buy_currency") or "toman").lower()
+        buy_basis = (a.get("buy_basis") or "per_unit").lower()
+
+        buy_price: float | None = None
+        if buy_value is not None:
+            try:
+                buy_price = float(buy_value)
+            except (TypeError, ValueError):
+                pass
+        if buy_price and buy_basis == "total" and amount > 0:
+            buy_price = buy_price / amount
+        # قیمت دلاری → تومان با نرخ کَش‌شده (تقریبی زمان ثبت)
+        if buy_price and buy_currency == "usd":
+            from app.cache import cache as _cache
+            usdt_data = _cache.get_stale("tabdeal:usdt")
+            rate = ((usdt_data or {}).get("usdt_irt") or {}).get("price") or 0
+            if rate > 0:
+                buy_price = buy_price * rate
+
+        db.add_asset(uid, {
+            "kind": kind,
+            "symbol": symbol if kind == "crypto" else _DIFY_SYMBOL.get(kind, kind.upper()),
+            "name": name,
+            "amount": amount,
+            "buy_price": buy_price,
+            "purity": _DIFY_PURITY.get(kind_dify),
+            "horizon": None,
+        })
+    return True
+
+
+@router.post("/api/portfolio/chat")
+async def portfolio_chat(request: Request, payload: dict[str, Any] = Body(...)):
+    """پروکسی چت Dify: پیام → Dify → پارس assets → ذخیره (اگر آماده)."""
+    uid, is_new = _uid(request)
+    message = (payload.get("message") or "").strip()
+    conversation_id = (payload.get("conversation_id") or "").strip() or None
+
+    if not message:
+        return _json({"error": "پیام خالی است"}, uid, is_new, 400)
+    if not settings.dify_api_key:
+        return _json({"error": "کلید Dify تنظیم نشده است"}, uid, is_new, 503)
+
+    body: dict[str, Any] = {
+        "inputs": {},
+        "query": message,
+        "response_mode": "blocking",
+        "user": uid,
+    }
+    if conversation_id:
+        body["conversation_id"] = conversation_id
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            r = await client.post(
+                f"{settings.dify_api_base}/chat-messages",
+                headers={
+                    "Authorization": f"Bearer {settings.dify_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json=body,
+            )
+            r.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        return _json({"error": f"خطای Dify: {exc.response.status_code}"}, uid, is_new, 502)
+    except Exception as exc:
+        return _json({"error": str(exc)}, uid, is_new, 502)
+
+    data = r.json()
+    answer: str = data.get("answer") or ""
+    conv_id: str = data.get("conversation_id") or ""
+
+    # استخراج و ذخیرهٔ دارایی‌ها از کامنت مخفی <!-- ASSETS:{json} -->
+    assets_saved = False
+    m = _ASSETS_RE.search(answer)
+    if m:
+        answer = _ASSETS_RE.sub("", answer).strip()
+        assets_saved = _parse_dify_assets(uid, m.group(1).strip())
+
+    return _json({
+        "answer": answer,
+        "conversation_id": conv_id,
+        "assets_saved": assets_saved,
+    }, uid, is_new)
 
 
 # ───────────────────────── API: دارایی‌ها ─────────────────────────
