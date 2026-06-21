@@ -96,8 +96,9 @@ class Settings(BaseSettings):
     # ---- پورتفولیو / مدیریت سرمایه ----
     # دیتابیس SQLite پروفایل ریسک و دارایی‌ها (طبق .gitignore کامیت نمی‌شود).
     portfolio_db_file: str = "data/portfolio.db"
-    # چت‌بات مدیریت سرمایه از پلتفرم Dify (اتصال در فاز بعد؛ کلید در .env سرور).
-    dify_api_base: str = "https://api.dify.ai/v1"
+    # چت‌بات مدیریت سرمایه از پلتفرم Dify (سلف‌هاست؛ کلید در .env سرور).
+    # وب‌اپ روی /app است؛ API سرویس روی /v1. قابل بازنویسی با DIFY_API_BASE در .env.
+    dify_api_base: str = "http://38.252.8.181/v1"
     dify_api_key: str = ""
 
     http_timeout: float = 10.0
