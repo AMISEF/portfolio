@@ -138,7 +138,7 @@ async def get_altseason() -> dict[str, Any]:
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.get(
             f"{settings.cmc_base_url}/v1/cryptocurrency/listings/latest",
-            params={"start": "1", "limit": "100", "convert": "USD", "sort": "market_cap"},
+            params={"start": "1", "limit": "150", "convert": "USD", "sort": "market_cap"},
             headers=_headers(),
         )
         resp.raise_for_status()
@@ -158,7 +158,9 @@ async def get_altseason() -> dict[str, Any]:
     if btc_90d is None:
         raise RuntimeError("CMC: BTC 90d change missing")
 
-    # ۵۰ ارز برتر به‌جز بیت‌کوین، استیبل‌کوین‌ها و توکن‌های پوشش‌داده‌شده
+    # ۵۰ ارز برتر به‌جز بیت‌کوین، استیبل‌کوین‌ها و توکن‌های پوشش‌داده‌شده.
+    # مطابق روش رسمی CoinMarketCap، ارزهایی که کل ۹۰ روز را در بازار نبوده‌اند
+    # (percent_change_90d ندارند) کنار گذاشته می‌شوند تا شاخص به‌اشتباه پایین نیاید.
     eligible = []
     for c in coins:
         sym = (c.get("symbol") or "").upper()
@@ -166,6 +168,9 @@ async def get_altseason() -> dict[str, Any]:
             continue
         tags = {str(t).lower() for t in (c.get("tags") or [])}
         if tags & _EXCLUDE_TAGS:
+            continue
+        q = (c.get("quote") or {}).get("USD", {})
+        if q.get("percent_change_90d") is None:   # سابقهٔ کامل ۹۰روزه ندارد
             continue
         eligible.append(c)
         if len(eligible) >= 50:
