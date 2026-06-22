@@ -81,23 +81,51 @@
 
 <!-- مودال مدیریت اشتراک -->
 <div class="modal-overlay" id="admSubModal" hidden>
-  <div class="modal" role="dialog" aria-modal="true">
+  <div class="modal modal--sub" role="dialog" aria-modal="true">
     <button class="modal__close" id="admSubClose" aria-label="بستن">×</button>
-    <h2 class="modal__title">مدیریت اشتراک</h2>
-    <p class="modal__sub" id="admSubUser"></p>
+    <div class="sub-modal__head">
+      <span class="sub-modal__icon" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+      </span>
+      <div>
+        <h2 class="modal__title">مدیریت اشتراک</h2>
+        <p class="modal__sub" id="admSubUser"></p>
+      </div>
+    </div>
     <p class="auth-msg" id="admSubMsg" hidden></p>
-    <div class="field">
-      <label for="admSubTier">سطح اشتراک</label>
-      <select id="admSubTier">
-        <option value="pro">حرفه‌ای (Pro)</option>
-        <option value="vip">ویژه (VIP)</option>
-        <option value="free">رایگان</option>
-      </select>
+
+    <label class="sub-label">سطح اشتراک</label>
+    <div class="tier-pick" id="admSubTierPick" role="radiogroup" aria-label="سطح اشتراک">
+      <button type="button" class="tier-opt tier-opt--pro" data-tier="pro" role="radio" aria-checked="false">
+        <span class="tier-opt__badge">Pro</span>
+        <span class="tier-opt__name">حرفه‌ای</span>
+        <span class="tier-opt__desc">امکانات پیشرفته</span>
+      </button>
+      <button type="button" class="tier-opt tier-opt--vip" data-tier="vip" role="radio" aria-checked="false">
+        <span class="tier-opt__badge">VIP</span>
+        <span class="tier-opt__name">ویژه</span>
+        <span class="tier-opt__desc">دسترسی کامل</span>
+      </button>
+      <button type="button" class="tier-opt tier-opt--free" data-tier="free" role="radio" aria-checked="false">
+        <span class="tier-opt__badge">Free</span>
+        <span class="tier-opt__name">رایگان</span>
+        <span class="tier-opt__desc">پایه</span>
+      </button>
     </div>
-    <div class="field">
-      <label for="admSubDays">مدت (روز)</label>
+    <input type="hidden" id="admSubTier" value="pro">
+
+    <label class="sub-label" for="admSubDays">مدت اشتراک</label>
+    <div class="day-presets" id="admSubDayPresets">
+      <button type="button" class="day-chip" data-days="30">۱ ماه</button>
+      <button type="button" class="day-chip" data-days="90">۳ ماه</button>
+      <button type="button" class="day-chip" data-days="180">۶ ماه</button>
+      <button type="button" class="day-chip" data-days="365">۱ سال</button>
+    </div>
+    <div class="day-input">
       <input type="number" id="admSubDays" value="30" min="1" inputmode="numeric">
+      <span class="day-input__unit">روز</span>
     </div>
+
     <div class="adm-sub-actions">
       <button class="btn-primary" id="admSubUpgrade">ارتقا / فعال‌سازی</button>
       <button class="btn-soft" id="admSubRenew">تمدید</button>
