@@ -111,13 +111,21 @@ async def prices():
         _safe(commodities_svc.commodities()),
     )
 
-    # کالاهای جهانی از Yahoo (قیمت + تغییر واقعی)؛ در نبود، از SourceArena پر می‌شود.
-    commodities = {}
-    if isinstance(comm, dict) and "error" not in comm:
-        commodities = dict(comm.get("commodities", {}))
+    # کالاهای جهانی: قیمت و تغییر ۲۴ساعته از SourceArena (قابل‌اعتماد و محاسبه‌شده
+    # از تاریخچهٔ واقعی)؛ Yahoo فقط اسپارک‌لاین را تأمین می‌کند و اگر SourceArena
+    # کلیدی نداشت، به‌عنوان پشتیبانِ کامل به‌کار می‌رود.
     sa_comm = metals.get("commodities", {}) if isinstance(metals, dict) else {}
-    for k, v in sa_comm.items():
-        commodities.setdefault(k, v)
+    yh_comm = comm.get("commodities", {}) if (isinstance(comm, dict) and "error" not in comm) else {}
+    commodities = {}
+    for k in ("XAU", "XAG", "OIL"):
+        base = dict(sa_comm.get(k) or {})
+        yv = yh_comm.get(k) or {}
+        if not base:
+            base = dict(yv)                 # SourceArena نداشت ⇒ کاملاً از Yahoo
+        elif yv.get("spark"):
+            base["spark"] = yv["spark"]     # قیمت/تغییرِ SourceArena + اسپارک‌لاین Yahoo
+        if base:
+            commodities[k] = base
 
     # تغییر ۲۴ساعتهٔ تتر/تومان از تغییر دلار آزاد (SourceArena) گرفته می‌شود؛
     # اندپوینت عمق Tabdeal خودش درصد تغییر ندارد.

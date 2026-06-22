@@ -20,6 +20,7 @@ import httpx
 
 from app.config import settings
 from app.services import mock_data
+from app.services import price_history
 
 
 async def get_metals() -> dict[str, Any]:
@@ -47,9 +48,17 @@ async def get_metals() -> dict[str, Any]:
     if gold18 <= 0:
         raise RuntimeError("SourceArena: gold 18k missing")
 
+    # درصد تغییر ۲۴ساعته: اگر خودِ API مقدار داشته باشد همان؛ وگرنه از تاریخچهٔ
+    # قیمتِ پایدار محاسبه می‌شود (چون پراکسی فیلد change را صفر می‌دهد).
+    xau_change = _ck(data, "usd_xau") or price_history.record_and_change("xau", xau_usd)
+    xag_change = _ck(data, "xag") or price_history.record_and_change("xag", xag_usd)
+    gold18_change = _ck(data, "18ayar") or price_history.record_and_change("gold18k", gold18)
+    usd_change = (_ck(data, "usd") or _ck(data, "usd_sherkat")
+                  or price_history.record_and_change("usd", usd_toman))
+
     commodities = {
-        "XAU": {"name": "طلای جهانی", "sub": "اونس", "price": xau_usd, "change_24h": _ck(data, "usd_xau")},
-        "XAG": {"name": "نقره", "sub": "اونس", "price": xag_usd, "change_24h": _ck(data, "xag")},
+        "XAU": {"name": "طلای جهانی", "sub": "اونس", "price": xau_usd, "change_24h": xau_change},
+        "XAG": {"name": "نقره", "sub": "اونس", "price": xag_usd, "change_24h": xag_change},
     }
 
     # نفت خام از همان منبع SourceArena (کلیدهای محتمل بررسی می‌شوند). مقدار ممکن
@@ -57,14 +66,15 @@ async def get_metals() -> dict[str, Any]:
     oil_val, oil_key = _first(data, "oil", "oil_brent", "brent", "oil_wti", "wti", "crude_oil", "naft")
     if oil_val > 0:
         oil_usd = round(oil_val / usd_toman, 2) if (oil_val > 1000 and usd_toman) else round(oil_val, 2)
+        oil_change = _ck(data, oil_key) or price_history.record_and_change("oil", oil_usd)
         commodities["OIL"] = {"name": "نفت خام", "sub": "بشکه", "price": oil_usd,
-                              "change_24h": _ck(data, oil_key)}
+                              "change_24h": oil_change}
 
     return {
         "source": "live",
         # تغییر دلار آزاد (تومان) ≈ تغییر ۲۴ساعتهٔ تتر/تومان — برای ردیف تتر استفاده می‌شود
-        "usd_change_24h": _ck(data, "usd") or _ck(data, "usd_sherkat"),
-        "gold_18k": {"name": "طلای ۱۸ عیار", "sub": "هر گرم", "price": round(gold18), "change_24h": _ck(data, "18ayar")},
+        "usd_change_24h": usd_change,
+        "gold_18k": {"name": "طلای ۱۸ عیار", "sub": "هر گرم", "price": round(gold18), "change_24h": gold18_change},
         "commodities": commodities,
     }
 

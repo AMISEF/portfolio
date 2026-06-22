@@ -379,16 +379,21 @@ a { color: inherit; text-decoration: none; }
   font-weight: 800; font-size: .76rem; padding: 6px 10px; cursor: pointer; font-family: var(--font); }
 .hm-select:focus { outline: none; border-color: var(--brand); }
 
-.heatmap { position: relative; width: 100%; overflow: hidden; border-radius: 8px; }
+.heatmap { position: relative; width: 100%; overflow: hidden; border-radius: 10px;
+  background: var(--bg, #0b1220); }
 .hm-cat { position: absolute; overflow: hidden; }
-.hm-cat__lbl { position: absolute; top: 0; left: 0; right: 0; height: 15px; padding: 0 4px; font-size: .6rem; font-weight: 800;
-  color: var(--text-soft); background: var(--surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 2; }
-.hm { position: absolute; box-sizing: border-box; border: 1px solid var(--bg, #0b1220); border-radius: 4px; overflow: hidden;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: default; line-height: 1.04; text-align: center; }
-.hm:hover { filter: brightness(1.08); z-index: 5; outline: 1px solid rgba(255,255,255,.5); }
-.hm__sym { font-weight: 900; letter-spacing: -.3px; }
-.hm__pct { font-weight: 800; font-family: var(--font-mono); opacity: .95; }
-.hm__nm { font-size: 9px; opacity: .8; font-family: var(--font-mono); margin-top: 1px; }
+.hm-cat__lbl { position: absolute; top: 0; left: 0; right: 0; height: 16px; padding: 0 7px;
+  font-size: .62rem; font-weight: 800; letter-spacing: .2px; line-height: 16px;
+  color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 2; }
+.hm { position: absolute; box-sizing: border-box; border: 2px solid var(--bg, #0b1220); border-radius: 5px;
+  overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: default; line-height: 1.06; text-align: center; padding: 1px;
+  transition: filter .12s ease, transform .12s ease; }
+.hm:hover { filter: brightness(1.12); z-index: 5; transform: scale(1.012);
+  box-shadow: 0 4px 16px rgba(0,0,0,.35); outline: 1.5px solid rgba(255,255,255,.65); }
+.hm__sym { font-weight: 900; letter-spacing: -.3px; text-shadow: 0 1px 2px rgba(0,0,0,.18); }
+.hm__pct { font-weight: 800; font-family: var(--font-mono); opacity: .96; margin-top: 1px; }
+.hm__nm { font-size: 9px; opacity: .78; font-family: var(--font-mono); margin-top: 2px; }
 
 .hm-legend { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;
   margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: .68rem; color: var(--text-soft); }
@@ -616,6 +621,9 @@ a { color: inherit; text-decoration: none; }
 
 /* ───────── ثبت‌نام: ردیف دو ستونه، شماره تماس، قدرت رمز ───────── */
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* اجازهٔ کوچک‌شدنِ ستون‌های گرید زیر عرضِ ذاتیِ input (وگرنه باکس از مودال بیرون می‌زد) */
+.field-row > .field { min-width: 0; }
+.field-row > .field input { width: 100%; }
 .field input::placeholder { color: var(--text-dim); opacity: .7; }
 .auth-account__meta { font-size: .78rem; color: var(--text-soft); margin-top: 8px; }
 .btn-admin { display: flex; align-items: center; justify-content: center; text-decoration: none;

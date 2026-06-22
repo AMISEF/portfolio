@@ -13,18 +13,18 @@
   let _tiles = {};            // symbol → عنصر کاشی (برای به‌روزرسانی بدون بازچینش)
   const state = { period: "h24", size: "mcap", top: "100", exBTC: false, exStable: true };
 
-  // سطل‌های رنگ مطابق راهنمای CryptoRank (-12/-7/-3/<0/0/>0/+3/+7/+12)
+  // سطل‌های رنگ به‌سبک CryptoRank — پالت اشباع‌شده و یکدست (-12/-7/-3/<0/0/>0/+3/+7/+12)
   function colorFor(ch) {
     ch = ch || 0;
-    if (ch <= -12) return { bg: "#8b1a1a", fg: "#fff" };
-    if (ch <= -7) return { bg: "#c0392b", fg: "#fff" };
-    if (ch <= -3) return { bg: "#e2675e", fg: "#fff" };
-    if (ch < 0) return { bg: "#f6cfcc", fg: "#b3261e" };
-    if (ch === 0) return { bg: "#d6dbe1", fg: "#5b6470" };
-    if (ch < 3) return { bg: "#bfe9d1", fg: "#1c7a47" };
-    if (ch < 7) return { bg: "#74cf9b", fg: "#0c3d24" };
-    if (ch < 12) return { bg: "#33a866", fg: "#fff" };
-    return { bg: "#1a7a45", fg: "#fff" };
+    if (ch <= -12) return { bg: "#7f1d1d", fg: "#fff" };
+    if (ch <= -7) return { bg: "#b42318", fg: "#fff" };
+    if (ch <= -3) return { bg: "#e04f3d", fg: "#fff" };
+    if (ch < 0) return { bg: "#efa79e", fg: "#6b1810" };
+    if (ch === 0) return { bg: "#475569", fg: "#e2e8f0" };
+    if (ch < 3) return { bg: "#9fdcb7", fg: "#0b3f25" };
+    if (ch < 7) return { bg: "#43bd80", fg: "#04301c" };
+    if (ch < 12) return { bg: "#1f9d5b", fg: "#fff" };
+    return { bg: "#15803d", fg: "#fff" };
   }
 
   // ---- treemap مربعی (squarified) ----
