@@ -28,7 +28,7 @@ from fastapi.templating import Jinja2Templates
 
 from app import db
 from app.config import settings
-from app.routers.auth import current_user
+from app.routers.auth import account_display_name, current_user
 from app.services import auth as auth_svc
 from app.services import crypto_box, xlsx
 
@@ -61,6 +61,7 @@ def _ctx(request: Request, active: str, user: dict[str, Any]) -> dict:
         "title_fa": "پنل مدیریت",
         "subtitle_fa": "مدیریت کاربران و اشتراک‌ها",
         "active": active,
+        "account_name": account_display_name(request),
         "me": {"name": user.get("name"), "role": user.get("role"),
                "is_admin": _is_admin(user)},
     }

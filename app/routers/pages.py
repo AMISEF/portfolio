@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings
+from app.routers.auth import account_display_name
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -40,6 +41,7 @@ def _ctx(request: Request, active: str) -> dict:
         "title_fa": settings.app_title_fa,
         "subtitle_fa": settings.app_subtitle_fa,
         "active": active,
+        "account_name": account_display_name(request),
     }
 
 
