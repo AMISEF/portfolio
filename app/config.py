@@ -101,6 +101,23 @@ class Settings(BaseSettings):
     dify_api_base: str = "http://38.252.8.181/v1"
     dify_api_key: str = ""
 
+    # ---- ایمیل (ارسال کد تأیید و بازیابی رمز) ----
+    # ارسال از طریق SMTP جیمیل (رله) انجام می‌شود؛ نه میل‌سرور محلی، تا تحویل‌پذیری
+    # بالا بماند. رمز عبور باید «App Password» جیمیل باشد (نه رمز اصلی حساب) و فقط
+    # در .env سرور قرار گیرد. Cloudflare Email Routing فقط دریافت‌کننده است.
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587               # STARTTLS
+    smtp_user: str = ""                # cryptosmart.company@gmail.com
+    smtp_password: str = ""            # App Password ۱۶ رقمی جیمیل (در .env)
+    smtp_from_email: str = "cryptosmart@cryptosmart.site"
+    smtp_from_name: str = "کریپتو اسمارت"
+    smtp_starttls: bool = True
+    # اعتبار و محدودیت کد یک‌بارمصرف
+    auth_code_ttl: int = 600           # اعتبار کد: ۱۰ دقیقه
+    auth_code_cooldown: int = 60       # حداقل فاصلهٔ ارسال مجدد کد (ثانیه)
+    auth_code_max_attempts: int = 5    # حداکثر تلاش اشتباه برای هر کد
+    session_ttl_days: int = 30         # طول عمر نشست ورود
+
     http_timeout: float = 10.0
 
 

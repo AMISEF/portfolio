@@ -584,3 +584,32 @@ a { color: inherit; text-decoration: none; }
 .dify-table th, .dify-table td { border: 1px solid var(--border); padding: 6px 10px; text-align: right; }
 .dify-table th { background: var(--surface-2); font-weight: 700; }
 .dify-table tr:nth-child(even) td { background: rgba(var(--brand-rgb, 25,195,179),.04); }
+
+/* ==========================================================================
+   احراز هویت — پیام‌ها، لینک‌ها، ورودی کد، کارت حساب
+   ========================================================================== */
+.auth-msg { font-size: .82rem; font-weight: 700; padding: 10px 12px; border-radius: var(--radius-md);
+  margin: 0 0 14px; line-height: 1.7; }
+.auth-msg--ok   { color: var(--up);   background: rgba(22,199,132,.12); }
+.auth-msg--err  { color: var(--down); background: rgba(234,57,67,.12); }
+.auth-msg--info { color: var(--brand-dark); background: rgba(25,195,179,.12); }
+
+.auth-link { background: none; border: none; color: var(--brand-dark); font-weight: 700;
+  cursor: pointer; font-family: var(--font); font-size: .82rem; padding: 4px; }
+.auth-link:hover { text-decoration: underline; }
+.auth-link--block { display: block; width: 100%; text-align: center; margin-top: 12px; }
+
+.auth-code-input { text-align: center; letter-spacing: 10px; font-size: 1.4rem; font-weight: 800;
+  font-family: var(--font-mono); }
+
+.btn-danger { background: linear-gradient(135deg, #f0616e, var(--down)) !important;
+  box-shadow: 0 10px 24px -10px rgba(234,57,67,.7) !important; }
+
+.auth-account { text-align: center; margin-bottom: 18px; }
+.auth-account__avatar { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 1.7rem; font-weight: 900; color: var(--on-brand);
+  background: linear-gradient(135deg, var(--brand), var(--brand-dark)); }
+.auth-account__name { font-size: 1.15rem; font-weight: 900; color: var(--heading); }
+.auth-account__email { font-size: .85rem; color: var(--text-dim); font-family: var(--font-mono); margin-top: 2px; }
+
+.account-btn--in { background: linear-gradient(135deg, var(--blue-500), var(--blue-700)); }

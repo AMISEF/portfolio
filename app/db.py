@@ -56,6 +56,39 @@ def init_db() -> None:
                 created_at  TEXT NOT NULL DEFAULT (datetime('now'))
             );
             CREATE INDEX IF NOT EXISTS idx_assets_uid ON assets(uid);
+
+            -- کاربران ثبت‌نام‌شده (احراز هویت ایمیلی)
+            CREATE TABLE IF NOT EXISTS users (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                email         TEXT UNIQUE NOT NULL,
+                name          TEXT,
+                password_hash TEXT NOT NULL,
+                verified      INTEGER NOT NULL DEFAULT 0,
+                uid           TEXT,          -- پیوند به شناسهٔ ناشناس cs_uid (مهاجرت داده)
+                created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            -- کدهای یک‌بارمصرف (تأیید ثبت‌نام / بازیابی رمز) — هش‌شده ذخیره می‌شوند
+            CREATE TABLE IF NOT EXISTS auth_codes (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                email       TEXT NOT NULL,
+                code_hash   TEXT NOT NULL,
+                purpose     TEXT NOT NULL,   -- verify | reset
+                expires_at  TEXT NOT NULL,
+                used        INTEGER NOT NULL DEFAULT 0,
+                attempts    INTEGER NOT NULL DEFAULT 0,
+                created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_codes_email ON auth_codes(email, purpose);
+
+            -- نشست‌های ورود (توکن تصادفی در کوکی)
+            CREATE TABLE IF NOT EXISTS sessions (
+                token       TEXT PRIMARY KEY,
+                user_id     INTEGER NOT NULL,
+                expires_at  TEXT NOT NULL,
+                created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+            CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
             """
         )
 
@@ -112,6 +145,126 @@ def delete_asset(uid: str, asset_id: int) -> bool:
 def clear_assets(uid: str) -> None:
     with _LOCK, _conn() as conn:
         conn.execute("DELETE FROM assets WHERE uid = ?", (uid,))
+
+
+def reassign_assets(from_uid: str, to_uid: str) -> None:
+    """انتقال دارایی‌ها و پروفایل ریسک از یک شناسه به شناسهٔ دیگر (هنگام ورود)."""
+    with _LOCK, _conn() as conn:
+        conn.execute("UPDATE assets SET uid = ? WHERE uid = ?", (to_uid, from_uid))
+
+
+# ---- کاربران ----
+def get_user_by_email(email: str) -> dict[str, Any] | None:
+    with _LOCK, _conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_id(user_id: int) -> dict[str, Any] | None:
+    with _LOCK, _conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def create_user(email: str, name: str | None, password_hash: str,
+                uid: str | None = None, verified: bool = False) -> int:
+    with _LOCK, _conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO users (email, name, password_hash, verified, uid) VALUES (?, ?, ?, ?, ?)",
+            (email, name, password_hash, 1 if verified else 0, uid),
+        )
+        return int(cur.lastrowid)
+
+
+def update_user_password(user_id: int, password_hash: str) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id))
+
+
+def set_user_verified(user_id: int) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute("UPDATE users SET verified = 1 WHERE id = ?", (user_id,))
+
+
+def update_user_credentials(user_id: int, name: str | None, password_hash: str) -> None:
+    """بازنویسی نام و رمز کاربرِ ثبت‌نام‌شدهٔ تأییدنشده (ثبت‌نام مجدد پیش از تأیید)."""
+    with _LOCK, _conn() as conn:
+        conn.execute("UPDATE users SET name = ?, password_hash = ? WHERE id = ?",
+                     (name, password_hash, user_id))
+
+
+# ---- کدهای یک‌بارمصرف ----
+def latest_code_age_seconds(email: str, purpose: str) -> float | None:
+    """سن جدیدترین کد صادرشده (ثانیه)؛ برای کنترل فاصلهٔ ارسال مجدد."""
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT (julianday('now') - julianday(created_at)) * 86400 AS age "
+            "FROM auth_codes WHERE email = ? AND purpose = ? ORDER BY id DESC LIMIT 1",
+            (email, purpose),
+        ).fetchone()
+        return float(row["age"]) if row and row["age"] is not None else None
+
+
+def add_code(email: str, code_hash: str, purpose: str, ttl_seconds: int) -> None:
+    """ثبت کد جدید و باطل‌کردن کدهای قبلیِ همان هدف."""
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "UPDATE auth_codes SET used = 1 WHERE email = ? AND purpose = ? AND used = 0",
+            (email, purpose),
+        )
+        conn.execute(
+            "INSERT INTO auth_codes (email, code_hash, purpose, expires_at) "
+            "VALUES (?, ?, ?, datetime('now', ?))",
+            (email, code_hash, purpose, f"+{int(ttl_seconds)} seconds"),
+        )
+
+
+def get_active_code(email: str, purpose: str) -> dict[str, Any] | None:
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM auth_codes WHERE email = ? AND purpose = ? AND used = 0 "
+            "AND expires_at > datetime('now') ORDER BY id DESC LIMIT 1",
+            (email, purpose),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def bump_code_attempts(code_id: int) -> int:
+    with _LOCK, _conn() as conn:
+        conn.execute("UPDATE auth_codes SET attempts = attempts + 1 WHERE id = ?", (code_id,))
+        row = conn.execute("SELECT attempts FROM auth_codes WHERE id = ?", (code_id,)).fetchone()
+        return int(row["attempts"]) if row else 0
+
+
+def consume_code(code_id: int) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute("UPDATE auth_codes SET used = 1 WHERE id = ?", (code_id,))
+
+
+# ---- نشست‌ها ----
+def create_session(token: str, user_id: int, ttl_days: int) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "INSERT INTO sessions (token, user_id, expires_at) "
+            "VALUES (?, ?, datetime('now', ?))",
+            (token, user_id, f"+{int(ttl_days)} days"),
+        )
+
+
+def get_session_user(token: str) -> dict[str, Any] | None:
+    """کاربرِ نشستِ معتبر را برمی‌گرداند (در صورت انقضا None)."""
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id "
+            "WHERE s.token = ? AND s.expires_at > datetime('now')",
+            (token,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def delete_session(token: str) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
 
 
 # تضمین وجود جداول حتی بدون رویداد startup (idempotent).

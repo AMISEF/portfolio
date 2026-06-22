@@ -1,29 +1,11 @@
-<!-- مودال ورود / ثبت‌نام (فاز ۱: رابط آماده؛ اتصال بک‌اند احراز هویت در فاز بعد) -->
+<!-- مودال احراز هویت ایمیلی (ورود/ثبت‌نام/تأیید کد/بازیابی رمز). بدنه با JS رندر می‌شود. -->
 <div class="modal-overlay" id="authModal" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
     <button class="modal__close" id="authClose" aria-label="بستن">×</button>
     <h2 class="modal__title" id="authTitle">ورود به حساب</h2>
-    <p class="modal__sub" id="authSub">به پنل مدیریت سرمایهٔ کریپتو اسمارت خوش آمدید.</p>
-
-    <form id="authForm">
-      <div class="field" id="nameField" hidden>
-        <label for="authName">نام</label>
-        <input type="text" id="authName" autocomplete="name" placeholder="نام شما">
-      </div>
-      <div class="field">
-        <label for="authEmail">ایمیل یا شماره موبایل</label>
-        <input type="text" id="authEmail" autocomplete="username" placeholder="example@mail.com">
-      </div>
-      <div class="field">
-        <label for="authPass">گذرواژه</label>
-        <input type="password" id="authPass" autocomplete="current-password" placeholder="••••••••">
-      </div>
-      <button type="submit" class="btn-primary" id="authSubmit">ورود</button>
-    </form>
-
-    <div class="modal__switch">
-      <span id="switchText">حساب کاربری ندارید؟</span>
-      <button type="button" id="authSwitch">ثبت‌نام</button>
-    </div>
+    <p class="modal__sub" id="authSub"></p>
+    <p class="auth-msg" id="authMsg" hidden></p>
+    <div id="authBody"></div>
+    <div class="modal__switch" id="authSwitch"></div>
   </div>
 </div>
