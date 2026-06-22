@@ -34,6 +34,10 @@ from app.services import crypto_box, xlsx
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+# نسخهٔ استاتیک مشترک با روتر صفحات تا با هر استقرار، کش CSS/JS باطل شود
+# (وگرنه {{ static_v }} اینجا خالی می‌ماند و مرورگر CSS قدیمی را برای /admin کش می‌کند)
+from app.routers.pages import STATIC_V  # noqa: E402
+templates.env.globals["static_v"] = STATIC_V
 
 _ROLES = {"admin", "support", "member"}
 _TIERS = {"free", "pro", "vip"}
