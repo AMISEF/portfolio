@@ -122,8 +122,12 @@ async def prices():
         yv = yh_comm.get(k) or {}
         if not base:
             base = dict(yv)                 # SourceArena نداشت ⇒ کاملاً از Yahoo
-        elif yv.get("spark"):
-            base["spark"] = yv["spark"]     # قیمت/تغییرِ SourceArena + اسپارک‌لاین Yahoo
+        else:
+            if yv.get("spark"):
+                base["spark"] = yv["spark"]  # قیمت/تغییرِ SourceArena + اسپارک‌لاین Yahoo
+            # اگر SourceArena درصد تغییر نداد (پراکسی همیشه صفر می‌دهد)، از Yahoo استفاده می‌کنیم
+            if not base.get("change_24h") and yv.get("change_24h"):
+                base["change_24h"] = yv["change_24h"]
         if base:
             commodities[k] = base
 
@@ -162,6 +166,9 @@ async def prices():
             prev = cache.get_stale(f"gold18k:day:{(today - _dt.timedelta(days=1)).isoformat()}")
             if prev:
                 gold_18k["change_24h"] = round((price - prev) / prev * 100, 2)
+            # fallback: از درصد تغییر انس جهانی (طلای ایران با انس همبستگی بالایی دارد)
+            if not gold_18k.get("change_24h") and xau_chg:
+                gold_18k["change_24h"] = round(xau_chg, 2)
     else:
         # SourceArena کهنه/خطا ⇒ تخمین زنده فقط اگر قبلاً با دادهٔ واقعی کالیبره
         # شده باشیم (وگرنه واحد/ضریب نامعلوم است و عددِ پرت می‌دهد). در نبود ضریب،

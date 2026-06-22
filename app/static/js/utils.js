@@ -37,7 +37,9 @@
   function faPct(n) {
     if (n === null || n === undefined || isNaN(n)) return "";
     const sign = n >= 0 ? "+" : "−";
-    return sign + toFa(Math.abs(n).toFixed(2)) + "٪";
+    // ⁦ = LTR ISOLATE, ⁩ = POP DIRECTIONAL ISOLATE
+    // prevents bidi algorithm from reversing sign/percent order in RTL context
+    return "⁦" + sign + toFa(Math.abs(n).toFixed(2)) + "٪" + "⁩";
   }
 
   const chgClass = (n) => (n >= 0 ? "up" : "down");
