@@ -71,24 +71,31 @@ def _role_for(email: str, current: str | None = None) -> str:
 
 
 def _public_user(user: dict[str, Any]) -> dict[str, Any]:
-    """اطلاعات عمومیِ کاربر برای فرانت‌اند (بدون رمز)."""
+    """اطلاعات عمومیِ کاربر برای فرانت‌اند (بدون رمز).
+
+    نکتهٔ امنیتی: شناسهٔ کاربری (user_code) و نقش (role) فقط برای کارکنان
+    (ادمین/پشتیبان) برگردانده می‌شود؛ کاربران عادی این اطلاعات را نمی‌بینند."""
+    role = user.get("role") or "member"
+    is_staff = role in ("admin", "support")
     full = user.get("name") or " ".join(
         x for x in (user.get("first_name"), user.get("last_name")) if x
     ) or None
-    return {
+    data: dict[str, Any] = {
         "id": user["id"],
-        "user_code": user.get("user_code"),
         "email": user["email"],
         "username": user.get("username"),
         "name": full,
         "first_name": user.get("first_name"),
         "last_name": user.get("last_name"),
         "phone": user.get("phone"),
-        "role": user.get("role") or "member",
         "subscription": user.get("subscription") or "free",
         "sub_expires_at": user.get("sub_expires_at"),
-        "is_staff": (user.get("role") or "member") in ("admin", "support"),
+        "is_staff": is_staff,
     }
+    if is_staff:
+        data["user_code"] = user.get("user_code")
+        data["role"] = role
+    return data
 
 
 def _login_response(user: dict[str, Any], request: Request, body: dict | None = None) -> JSONResponse:
