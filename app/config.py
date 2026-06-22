@@ -101,17 +101,14 @@ class Settings(BaseSettings):
     dify_api_base: str = "http://38.252.8.181/v1"
     dify_api_key: str = ""
 
-    # ---- ایمیل (ارسال کد تأیید و بازیابی رمز) ----
-    # ارسال از طریق SMTP جیمیل (رله) انجام می‌شود؛ نه میل‌سرور محلی، تا تحویل‌پذیری
-    # بالا بماند. رمز عبور باید «App Password» جیمیل باشد (نه رمز اصلی حساب) و فقط
-    # در .env سرور قرار گیرد. Cloudflare Email Routing فقط دریافت‌کننده است.
-    smtp_host: str = "smtp.gmail.com"
-    smtp_port: int = 587               # STARTTLS
-    smtp_user: str = ""                # cryptosmart.company@gmail.com
-    smtp_password: str = ""            # App Password ۱۶ رقمی جیمیل (در .env)
-    smtp_from_email: str = "cryptosmart@cryptosmart.site"
-    smtp_from_name: str = "کریپتو اسمارت"
-    smtp_starttls: bool = True
+    # ---- ایمیل (ارسال کد تأیید و بازیابی رمز از طریق Resend) ----
+    # ارسال از طریق REST API سرویس Resend انجام می‌شود (با httpx، بدون وابستگی
+    # اضافه). کلید فقط در .env سرور قرار می‌گیرد و هرگز در کد/مخزن نیست.
+    # برای ارسال از آدرس دامنه، باید دامنه در Resend تأیید (DNS) شده باشد.
+    resend_api_key: str = ""
+    resend_api_url: str = "https://api.resend.com/emails"
+    mail_from_email: str = "cryptosmart@cryptosmart.site"
+    mail_from_name: str = "کریپتو اسمارت"
     # اعتبار و محدودیت کد یک‌بارمصرف
     auth_code_ttl: int = 600           # اعتبار کد: ۱۰ دقیقه
     auth_code_cooldown: int = 60       # حداقل فاصلهٔ ارسال مجدد کد (ثانیه)

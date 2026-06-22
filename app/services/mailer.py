@@ -1,80 +1,87 @@
 """
-سرویس ارسال ایمیل — رله از طریق SMTP جیمیل.
+سرویس ارسال ایمیل — از طریق REST API سرویس Resend (https://resend.com).
 
-چرا رله به‌جای میل‌سرور محلی؟ ارسال مستقیم از IP تازهٔ سرور تقریباً همیشه در
-پوشهٔ اسپم می‌افتد و IP خیلی زود در بلاک‌لیست‌ها قرار می‌گیرد. ارسال از زیرساخت
-جیمیل تحویل‌پذیری بسیار بهتری دارد.
+چرا Resend؟ تحویل‌پذیری بالا بدون نگه‌داری میل‌سرور؛ ارسال با یک درخواست HTTPS.
+از httpx استفاده می‌کنیم (وابستگی موجود) تا نیازی به نصب پکیج اضافه روی سرور نباشد.
 
-تنظیمات حساس (به‌ویژه App Password جیمیل) فقط از .env سرور خوانده می‌شوند و هرگز
-در کد یا مخزن قرار نمی‌گیرند.
+کلید API فقط از .env سرور خوانده می‌شود و هرگز در کد/مخزن قرار نمی‌گیرد. برای
+ارسال از آدرس دامنه (cryptosmart@cryptosmart.site) باید دامنه در پنل Resend با
+رکوردهای DNS تأیید شده باشد؛ در غیر این صورت فقط از onboarding@resend.dev و تنها
+به ایمیل مالک حساب می‌توان ارسال کرد.
 """
 from __future__ import annotations
 
-import asyncio
-import smtplib
-import ssl
-from email.message import EmailMessage
-from email.utils import formataddr
+import httpx
 
 from app.config import settings
 
 
 class MailNotConfigured(RuntimeError):
-    """وقتی کلید/رمز SMTP در .env تنظیم نشده باشد."""
-
-
-def _send_sync(to_email: str, subject: str, html: str, text: str) -> None:
-    if not (settings.smtp_user and settings.smtp_password):
-        raise MailNotConfigured("SMTP credentials not set (.env)")
-
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = formataddr((settings.smtp_from_name, settings.smtp_from_email))
-    msg["To"] = to_email
-    msg.set_content(text)
-    msg.add_alternative(html, subtype="html")
-
-    if settings.smtp_starttls:
-        ctx = ssl.create_default_context()
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as srv:
-            srv.ehlo()
-            srv.starttls(context=ctx)
-            srv.login(settings.smtp_user, settings.smtp_password)
-            srv.send_message(msg)
-    else:
-        ctx = ssl.create_default_context()
-        with smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=20, context=ctx) as srv:
-            srv.login(settings.smtp_user, settings.smtp_password)
-            srv.send_message(msg)
+    """وقتی کلید Resend در .env تنظیم نشده باشد."""
 
 
 async def send_email(to_email: str, subject: str, html: str, text: str) -> None:
-    """ارسال ایمیل بدون بلوکه‌کردن حلقهٔ async (smtplib در threadpool)."""
-    await asyncio.to_thread(_send_sync, to_email, subject, html, text)
+    """ارسال ایمیل با Resend API."""
+    if not settings.resend_api_key:
+        raise MailNotConfigured("RESEND_API_KEY not set (.env)")
+
+    payload = {
+        "from": f"{settings.mail_from_name} <{settings.mail_from_email}>",
+        "to": [to_email],
+        "subject": subject,
+        "html": html,
+        "text": text,
+    }
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        r = await client.post(
+            settings.resend_api_url,
+            headers={
+                "Authorization": f"Bearer {settings.resend_api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+    if r.status_code >= 300:
+        # متن خطا فقط در لاگ سرور دیده می‌شود؛ به کاربر نشت نمی‌کند.
+        raise RuntimeError(f"Resend error {r.status_code}: {r.text}")
 
 
-# ---------- قالب‌های فارسی RTL ----------
-def _wrap(title: str, body_html: str) -> str:
+# ---------- قالب ایمیل (طراحی کارت آبی + جعبهٔ کد، فارسی RTL) ----------
+_LOGO = "https://resend-attachments.s3.amazonaws.com/cd477d3a-789a-4ae2-9e27-76f4c4b1cc25"
+
+
+def _render(heading: str, intro: str, code: str, minutes: int, footer_note: str) -> str:
     return f"""\
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-<body style="margin:0;background:#eef2f7;font-family:Tahoma,Arial,sans-serif;direction:rtl;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:28px 12px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
-             style="max-width:460px;background:#ffffff;border-radius:18px;overflow:hidden;
-                    box-shadow:0 10px 30px -12px rgba(22,47,85,.25);">
-        <tr><td style="background:linear-gradient(135deg,#19C3B3,#128F84);padding:22px;text-align:center;">
-          <span style="color:#04201D;font-size:20px;font-weight:bold;">کریپتو اسمارت</span>
-        </td></tr>
-        <tr><td style="padding:28px 26px;color:#1f2b3a;line-height:2;font-size:15px;">
-          <h2 style="margin:0 0 14px;color:#162F55;font-size:18px;">{title}</h2>
-          {body_html}
-        </td></tr>
-        <tr><td style="padding:16px 26px;background:#f3f6f9;color:#8a96a3;font-size:12px;text-align:center;">
-          این ایمیل به‌صورت خودکار ارسال شده است؛ لطفاً به آن پاسخ ندهید.<br>
-          © کریپتو اسمارت — cryptosmart.site
+<html dir="rtl" lang="fa">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="background-color:#eff6ff;margin:0;">
+  <table border="0" width="100%" cellpadding="0" cellspacing="0" role="presentation" align="center">
+    <tr><td style="font-family:Tahoma,Arial,sans-serif;background-color:#eff6ff;padding:24px 12px;direction:rtl;">
+      <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation"
+             style="max-width:600px;background-color:#ffffff;border-radius:12px;">
+        <tr><td style="padding:40px;">
+          <table align="center" width="100%" role="presentation"><tr>
+            <td align="center"><img alt="کریپتو اسمارت" src="{_LOGO}" width="140"
+                style="display:block;border:none;max-width:100%;height:auto;"></td>
+          </tr></table>
+          <h1 style="font-size:30px;line-height:1.4;font-weight:700;color:#1e3a8a;
+                     margin:24px 0 8px;text-align:center;">{heading}</h1>
+          <p style="font-size:16px;color:#475569;line-height:1.9;margin:8px 0 24px;text-align:center;">{intro}</p>
+          <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation"
+                 style="background-color:#eff6ff;border-radius:10px;margin:16px 0 24px;text-align:center;">
+            <tr><td style="padding:28px 24px;">
+              <p style="font-size:13px;color:#475569;letter-spacing:1px;margin:0 0 12px;text-transform:uppercase;">کد تأیید شما</p>
+              <h2 style="font-size:38px;line-height:1.4;font-weight:700;color:#1e3a8a;
+                         letter-spacing:8px;margin:0 0 12px;direction:ltr;">{code}</h2>
+              <p style="font-size:13px;color:#64748b;line-height:1.6;margin:0;">این کد تا {minutes} دقیقه معتبر است.</p>
+            </td></tr>
+          </table>
+          <p style="font-size:14px;color:#64748b;line-height:1.9;margin:32px 0 0;">{footer_note}</p>
+          <hr style="border:none;border-top:2px solid #eaeaea;margin:24px 0;">
+          <p style="font-size:12px;color:#94a3b8;line-height:1.6;margin:16px 0 0;text-align:center;">
+            برای امنیت شما، این کد را هرگز با کسی به اشتراک نگذارید.<br>© کریپتو اسمارت — cryptosmart.site
+          </p>
         </td></tr>
       </table>
     </td></tr>
@@ -82,42 +89,29 @@ def _wrap(title: str, body_html: str) -> str:
 </body></html>"""
 
 
-def _code_block(code: str) -> str:
-    return (
-        f'<div style="margin:18px 0;text-align:center;">'
-        f'<span style="display:inline-block;letter-spacing:8px;font-size:30px;font-weight:bold;'
-        f'color:#128F84;background:#e7f7f5;padding:12px 22px;border-radius:12px;">{code}</span>'
-        f'</div>'
-    )
-
-
 def verify_email_content(code: str) -> tuple[str, str, str]:
     """(موضوع، HTML، متن) برای کد تأیید ثبت‌نام."""
-    subject = "کد تأیید ثبت‌نام — کریپتو اسمارت"
     minutes = settings.auth_code_ttl // 60
-    html = _wrap(
-        "به کریپتو اسمارت خوش آمدید 👋",
-        "<p>برای تکمیل ثبت‌نام، کد تأیید زیر را در سایت وارد کنید:</p>"
-        + _code_block(code)
-        + f"<p>این کد تا <b>{minutes} دقیقه</b> معتبر است. اگر شما درخواست ثبت‌نام نداده‌اید، "
-        "این ایمیل را نادیده بگیرید.</p>",
+    subject = "کد تأیید ثبت‌نام — کریپتو اسمارت"
+    html = _render(
+        "به کریپتو اسمارت خوش آمدید",
+        "برای تکمیل ثبت‌نام، کد تأیید زیر را در سایت وارد کنید.",
+        code, minutes,
+        "اگر شما درخواست ثبت‌نام نداده‌اید، این ایمیل را نادیده بگیرید.",
     )
-    text = (f"کد تأیید ثبت‌نام شما در کریپتو اسمارت: {code}\n"
-            f"این کد تا {minutes} دقیقه معتبر است.")
+    text = f"کد تأیید ثبت‌نام شما در کریپتو اسمارت: {code}\nاین کد تا {minutes} دقیقه معتبر است."
     return subject, html, text
 
 
 def reset_email_content(code: str) -> tuple[str, str, str]:
     """(موضوع، HTML، متن) برای کد بازیابی رمز عبور."""
-    subject = "کد بازیابی رمز عبور — کریپتو اسمارت"
     minutes = settings.auth_code_ttl // 60
-    html = _wrap(
-        "بازیابی رمز عبور 🔑",
-        "<p>برای تنظیم رمز عبور جدید، کد زیر را در سایت وارد کنید:</p>"
-        + _code_block(code)
-        + f"<p>این کد تا <b>{minutes} دقیقه</b> معتبر است. اگر شما درخواست تغییر رمز نداده‌اید، "
-        "رمز شما همچنان امن است و نیازی به اقدام نیست.</p>",
+    subject = "کد بازیابی رمز عبور — کریپتو اسمارت"
+    html = _render(
+        "بازیابی رمز عبور",
+        "درخواست بازیابی رمز عبور دریافت شد. برای ادامه، کد زیر را وارد کنید.",
+        code, minutes,
+        "اگر شما این درخواست را نداده‌اید، رمز شما همچنان امن است و نیازی به اقدام نیست.",
     )
-    text = (f"کد بازیابی رمز عبور شما در کریپتو اسمارت: {code}\n"
-            f"این کد تا {minutes} دقیقه معتبر است.")
+    text = f"کد بازیابی رمز عبور شما در کریپتو اسمارت: {code}\nاین کد تا {minutes} دقیقه معتبر است."
     return subject, html, text
