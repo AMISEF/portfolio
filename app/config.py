@@ -115,7 +115,21 @@ class Settings(BaseSettings):
     auth_code_max_attempts: int = 5    # حداکثر تلاش اشتباه برای هر کد
     session_ttl_days: int = 30         # طول عمر نشست ورود
 
+    # ---- ادمین و اشتراک ----
+    # ایمیل‌هایی که به‌صورت خودکار نقش «ادمین» می‌گیرند (با کاما جدا شوند).
+    # اولین ادمین سیستم از همین فهرست بوت‌استرپ می‌شود.
+    admin_emails: str = "cryptosmart@cryptosmart.site"
+    # کلید رمزنگاریِ برگشت‌پذیرِ گذرواژه (فقط برای نمایش به ادمین). حتماً در
+    # .env سرور با مقدار تصادفیِ بلند بازنویسی شود؛ مقدار پیش‌فرض ناامن است.
+    admin_secret_key: str = "cs-change-this-in-env-please"
+    # روزهای پیش‌فرض تمدید اشتراک
+    subscription_renew_days: int = 30
+
     http_timeout: float = 10.0
+
+    @property
+    def admin_email_list(self) -> set[str]:
+        return {e.strip().lower() for e in self.admin_emails.split(",") if e.strip()}
 
 
 settings = Settings()

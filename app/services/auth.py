@@ -15,6 +15,12 @@ import secrets
 
 _PBKDF2_ROUNDS = 200_000
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")
+_PHONE_RE = re.compile(r"^0\d{10}$")  # موبایل ایران: ۱۱ رقم با صفر ابتدایی
+
+# نگاشت ارقام فارسی/عربی به اَسکی (برای نرمال‌سازی شماره تماس)
+_DIGIT_MAP = {ord(p): str(i) for i, p in enumerate("۰۱۲۳۴۵۶۷۸۹")}
+_DIGIT_MAP.update({ord(p): str(i) for i, p in enumerate("٠١٢٣٤٥٦٧٨٩")})
 
 
 # ---------- رمز عبور ----------
@@ -63,7 +69,60 @@ def normalize_email(email: str) -> str:
 
 
 def password_problem(password: str) -> str | None:
-    """پیام خطای فارسی اگر رمز ضعیف باشد، در غیر این صورت None."""
-    if len(password or "") < 8:
+    """پیام خطای فارسی اگر رمز شرایط امنیتی را نداشته باشد، در غیر این صورت None.
+
+    سیاست: حداقل ۸ کاراکتر + حرف کوچک + حرف بزرگ + عدد. نمادها اختیاری‌اند.
+    """
+    p = password or ""
+    if len(p) < 8:
         return "رمز عبور باید حداقل ۸ کاراکتر باشد."
+    if not re.search(r"[a-z]", p):
+        return "رمز عبور باید شامل حرف کوچک انگلیسی (a-z) باشد."
+    if not re.search(r"[A-Z]", p):
+        return "رمز عبور باید شامل حرف بزرگ انگلیسی (A-Z) باشد."
+    if not re.search(r"[0-9]", p):
+        return "رمز عبور باید شامل حداقل یک عدد باشد."
     return None
+
+
+def normalize_phone(phone: str) -> str:
+    """ارقام فارسی/عربی → اَسکی، حذف فاصله/خط‌تیره و تبدیل +98/0098/98 به 0."""
+    s = (phone or "").translate(_DIGIT_MAP)
+    s = re.sub(r"[\s\-()]+", "", s)
+    if s.startswith("+98"):
+        s = "0" + s[3:]
+    elif s.startswith("0098"):
+        s = "0" + s[4:]
+    elif s.startswith("98") and len(s) == 12:
+        s = "0" + s[2:]
+    return s
+
+
+def phone_problem(phone: str) -> str | None:
+    """شماره تماس باید با ۰ شروع شود و ۱۱ رقم باشد (مثل 09123456789)."""
+    s = normalize_phone(phone)
+    if not s:
+        return "شماره تماس را وارد کنید."
+    if not s.startswith("0"):
+        return "شماره تماس باید با ۰ شروع شود (مثال: 09121234567)."
+    if not _PHONE_RE.match(s):
+        return "شماره تماس باید ۱۱ رقم و با ۰ شروع شود (مثال: 09121234567)."
+    return None
+
+
+def username_problem(username: str) -> str | None:
+    """نام کاربری: ۳ تا ۲۰ کاراکتر، فقط حروف انگلیسی/عدد/زیرخط."""
+    u = (username or "").strip()
+    if not u:
+        return "نام کاربری را وارد کنید."
+    if not _USERNAME_RE.match(u):
+        return "نام کاربری باید ۳ تا ۲۰ کاراکتر و فقط شامل حروف انگلیسی، عدد و _ باشد."
+    return None
+
+
+def normalize_username(username: str) -> str:
+    return (username or "").strip()
+
+
+def looks_like_email(ident: str) -> bool:
+    return "@" in (ident or "")

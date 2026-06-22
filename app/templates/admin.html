@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}{{ brand_fa }} — پنل مدیریت{% endblock %}
+
+{% block content %}
+<section class="admin" data-is-admin="{{ 'true' if me.is_admin else 'false' }}">
+  <div class="admin__head">
+    <div>
+      <h1 class="admin__title">پنل مدیریت کاربران</h1>
+      <p class="admin__sub">شما به‌عنوان <b>{{ 'ادمین' if me.role == 'admin' else 'پشتیبان' }}</b> وارد شده‌اید.</p>
+    </div>
+    <div class="admin__tools">
+      <input type="search" id="admSearch" class="adm-search" placeholder="جستجو: نام، ایمیل، شماره، شناسه…">
+      <button class="btn-soft" id="admExportXlsx">خروجی اکسل</button>
+      <button class="btn-soft" id="admExportPdf">خروجی PDF</button>
+    </div>
+  </div>
+
+  <div class="admin__bar">
+    <label class="adm-check"><input type="checkbox" id="admSelectAll"> انتخاب همه</label>
+    <span class="adm-count" id="admSelCount">۰ کاربر انتخاب شده</span>
+  </div>
+
+  <div class="adm-table-wrap">
+    <table class="adm-table" id="admTable">
+      <thead>
+        <tr>
+          <th class="adm-col-check"></th>
+          <th>شناسه</th>
+          <th>نام کاربری</th>
+          <th>نام و نام خانوادگی</th>
+          <th>ایمیل</th>
+          <th>شماره تماس</th>
+          <th>نقش</th>
+          <th>اشتراک</th>
+          <th>دارایی</th>
+          <th>تأیید</th>
+          <th>اقدامات</th>
+        </tr>
+      </thead>
+      <tbody id="admBody">
+        <tr><td colspan="11" class="adm-empty">در حال بارگذاری…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- مودال ویرایش کاربر -->
+<div class="modal-overlay" id="admEditModal" hidden>
+  <div class="modal modal--wide" role="dialog" aria-modal="true">
+    <button class="modal__close" id="admEditClose" aria-label="بستن">×</button>
+    <h2 class="modal__title">ویرایش کاربر</h2>
+    <p class="auth-msg" id="admEditMsg" hidden></p>
+    <div id="admEditBody"></div>
+  </div>
+</div>
+
+<!-- مودال مدیریت اشتراک -->
+<div class="modal-overlay" id="admSubModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <button class="modal__close" id="admSubClose" aria-label="بستن">×</button>
+    <h2 class="modal__title">مدیریت اشتراک</h2>
+    <p class="modal__sub" id="admSubUser"></p>
+    <p class="auth-msg" id="admSubMsg" hidden></p>
+    <div class="field">
+      <label for="admSubTier">سطح اشتراک</label>
+      <select id="admSubTier">
+        <option value="pro">حرفه‌ای (Pro)</option>
+        <option value="vip">ویژه (VIP)</option>
+        <option value="free">رایگان</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="admSubDays">مدت (روز)</label>
+      <input type="number" id="admSubDays" value="30" min="1" inputmode="numeric">
+    </div>
+    <div class="adm-sub-actions">
+      <button class="btn-primary" id="admSubUpgrade">ارتقا / فعال‌سازی</button>
+      <button class="btn-soft" id="admSubRenew">تمدید</button>
+      <button class="btn-primary btn-danger" id="admSubRemove">حذف اشتراک</button>
+    </div>
+  </div>
+</div>
+
+<!-- مودال دارایی‌های کاربر -->
+<div class="modal-overlay" id="admAssetsModal" hidden>
+  <div class="modal modal--wide" role="dialog" aria-modal="true">
+    <button class="modal__close" id="admAssetsClose" aria-label="بستن">×</button>
+    <h2 class="modal__title">دارایی‌های کاربر</h2>
+    <div id="admAssetsBody"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/admin.js?v={{ static_v }}"></script>
+{% endblock %}
