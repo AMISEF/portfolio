@@ -39,13 +39,21 @@ async def _one(client: httpx.AsyncClient, key: str, sym: str, name: str, sub: st
     result = (((resp.json().get("chart") or {}).get("result") or [{}])[0]) or {}
     meta = result.get("meta") or {}
     price = _f(meta, "regularMarketPrice", "previousClose")
-    prev = _f(meta, "chartPreviousClose", "previousClose")
+    # سری قیمت روزانه برای اسپارک‌لاین (تا ۳۰ نقطهٔ آخر)
+    quote = (((result.get("indicators") or {}).get("quote") or [{}])[0]) or {}
+    closes = [round(float(x), 4) for x in (quote.get("close") or []) if x is not None]
+    spark = closes[-30:]
+    if price <= 0 and closes:
+        price = closes[-1]
     if price <= 0:
         raise RuntimeError(f"Yahoo: empty price for {sym}")
+    # تغییر ۲۴ساعته = نسبت به بستهٔ روز قبل (previousClose). از chartPreviousClose
+    # استفاده نمی‌کنیم چون آن، بستهٔ ابتدای بازهٔ یک‌ماهه است و تغییرِ ماهانه می‌دهد
+    # (به همین دلیل عملاً برای مدت طولانی روی یک علامت گیر می‌کرد).
+    prev = _f(meta, "previousClose")
+    if prev <= 0 and len(closes) >= 2:
+        prev = closes[-2]
     change = round((price - prev) / prev * 100, 2) if prev else 0.0
-    # سری قیمت برای اسپارک‌لاین (تا ۳۰ نقطهٔ آخر)
-    quote = (((result.get("indicators") or {}).get("quote") or [{}])[0]) or {}
-    spark = [round(float(x), 4) for x in (quote.get("close") or []) if x is not None][-30:]
     return key, {"name": name, "sub": sub, "price": round(price, 2),
                  "change_24h": change, "spark": spark}
 
