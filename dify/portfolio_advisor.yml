@@ -1,0 +1,221 @@
+app:
+  description: >-
+    مشاور سبد کریپتو/طلا/تتر — بر اساس دارایی‌های فعلی کاربر، درصد و توضیح
+    ریسک‌پذیری، و تحلیل تکنیکال زندهٔ Toobit (نواحی خرید/فروش)، سه سبد پیشنهادی
+    هفتگی، ماهانه و سالانه با نقاط ورود و خروج می‌سازد. مدل: Gemini 2.5 Flash
+    از طریق OpenRouter.
+  icon: chart_with_upwards_trend
+  icon_background: '#19C3B3'
+  mode: workflow
+  name: CryptoSmart Portfolio Advisor
+kind: app
+version: 0.1.5
+workflow:
+  environment_variables:
+    # آدرس پایهٔ بک‌اند CryptoSmart (اندپوینت ابزار تحلیل بازار).
+    - name: ADVISOR_BASE_URL
+      value: https://portfolio.cryptosmart.site
+      value_type: string
+    # کلید مشاور؛ باید با ADVISOR_API_KEY در .env سرور یکی باشد.
+    - name: ADVISOR_API_KEY
+      value: ''
+      value_type: string
+  conversation_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+      - id: e-start-http
+        source: start
+        target: http_context
+        sourceHandle: source
+        targetHandle: target
+      - id: e-http-llm
+        source: http_context
+        target: llm_advisor
+        sourceHandle: source
+        targetHandle: target
+      - id: e-llm-end
+        source: llm_advisor
+        target: end
+        sourceHandle: source
+        targetHandle: target
+    nodes:
+      # ───── ورودی‌ها ─────
+      - id: start
+        type: custom
+        position: {x: 40, y: 240}
+        data:
+          type: start
+          title: ورودی‌ها
+          desc: شناسهٔ کاربر یا دارایی/ریسک مستقیم
+          variables:
+            - variable: uid
+              label: شناسهٔ کاربر (cs_uid)
+              type: text-input
+              required: false
+              max_length: 64
+            - variable: risk_percent
+              label: درصد ریسک‌پذیری (۰ تا ۱۰۰)
+              type: number
+              required: false
+            - variable: risk_label
+              label: برچسب ریسک
+              type: text-input
+              required: false
+              max_length: 48
+            - variable: risk_desc
+              label: توضیح ریسک‌پذیری کاربر
+              type: paragraph
+              required: false
+            - variable: assets_json
+              label: دارایی‌ها (JSON) — اختیاری اگر uid داده شود
+              type: paragraph
+              required: false
+            - variable: extra_symbols
+              label: نمادهای اضافه (با کاما) — مثل SOL,ADA
+              type: text-input
+              required: false
+              max_length: 200
+
+      # ───── ابزار تحلیل بازار (HTTP) ─────
+      - id: http_context
+        type: custom
+        position: {x: 360, y: 240}
+        data:
+          type: http-request
+          title: واکشی زمینهٔ تحلیل
+          desc: POST /api/advisor/context — دارایی + ریسک + نواحی خرید/فروش
+          method: post
+          url: '{{#env.ADVISOR_BASE_URL#}}/api/advisor/context'
+          authorization:
+            type: no-auth
+            config: null
+          headers: 'Content-Type:application/json\nX-Advisor-Key:{{#env.ADVISOR_API_KEY#}}'
+          params: ''
+          body:
+            type: json
+            data: >-
+              {
+                "uid": "{{#start.uid#}}",
+                "risk_percent": {{#start.risk_percent#}},
+                "risk_label": "{{#start.risk_label#}}",
+                "risk_desc": "{{#start.risk_desc#}}",
+                "extra_symbols": "{{#start.extra_symbols#}}"
+              }
+          timeout:
+            max_connect_timeout: 10
+            max_read_timeout: 60
+            max_write_timeout: 20
+
+      # ───── مدل: Gemini 2.5 Flash (OpenRouter) ─────
+      - id: llm_advisor
+        type: custom
+        position: {x: 680, y: 240}
+        data:
+          type: llm
+          title: ساخت سبد پیشنهادی
+          model:
+            provider: openrouter
+            name: google/gemini-2.5-flash
+            mode: chat
+            completion_params:
+              temperature: 0.4
+              max_tokens: 4096
+          context:
+            enabled: false
+            variable_selector: []
+          vision:
+            enabled: false
+          prompt_template:
+            - role: system
+              text: |
+                تو یک استراتژیست حرفه‌ایِ سبد کریپتو و دارایی‌های امن (طلا، نقره، تتر)
+                برای بازار ایران هستی. وظیفه‌ات این است که بر اساس «زمینهٔ تحلیل» که در
+                قالب JSON دریافت می‌کنی، سه سبد پیشنهادیِ عملی بسازی: هفتگی (تاکتیکی)،
+                ماهانه (سوینگ) و سالانه (استراتژیک).
+
+                داده‌هایی که در زمینه می‌گیری:
+                • risk: درصد و برچسب و توضیح ریسک‌پذیری کاربر.
+                • portfolio.items: دارایی‌های فعلی کاربر با ارزش، وزن و قیمت خرید.
+                • market_regime: روند بیت‌کوین، RSI و شاخص ترس‌وطمع (رژیم کلی بازار).
+                • macro_assets: قیمت و تغییر تتر، طلای ۱۸ عیار، انس طلا و نقره.
+                • crypto_analysis[]: برای هر نماد، تحلیل سه افق (weekly=4h / monthly=1d /
+                  yearly=1w) شامل trend، rsi، atr، range، و مهم‌تر از همه:
+                    - buy_zones: نواحی حمایت برای ورود/خرید (هر ناحیه low/mid/high و
+                      dist_pct = فاصلهٔ ٪ تا قیمت فعلی و touches = اعتبار ناحیه).
+                    - sell_zones: نواحی مقاومت برای فروش/برداشت سود.
+
+                قواعد ساخت سبد:
+                1) تخصیص دارایی را با سطح ریسک هماهنگ کن:
+                   - محافظه‌کار (ریسک < ۴۰): وزن بالای تتر و طلا، هستهٔ BTC/ETH، آلت کم.
+                   - متعادل (۴۰ تا ۶۰): تعادل تتر/طلا با BTC/ETH و آلت‌های بزرگ/میان‌رده.
+                   - ریسک‌پذیر (> ۶۰): سهم بیشتر آلت‌کوین و پروژه‌های نوظهور، تتر کمتر.
+                2) برای هر دارایی کریپتو که پیشنهاد می‌دهی، «ناحیهٔ خرید» را از buy_zones
+                   و «ناحیهٔ فروش/هدف سود» را از sell_zones همان نماد و همان افق بردار.
+                   عددِ ناحیه را دقیق بنویس (مثلاً «خرید ۵۹٬۸۰۰–۶۱٬۲۰۰ دلار»). هیچ‌گاه
+                   ناحیه را از خودت نساز؛ فقط از داده استفاده کن. اگر داده نبود، بنویس
+                   «ناحیهٔ معتبر در دسترس نیست؛ صبر تا تثبیت روند».
+                3) دارایی‌های فعلی کاربر را در نظر بگیر: چه چیزی را نگه دارد (Hold)،
+                   چه چیزی را اضافه کند (Buy)، چه چیزی را سبک کند (Trim). اگر قیمت خرید
+                   کاربر داده شده، سود/زیان تقریبی و تصمیم را توضیح بده.
+                4) رژیم بازار را لحاظ کن: اگر RSI بالا/ترس‌وطمع «طمع شدید» است، در ورود
+                   محتاط باش و پلکانی پیشنهاد بده؛ اگر «ترس» است، نواحی خرید جذاب‌ترند.
+                5) مدیریت ریسک: برای هر افق حد ضرر (stop-loss) منطقی (مثلاً زیر آخرین
+                   حمایت یا بر اساس atr) و اندازهٔ پوزیشن متناسب با ریسک پیشنهاد بده.
+
+                قالب خروجی (فارسی، Markdown، بدون پرحرفی):
+                ## خلاصهٔ وضعیت
+                (۲ تا ۳ جمله: رژیم بازار + پروفایل ریسک + جمع‌بندی دارایی فعلی)
+
+                ## سبد هفتگی (تاکتیکی)
+                جدول تخصیص: | دارایی | درصد | ناحیهٔ خرید | هدف فروش | حد ضرر | اقدام |
+                (تتر، طلا، نقره، BTC، ETH، آلت‌ها) + یک جملهٔ دلیل زیر جدول.
+
+                ## سبد ماهانه (سوینگ)
+                همان قالب جدول با نواحی افق monthly.
+
+                ## سبد سالانه (استراتژیک)
+                همان قالب جدول با نواحی افق yearly + نگاه بلندمدت.
+
+                ## توصیه‌های مدیریت ریسک
+                (نکات کلیدی: تنوع، پله‌ای خریدن، برداشت سود، حد ضرر، نقدینگی تتر)
+
+                ## سلب مسئولیت
+                این تحلیل آموزشی است و توصیهٔ مالی نیست؛ مسئولیت تصمیم با کاربر است.
+
+                همیشه به فارسی پاسخ بده. اعداد دلاری را با $ و اعداد تومانی را با
+                جداکنندهٔ هزارگان بنویس.
+            - role: user
+              text: |
+                زمینهٔ تحلیل (JSON):
+                {{#http_context.body#}}
+
+                لطفاً بر اساس این داده، سه سبد پیشنهادی هفتگی/ماهانه/سالانه را با
+                نواحی دقیق خرید و فروش بساز.
+
+      # ───── خروجی ─────
+      - id: end
+        type: custom
+        position: {x: 1000, y: 240}
+        data:
+          type: end
+          title: سبد پیشنهادی
+          outputs:
+            - variable: advice
+              value_selector: [llm_advisor, text]
+            - variable: context
+              value_selector: [http_context, body]

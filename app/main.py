@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app import db
 from app.config import settings
-from app.routers import admin, auth, market, pages, portfolio
+from app.routers import admin, advisor, auth, market, pages, portfolio
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
@@ -19,6 +19,7 @@ app.include_router(market.router)
 app.include_router(portfolio.router)
 app.include_router(auth.router)
 app.include_router(admin.router)
+app.include_router(advisor.router)
 
 
 @app.on_event("startup")
