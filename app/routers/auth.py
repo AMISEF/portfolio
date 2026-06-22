@@ -30,7 +30,7 @@ from fastapi.responses import JSONResponse
 
 from app import db
 from app.config import settings
-from app.services import auth, mailer
+from app.services import auth, crypto_box, mailer
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -43,8 +43,50 @@ def _err(msg: str, status: int = 400, **extra: Any) -> JSONResponse:
     return JSONResponse({"error": msg, **extra}, status_code=status)
 
 
+def current_user(request: Request) -> dict[str, Any] | None:
+    """کاربرِ نشستِ فعلی از روی کوکی cs_session (یا None)."""
+    token = request.cookies.get(_SESSION_COOKIE)
+    if not token:
+        return None
+    return db.get_session_user(token)
+
+
+def _role_for(email: str, current: str | None = None) -> str:
+    """نقش کاربر: ایمیل‌های فهرستِ ادمین همیشه «admin» می‌شوند."""
+    if email and email.lower() in settings.admin_email_list:
+        return "admin"
+    return current or "member"
+
+
+def _public_user(user: dict[str, Any]) -> dict[str, Any]:
+    """اطلاعات عمومیِ کاربر برای فرانت‌اند (بدون رمز)."""
+    full = user.get("name") or " ".join(
+        x for x in (user.get("first_name"), user.get("last_name")) if x
+    ) or None
+    return {
+        "id": user["id"],
+        "user_code": user.get("user_code"),
+        "email": user["email"],
+        "username": user.get("username"),
+        "name": full,
+        "first_name": user.get("first_name"),
+        "last_name": user.get("last_name"),
+        "phone": user.get("phone"),
+        "role": user.get("role") or "member",
+        "subscription": user.get("subscription") or "free",
+        "sub_expires_at": user.get("sub_expires_at"),
+        "is_staff": (user.get("role") or "member") in ("admin", "support"),
+    }
+
+
 def _login_response(user: dict[str, Any], request: Request, body: dict | None = None) -> JSONResponse:
     """نشست می‌سازد، کوکی‌ها را ست می‌کند و داده‌های ناشناس را به حساب منتقل می‌کند."""
+    # بوت‌استرپِ نقش ادمین از روی فهرست ایمیل‌ها
+    desired_role = _role_for(user["email"], user.get("role"))
+    if desired_role != (user.get("role") or "member"):
+        db.set_user_role(int(user["id"]), desired_role)
+        user["role"] = desired_role
+
     target_uid = user.get("uid") or f"u{user['id']}"
     # انتقال داده‌های ناشناسِ این دستگاه به شناسهٔ کاربر
     current_uid = request.cookies.get(_UID_COOKIE)
@@ -57,10 +99,7 @@ def _login_response(user: dict[str, Any], request: Request, body: dict | None = 
     token = auth.gen_session_token()
     db.create_session(token, int(user["id"]), settings.session_ttl_days)
 
-    resp = JSONResponse({
-        "ok": True,
-        "user": {"id": user["id"], "email": user["email"], "name": user.get("name")},
-    })
+    resp = JSONResponse({"ok": True, "user": _public_user(user)})
     secure = request.url.scheme == "https"
     resp.set_cookie(_SESSION_COOKIE, token, max_age=settings.session_ttl_days * 86400,
                     httponly=True, samesite="lax", secure=secure)
@@ -90,24 +129,55 @@ async def _send_code(email: str, purpose: str) -> str | None:
 @router.post("/register")
 async def register(request: Request, payload: dict[str, Any] = Body(...)):
     email = auth.normalize_email(payload.get("email"))
-    name = (payload.get("name") or "").strip() or None
+    first_name = (payload.get("first_name") or "").strip() or None
+    last_name = (payload.get("last_name") or "").strip() or None
+    username = auth.normalize_username(payload.get("username"))
+    phone = auth.normalize_phone(payload.get("phone"))
     password = payload.get("password") or ""
+    confirm = payload.get("confirm_password")
 
+    # اعتبارسنجی فیلدها
+    if not first_name:
+        return _err("نام را وارد کنید.")
+    if not last_name:
+        return _err("نام خانوادگی را وارد کنید.")
     if not auth.valid_email(email):
         return _err("ایمیل نامعتبر است.")
+    if (u_err := auth.username_problem(username)):
+        return _err(u_err)
+    if (p_err := auth.phone_problem(phone)):
+        return _err(p_err)
     if (pw_err := auth.password_problem(password)):
         return _err(pw_err)
+    if confirm is not None and confirm != password:
+        return _err("رمز عبور و تکرار آن یکسان نیستند.")
 
     existing = db.get_user_by_email(email)
     if existing and existing["verified"]:
         return _err("این ایمیل قبلاً ثبت شده است. لطفاً وارد شوید.", 409)
 
+    # یکتایی نام کاربری و شماره تماس (مالکِ آن کاربرِ دیگری نباشد)
+    by_username = db.get_user_by_username(username)
+    if by_username and by_username["email"] != email:
+        return _err("این نام کاربری قبلاً استفاده شده است.", 409)
+    by_phone = db.get_user_by_phone(phone)
+    if by_phone and by_phone["email"] != email:
+        return _err("این شماره تماس قبلاً ثبت شده است.", 409)
+
     pw_hash = auth.hash_password(password)
-    if existing:                       # تأییدنشده: اطلاعات را به‌روزرسانی کن
-        db.update_user_credentials(int(existing["id"]), name, pw_hash)
+    pw_enc = crypto_box.encrypt(password)
+    if existing:                       # تأییدنشده: اطلاعات را بازنویسی کن
+        db.update_user_registration(
+            int(existing["id"]), first_name=first_name, last_name=last_name,
+            username=username, phone=phone, password_hash=pw_hash, password_enc=pw_enc,
+        )
     else:
         anon_uid = request.cookies.get(_UID_COOKIE)
-        db.create_user(email, name, pw_hash, uid=anon_uid, verified=False)
+        db.create_user(
+            email, pw_hash, first_name=first_name, last_name=last_name,
+            username=username, phone=phone, password_enc=pw_enc,
+            role=_role_for(email), uid=anon_uid, verified=False,
+        )
 
     try:
         if (msg := await _send_code(email, "verify")):
@@ -162,18 +232,23 @@ async def resend(payload: dict[str, Any] = Body(...)):
 # ───────────────────────── ورود ─────────────────────────
 @router.post("/login")
 async def login(request: Request, payload: dict[str, Any] = Body(...)):
-    email = auth.normalize_email(payload.get("email"))
+    # شناسهٔ ورود می‌تواند ایمیل، شماره تماس، نام کاربری یا شناسهٔ کاربری باشد.
+    raw_ident = (payload.get("identifier") or payload.get("email") or "").strip()
     password = payload.get("password") or ""
-    user = db.get_user_by_email(email)
+    if not raw_ident:
+        return _err("شناسهٔ ورود را وارد کنید.")
+
+    phone = auth.normalize_phone(raw_ident)
+    user = db.get_user_by_login(raw_ident, phone=phone)
     if not user or not auth.verify_password(password, user["password_hash"]):
-        return _err("ایمیل یا رمز عبور نادرست است.", 401)
+        return _err("شناسهٔ کاربری یا رمز عبور نادرست است.", 401)
     if not user["verified"]:
         try:
-            await _send_code(email, "verify")
+            await _send_code(user["email"], "verify")
         except Exception:  # noqa: BLE001
             pass
         return _err("حساب شما هنوز تأیید نشده است. کد تأیید برایتان ارسال شد.",
-                    403, stage="verify", email=email)
+                    403, stage="verify", email=user["email"])
     return _login_response(user, request)
 
 
@@ -217,7 +292,8 @@ async def reset(request: Request, payload: dict[str, Any] = Body(...)):
         return _err(f"کد نادرست است. {max(left, 0)} تلاش باقی مانده.", 401)
 
     db.consume_code(int(active["id"]))
-    db.update_user_password(int(user["id"]), auth.hash_password(password))
+    db.update_user_password(int(user["id"]), auth.hash_password(password),
+                            crypto_box.encrypt(password))
     return _login_response(db.get_user_by_id(int(user["id"])), request)
 
 
@@ -240,4 +316,4 @@ async def me(request: Request):
     user = db.get_session_user(token)
     if not user:
         return JSONResponse({"user": None})
-    return JSONResponse({"user": {"id": user["id"], "email": user["email"], "name": user.get("name")}})
+    return JSONResponse({"user": _public_user(user)})

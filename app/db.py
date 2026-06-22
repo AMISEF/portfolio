@@ -59,13 +59,22 @@ def init_db() -> None:
 
             -- کاربران ثبت‌نام‌شده (احراز هویت ایمیلی)
             CREATE TABLE IF NOT EXISTS users (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                email         TEXT UNIQUE NOT NULL,
-                name          TEXT,
-                password_hash TEXT NOT NULL,
-                verified      INTEGER NOT NULL DEFAULT 0,
-                uid           TEXT,          -- پیوند به شناسهٔ ناشناس cs_uid (مهاجرت داده)
-                created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_code      TEXT UNIQUE,   -- شناسهٔ کاربریِ عمومی (مثل CS-100001)
+                username       TEXT UNIQUE,   -- نام کاربری
+                email          TEXT UNIQUE NOT NULL,
+                name           TEXT,          -- نام کاملِ قدیمی (سازگاری عقب‌رو)
+                first_name     TEXT,          -- نام
+                last_name      TEXT,          -- نام خانوادگی
+                phone          TEXT,          -- شماره تماس (با صفر ابتدایی، متنی)
+                password_hash  TEXT NOT NULL,
+                password_enc   TEXT,          -- نسخهٔ برگشت‌پذیرِ رمز (برای نمایش به ادمین)
+                role           TEXT NOT NULL DEFAULT 'member',   -- admin | support | member
+                subscription   TEXT NOT NULL DEFAULT 'free',     -- free | pro | vip
+                sub_expires_at TEXT,          -- تاریخ انقضای اشتراک (NULL = نامحدود/رایگان)
+                verified       INTEGER NOT NULL DEFAULT 0,
+                uid            TEXT,           -- پیوند به شناسهٔ ناشناس cs_uid (مهاجرت داده)
+                created_at     TEXT NOT NULL DEFAULT (datetime('now'))
             );
 
             -- کدهای یک‌بارمصرف (تأیید ثبت‌نام / بازیابی رمز) — هش‌شده ذخیره می‌شوند
@@ -91,6 +100,41 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
             """
         )
+        _migrate_users(conn)
+
+
+def _migrate_users(conn: sqlite3.Connection) -> None:
+    """افزودن ستون‌های جدیدِ users به دیتابیس‌های موجود (idempotent)."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(users)").fetchall()}
+    add = {
+        "user_code": "TEXT",
+        "username": "TEXT",
+        "first_name": "TEXT",
+        "last_name": "TEXT",
+        "phone": "TEXT",
+        "password_enc": "TEXT",
+        "role": "TEXT NOT NULL DEFAULT 'member'",
+        "subscription": "TEXT NOT NULL DEFAULT 'free'",
+        "sub_expires_at": "TEXT",
+    }
+    for name, decl in add.items():
+        if name not in cols:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {name} {decl}")
+    # شناسهٔ کاربری برای رکوردهای قدیمیِ بدون user_code
+    conn.execute(
+        "UPDATE users SET user_code = 'CS-' || (100000 + id) WHERE user_code IS NULL OR user_code = ''"
+    )
+    # ایندکس‌ها پس از افزوده‌شدن ستون‌ها (روی دیتابیس‌های قدیمی هم امن است)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)")
+
+
+def assign_user_code(user_id: int) -> str:
+    """تخصیص شناسهٔ کاربریِ یکتا بر اساس id (CS-100001 …)."""
+    code = f"CS-{100000 + int(user_id)}"
+    with _LOCK, _conn() as conn:
+        conn.execute("UPDATE users SET user_code = ? WHERE id = ?", (code, user_id))
+    return code
 
 
 # ---- پروفایل ریسک ----
@@ -166,19 +210,61 @@ def get_user_by_id(user_id: int) -> dict[str, Any] | None:
         return dict(row) if row else None
 
 
-def create_user(email: str, name: str | None, password_hash: str,
+def get_user_by_username(username: str) -> dict[str, Any] | None:
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM users WHERE username = ? COLLATE NOCASE", (username,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_phone(phone: str) -> dict[str, Any] | None:
+    with _LOCK, _conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE phone = ?", (phone,)).fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_login(ident: str, phone: str | None = None) -> dict[str, Any] | None:
+    """یافتن کاربر با ایمیل یا نام کاربری یا شناسهٔ کاربری یا شماره تماس."""
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM users WHERE email = ? COLLATE NOCASE "
+            "OR username = ? COLLATE NOCASE OR user_code = ? COLLATE NOCASE OR phone = ? "
+            "LIMIT 1",
+            (ident, ident, ident, phone or ident),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def create_user(email: str, password_hash: str, *,
+                first_name: str | None = None, last_name: str | None = None,
+                username: str | None = None, phone: str | None = None,
+                password_enc: str | None = None, role: str = "member",
                 uid: str | None = None, verified: bool = False) -> int:
+    full = " ".join(x for x in (first_name, last_name) if x) or None
     with _LOCK, _conn() as conn:
         cur = conn.execute(
-            "INSERT INTO users (email, name, password_hash, verified, uid) VALUES (?, ?, ?, ?, ?)",
-            (email, name, password_hash, 1 if verified else 0, uid),
+            "INSERT INTO users (email, name, first_name, last_name, username, phone, "
+            "password_hash, password_enc, role, verified, uid) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (email, full, first_name, last_name, username, phone,
+             password_hash, password_enc, role, 1 if verified else 0, uid),
         )
-        return int(cur.lastrowid)
+        user_id = int(cur.lastrowid)
+        conn.execute("UPDATE users SET user_code = ? WHERE id = ?",
+                     (f"CS-{100000 + user_id}", user_id))
+        return user_id
 
 
-def update_user_password(user_id: int, password_hash: str) -> None:
+def update_user_password(user_id: int, password_hash: str,
+                         password_enc: str | None = None) -> None:
     with _LOCK, _conn() as conn:
-        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id))
+        if password_enc is not None:
+            conn.execute("UPDATE users SET password_hash = ?, password_enc = ? WHERE id = ?",
+                         (password_hash, password_enc, user_id))
+        else:
+            conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                         (password_hash, user_id))
 
 
 def set_user_verified(user_id: int) -> None:
@@ -186,11 +272,107 @@ def set_user_verified(user_id: int) -> None:
         conn.execute("UPDATE users SET verified = 1 WHERE id = ?", (user_id,))
 
 
-def update_user_credentials(user_id: int, name: str | None, password_hash: str) -> None:
-    """بازنویسی نام و رمز کاربرِ ثبت‌نام‌شدهٔ تأییدنشده (ثبت‌نام مجدد پیش از تأیید)."""
+def set_user_role(user_id: int, role: str) -> None:
     with _LOCK, _conn() as conn:
-        conn.execute("UPDATE users SET name = ?, password_hash = ? WHERE id = ?",
-                     (name, password_hash, user_id))
+        conn.execute("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
+
+
+def update_user_registration(user_id: int, *, first_name: str | None, last_name: str | None,
+                             username: str | None, phone: str | None,
+                             password_hash: str, password_enc: str | None) -> None:
+    """بازنویسی اطلاعات کاربرِ ثبت‌نام‌شدهٔ تأییدنشده (ثبت‌نام مجدد پیش از تأیید)."""
+    full = " ".join(x for x in (first_name, last_name) if x) or None
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "UPDATE users SET name = ?, first_name = ?, last_name = ?, username = ?, "
+            "phone = ?, password_hash = ?, password_enc = ? WHERE id = ?",
+            (full, first_name, last_name, username, phone, password_hash, password_enc, user_id),
+        )
+
+
+# ---- مدیریت کاربران (ادمین) ----
+def list_users() -> list[dict[str, Any]]:
+    """فهرست همهٔ کاربران + تعداد دارایی‌های هرکدام (برای پنل ادمین)."""
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT u.*, "
+            "(SELECT COUNT(*) FROM assets a WHERE a.uid = u.uid OR a.uid = 'u' || u.id) "
+            "AS asset_count "
+            "FROM users u ORDER BY u.id"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def admin_update_user(user_id: int, fields: dict[str, Any]) -> None:
+    """به‌روزرسانی گزینشیِ ستون‌های مجاز توسط ادمین."""
+    allowed = {"first_name", "last_name", "username", "email", "phone",
+               "role", "subscription", "sub_expires_at", "verified",
+               "password_hash", "password_enc", "name"}
+    sets, vals = [], []
+    for k, v in fields.items():
+        if k in allowed:
+            sets.append(f"{k} = ?")
+            vals.append(v)
+    if not sets:
+        return
+    vals.append(user_id)
+    with _LOCK, _conn() as conn:
+        conn.execute(f"UPDATE users SET {', '.join(sets)} WHERE id = ?", vals)
+
+
+def set_subscription(user_id: int, subscription: str | None = None,
+                     sub_expires_at: str | None = "__keep__") -> None:
+    with _LOCK, _conn() as conn:
+        if subscription is not None and sub_expires_at != "__keep__":
+            conn.execute("UPDATE users SET subscription = ?, sub_expires_at = ? WHERE id = ?",
+                         (subscription, sub_expires_at, user_id))
+        elif subscription is not None:
+            conn.execute("UPDATE users SET subscription = ? WHERE id = ?", (subscription, user_id))
+        elif sub_expires_at != "__keep__":
+            conn.execute("UPDATE users SET sub_expires_at = ? WHERE id = ?",
+                         (sub_expires_at, user_id))
+
+
+def renew_subscription(user_id: int, days: int) -> str:
+    """تمدید اشتراک به اندازهٔ days از زمان فعلی یا انقضای فعلی (هرکدام دیرتر)."""
+    with _LOCK, _conn() as conn:
+        row = conn.execute("SELECT sub_expires_at FROM users WHERE id = ?", (user_id,)).fetchone()
+        base = "datetime('now')"
+        cur_exp = row["sub_expires_at"] if row else None
+        if cur_exp:
+            conn.execute(
+                "UPDATE users SET sub_expires_at = datetime("
+                "MAX(sub_expires_at, datetime('now')), ?) WHERE id = ?",
+                (f"+{int(days)} days", user_id),
+            )
+        else:
+            conn.execute(
+                f"UPDATE users SET sub_expires_at = datetime({base}, ?) WHERE id = ?",
+                (f"+{int(days)} days", user_id),
+            )
+        new = conn.execute("SELECT sub_expires_at FROM users WHERE id = ?", (user_id,)).fetchone()
+        return new["sub_expires_at"] if new else ""
+
+
+def delete_user(user_id: int) -> None:
+    """حذف کاربر و نشست‌هایش (دارایی‌ها با uid باقی می‌مانند)."""
+    with _LOCK, _conn() as conn:
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+
+def user_assets(user_id: int) -> list[dict[str, Any]]:
+    """دارایی‌های یک کاربر (با uid کاربر یا الگوی u{id})."""
+    u = get_user_by_id(user_id)
+    if not u:
+        return []
+    uid = u.get("uid") or f"u{user_id}"
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM assets WHERE uid = ? OR uid = ? ORDER BY id",
+            (uid, f"u{user_id}"),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 
 # ---- کدهای یک‌بارمصرف ----
