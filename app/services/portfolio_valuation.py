@@ -1,81 +1,39 @@
 """
-ارزش‌گذاری زندهٔ دارایی‌های پورتفولیو (تومان و دلار).
+ارزش‌گذاری زندهٔ دارایی‌های پورتفولیو (تومان و دلار) + تغییر ۲۴ساعته و ۳۰روزه.
 
-برای هر دارایی، قیمت لحظه‌ایِ هر واحد را از منابع موجود می‌گیریم و ارزش کل،
-سود/زیان نسبت به قیمت خرید و سهم درصدی از کل سبد را محاسبه می‌کنیم.
-
-منابع قیمت:
-  • ارز دیجیتال → Toobit (قیمت دلاری) × نرخ دلار (تتر/تومان از Tabdeal)
-  • طلای ۱۸ عیار → SourceArena (تومان/گرم)
-  • طلای ۲۴ عیار → طلای ۱۸ع ÷ ۰٫۷۵ (تومان/گرم)
-  • انس طلا → Yahoo/SourceArena (دلار/اونس) × نرخ دلار
-  • تتر/USDT → ۱ دلار × نرخ دلار
-  • تومان نقد → خودِ مبلغ
+قیمت‌های واحد از جدول قیمت مرکزی (app.services.instruments) می‌آیند که همهٔ
+ابزارها را پوشش می‌دهد: ارزهای Toobit، طلای ۱۸/۲۴، سکه‌ها، نقره، نفت، تتر و
+تومان. این ماژول فقط ارزش‌گذاری سبدِ کاربر و محاسبهٔ سود/زیان و سهم درصدی را
+انجام می‌دهد.
 """
 from __future__ import annotations
 
 import asyncio
 from typing import Any
 
-from app.services import commodities as commodities_svc
-from app.services import sourcearena, tabdeal, toobit
+import httpx
 
-PURITY_24K_FACTOR = 1.0 / 0.75   # تبدیل قیمت ۱۸ع به ۲۴ع
-
-
-async def _gather_prices() -> dict[str, Any]:
-    usdt, metals, comm, pmap = await asyncio.gather(
-        _safe(tabdeal.usdt()), _safe(sourcearena.metals()),
-        _safe(commodities_svc.commodities()), _safe(toobit.price_map()),
-        return_exceptions=False,
-    )
-    usd_toman = 0.0
-    if isinstance(usdt, dict):
-        usd_toman = (usdt.get("usdt_irt") or {}).get("price") or 0.0
-
-    gold18_toman = 0.0
-    xau_usd = 0.0
-    if isinstance(metals, dict):
-        gold18_toman = (metals.get("gold_18k") or {}).get("price") or 0.0
-        xau_usd = ((metals.get("commodities") or {}).get("XAU") or {}).get("price") or 0.0
-    if isinstance(comm, dict):
-        xau_usd = (comm.get("commodities") or {}).get("XAU", {}).get("price") or xau_usd
-
-    crypto = pmap.get("prices", {}) if isinstance(pmap, dict) else {}
-    return {"usd_toman": usd_toman, "gold18_toman": gold18_toman,
-            "xau_usd": xau_usd, "crypto": crypto}
-
-
-def _unit_price_toman(asset: dict[str, Any], p: dict[str, Any]) -> float:
-    """قیمت لحظه‌ای هر واحد دارایی به تومان."""
-    kind = asset["kind"]
-    usd_toman = p["usd_toman"]
-    if kind == "crypto":
-        usd = p["crypto"].get((asset["symbol"] or "").upper(), 0.0)
-        return usd * usd_toman
-    if kind == "usdt":
-        return usd_toman
-    if kind == "toman":
-        return 1.0
-    if kind == "gold":
-        purity = asset.get("purity")
-        if purity == "24":
-            return p["gold18_toman"] * PURITY_24K_FACTOR
-        if purity == "ounce":
-            return p["xau_usd"] * usd_toman
-        return p["gold18_toman"]   # پیش‌فرض: ۱۸ عیار
-    return 0.0
+from app.config import settings
+from app.services import instruments
 
 
 async def value_portfolio(assets: list[dict[str, Any]]) -> dict[str, Any]:
     """ارزش‌گذاری کامل سبد: هر دارایی + جمع کل (تومان/دلار) + سهم درصدی."""
-    p = await _gather_prices()
-    usd_toman = p["usd_toman"] or 0.0
+    table = await instruments.price_table()
+    usd_toman = table.get("usd_toman") or 0.0
+
+    # تغییر ۳۰روزهٔ ارزهای موجود در سبد (یک‌بار، کش‌شده)
+    crypto_syms = sorted({(a.get("symbol") or "").upper() for a in assets
+                          if a.get("kind") == "crypto"})
+    chg30 = await _changes_30d(crypto_syms) if crypto_syms else {}
 
     items: list[dict[str, Any]] = []
     total_toman = 0.0
     for a in assets:
-        unit_toman = _unit_price_toman(a, p)
+        kind = a.get("kind")
+        symbol = a.get("symbol")
+        purity = a.get("purity")
+        unit_toman = instruments.unit_price_toman(kind, symbol, purity, table)
         amount = a.get("amount") or 0.0
         value_toman = unit_toman * amount
         total_toman += value_toman
@@ -84,14 +42,17 @@ async def value_portfolio(assets: list[dict[str, Any]]) -> dict[str, Any]:
         pnl_pct = round((unit_toman - buy) / buy * 100, 2) if buy else None
         items.append({
             "id": a.get("id"),
-            "kind": a["kind"], "symbol": a["symbol"], "name": a["name"],
-            "purity": a.get("purity"), "horizon": a.get("horizon"),
+            "kind": kind, "symbol": symbol, "name": a.get("name"),
+            "purity": purity, "horizon": a.get("horizon"),
+            "group": _group(kind),
             "amount": amount, "buy_price": buy or None,
             "unit_price_toman": round(unit_toman),
             "unit_price_usd": round(unit_usd, 4),
             "value_toman": round(value_toman),
             "value_usd": round(value_toman / usd_toman, 2) if usd_toman else 0.0,
             "pnl_pct": pnl_pct,
+            "change_24h": instruments.change_24h_for(kind, symbol, purity, table),
+            "change_30d": chg30.get((symbol or "").upper()) if kind == "crypto" else None,
         })
 
     for it in items:
@@ -105,8 +66,39 @@ async def value_portfolio(assets: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-async def _safe(coro):
+def _group(kind: str | None) -> str:
+    return {"crypto": "crypto", "gold": "gold", "coin": "coin", "silver": "silver",
+            "oil": "oil", "usdt": "cash", "toman": "cash"}.get(kind or "", "other")
+
+
+async def _changes_30d(symbols: list[str]) -> dict[str, float]:
+    """تغییر ۳۰روزهٔ هر نماد از کندل روزانهٔ Toobit (کش‌شده ۱۰ دقیقه)."""
+    from app.cache import cache
+    key = "pf:chg30:" + ",".join(symbols)
+    hit = cache.get(key)
+    if isinstance(hit, dict):
+        return hit
+    out: dict[str, float] = {}
     try:
-        return await coro
-    except Exception as e:  # noqa: BLE001
-        return {"error": f"{type(e).__name__}: {e}"}
+        async with httpx.AsyncClient(timeout=httpx.Timeout(settings.http_timeout)) as client:
+            sem = asyncio.Semaphore(6)
+
+            async def _one(sym: str):
+                async with sem:
+                    try:
+                        r = await client.get(
+                            f"{settings.toobit_base_url}/quote/v1/klines",
+                            params={"symbol": sym + "USDT", "interval": "1d", "limit": "31"})
+                        r.raise_for_status()
+                        rows = r.json()
+                    except Exception:  # noqa: BLE001
+                        return
+                    closes = [float(k[4]) for k in rows if isinstance(k, list) and len(k) >= 5]
+                    if len(closes) >= 2 and closes[0] > 0:
+                        out[sym] = round((closes[-1] - closes[0]) / closes[0] * 100, 2)
+
+            await asyncio.gather(*[_one(s) for s in symbols])
+    except Exception:  # noqa: BLE001
+        pass
+    cache.set(key, out, 600)
+    return out

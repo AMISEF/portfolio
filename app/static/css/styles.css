@@ -465,6 +465,102 @@ a { color: inherit; text-decoration: none; }
 .pf-head__title { font-size: 1.6rem; font-weight: 900; color: var(--heading); }
 .pf-head__title .accent { color: var(--brand); }
 .pf-head__sub { color: var(--text-soft); margin: 6px 0 0; font-size: .92rem; }
+
+/* ==========================================================================
+   مدیریت سرمایه — ردیاب سبد (CryptoRank-style)
+   ========================================================================== */
+.pf2-card { background: var(--surface-solid); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); margin-bottom: 18px; }
+
+/* نوار خلاصه */
+.pf2-summary { display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+  justify-content: space-between; padding: 20px 24px; margin-bottom: 18px;
+  background: radial-gradient(140% 180% at 100% 0%, rgba(25,195,179,.14) 0%, transparent 55%), var(--surface-solid);
+  border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); }
+.pf2-summary__lbl { font-size: .82rem; color: var(--text-dim); font-weight: 700; }
+.pf2-summary__row { display: flex; align-items: baseline; gap: 12px; margin-top: 4px; flex-wrap: wrap; }
+.pf2-summary__toman { font-size: 2rem; font-weight: 900; color: var(--heading); line-height: 1; }
+.pf2-summary__usd { display: block; font-size: .9rem; color: var(--text-soft); margin-top: 6px; }
+.pf2-chg { font-size: .9rem; font-weight: 800; }
+.pf2-summary__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* گرید نمودار + تخصیص */
+.pf2-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .pf2-grid { grid-template-columns: 1fr; } }
+.pf2-tf { display: inline-flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: var(--radius-pill); }
+.pf2-tf button { border: none; background: none; color: var(--text-soft); font-family: var(--font);
+  font-weight: 700; font-size: .78rem; padding: 5px 12px; border-radius: var(--radius-pill); cursor: pointer; }
+.pf2-tf button.is-active { background: var(--brand); color: var(--on-brand); }
+.pf2-chart { min-height: 240px; }
+.pf2-area { display: block; height: 240px; }
+.pf2-chart-empty, .pf2-chart .pf2-chart-empty { display: grid; place-items: center; min-height: 220px;
+  color: var(--text-dim); font-size: .85rem; text-align: center; line-height: 1.9; }
+
+/* تخصیص (دونات) */
+.pf2-alloc { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.pf2-donut { position: relative; width: 180px; height: 180px; }
+.pf2-donut svg { width: 100%; height: 100%; }
+.pf2-donut__center { position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px; }
+.pf2-donut__lbl { font-size: .72rem; color: var(--text-dim); }
+.pf2-donut__val { font-size: .95rem; font-weight: 900; color: var(--heading); }
+.pf2-legend { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.pf2-legend__row { display: flex; align-items: center; gap: 8px; font-size: .82rem; }
+.pf2-legend__dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.pf2-legend__name { color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf2-legend__pct { color: var(--text-soft); font-weight: 800; }
+
+/* جدول دارایی‌ها */
+.pf2-search-wrap { position: relative; }
+.pf2-search-wrap--modal { margin-bottom: 12px; }
+.pf2-search-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-dim); }
+.pf2-search { height: 38px; padding: 0 36px 0 12px; border-radius: var(--radius-md);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font-family: var(--font); font-size: .84rem; width: 100%; min-width: 180px; }
+.pf2-search:focus { outline: none; border-color: var(--brand); }
+.pf2-table-wrap { overflow-x: auto; }
+.pf2-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .85rem; white-space: nowrap; }
+.pf2-table th, .pf2-table td { padding: 12px 14px; text-align: right; vertical-align: middle; }
+.pf2-table thead th { color: var(--text-dim); font-weight: 800; font-size: .76rem; border-bottom: 1px solid var(--border); }
+.pf2-table tbody td { border-bottom: 1px solid var(--border); }
+.pf2-table tbody tr:hover { background: var(--surface-2); }
+.pf2-empty { text-align: center; color: var(--text-dim); padding: 26px; }
+.pf2-num { font-family: var(--font-mono); }
+.pf2-usd { display: block; font-size: .72rem; color: var(--text-dim); font-weight: 400; }
+.pf2-dim { color: var(--text-dim); }
+.pf2-asset { display: flex; align-items: center; gap: 10px; }
+.pf2-ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 900; color: #fff; font-size: .9rem; flex: none; }
+.pf2-ic--metal { background: var(--surface-2); font-size: 1.05rem; }
+.pf2-asset__txt { display: flex; flex-direction: column; }
+.pf2-asset__name { font-weight: 800; color: var(--heading); }
+.pf2-asset__sym { font-size: .72rem; color: var(--text-dim); }
+.pf2-del { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text-dim); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.pf2-del:hover { border-color: var(--down); color: var(--down); }
+
+/* مودال افزودن دارایی */
+.pf2-cats { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 12px; }
+.pf2-cats button { border: 1px solid var(--border); background: var(--surface-2); color: var(--text-soft);
+  font-family: var(--font); font-weight: 700; font-size: .78rem; padding: 6px 12px;
+  border-radius: var(--radius-pill); cursor: pointer; }
+.pf2-cats button.is-active { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+.pf2-inst-list { max-height: 360px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.pf2-inst { display: flex; align-items: center; gap: 11px; width: 100%; text-align: right;
+  border: 1px solid var(--border); background: var(--surface-2); border-radius: var(--radius-md);
+  padding: 9px 12px; cursor: pointer; font-family: var(--font); transition: var(--trans); }
+.pf2-inst:hover { border-color: var(--brand); background: rgba(25,195,179,.08); }
+.pf2-inst__txt { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.pf2-inst__name { font-weight: 800; color: var(--heading); }
+.pf2-inst__sym { font-size: .72rem; color: var(--text-dim); }
+.pf2-inst__price { font-family: var(--font-mono); font-size: .8rem; color: var(--text-soft); text-align: left; }
+.pf2-picked { display: flex; align-items: center; gap: 12px; padding: 12px; margin-bottom: 14px;
+  background: var(--surface-2); border-radius: var(--radius-md); }
+.pf2-picked__name { font-weight: 800; color: var(--heading); }
+.pf2-picked__name span { font-size: .76rem; color: var(--text-dim); font-weight: 400; }
+.pf2-picked__price { font-size: .78rem; color: var(--text-soft); margin-top: 2px; }
+.pf2-add-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+.pf2-add-actions .btn { width: auto; }
 .pf-card { max-width: 760px; margin: 0 auto 18px; }
 
 /* معرفی آزمون */

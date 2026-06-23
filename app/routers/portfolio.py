@@ -30,7 +30,7 @@ from fastapi.templating import Jinja2Templates
 
 from app import db
 from app.config import settings
-from app.services import portfolio_valuation, risk
+from app.services import instruments, portfolio_valuation, risk
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -249,8 +249,23 @@ async def portfolio_chat(request: Request, payload: dict[str, Any] = Body(...)):
     }, uid, is_new)
 
 
+# ───────────────────────── API: کاتالوگ ابزارها ─────────────────────────
+@router.get("/api/portfolio/instruments")
+async def list_instruments(request: Request):
+    """کاتالوگ کامل برای انتخابگرِ افزودن دارایی (همهٔ ارزها + طلا/سکه/نقره/نفت)."""
+    uid, is_new = _uid(request)
+    return _json(await instruments.catalog(), uid, is_new)
+
+
+@router.get("/api/portfolio/history")
+async def portfolio_history(request: Request, days: int = 365):
+    """سری زمانی ارزش کل سبد (برای نمودار پورتفولیو)."""
+    uid, is_new = _uid(request)
+    return _json({"history": db.get_portfolio_history(uid, days)}, uid, is_new)
+
+
 # ───────────────────────── API: دارایی‌ها ─────────────────────────
-_KINDS = {"crypto", "gold", "usdt", "toman"}
+_KINDS = {"crypto", "gold", "coin", "silver", "oil", "usdt", "toman"}
 
 
 @router.post("/api/portfolio/assets")
@@ -289,6 +304,12 @@ async def add_asset(request: Request, payload: dict[str, Any] = Body(...)):
 async def get_assets(request: Request):
     uid, is_new = _uid(request)
     valued = await portfolio_valuation.value_portfolio(db.list_assets(uid))
+    # ثبت لحظه‌ای ارزش کل برای نمودار تاریخچه (با گلوگاه داخلی: حداکثر هر ساعت)
+    if valued.get("total_toman"):
+        try:
+            db.record_portfolio_value(uid, valued["total_toman"], valued.get("total_usd") or 0)
+        except Exception:  # noqa: BLE001
+            pass
     return _json(valued, uid, is_new)
 
 
