@@ -24,6 +24,19 @@
   }
   function hueOf(s) { let h = 0; for (const c of (s || "?")) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
 
+  // قالب‌بندی مقدار با حفظ اعشار (برخلاف faNum که رند می‌کند و 0.1 را «۰» نشان می‌داد)
+  function amtFmt(n) {
+    if (n == null || isNaN(n)) return "—";
+    const num = Number(n), abs = Math.abs(num);
+    let str;
+    if (abs >= 1000 || Number.isInteger(num)) str = Math.round(num).toString();
+    else if (abs >= 1) str = String(Math.round(num * 10000) / 10000);
+    else str = String(parseFloat(num.toPrecision(6)));   // کسرهای کوچک: تا ۶ رقم بامعنا
+    const parts = str.split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, "٬");
+    return CS.toFa(parts.length > 1 ? parts[0] + "٫" + parts[1] : parts[0]);
+  }
+
   // آیکون دارایی: فقط تصویر ارز (با fallback حرف اول فقط هنگام خطای بارگذاری)
   function assetIcon(it) {
     const kind = it.kind || it.group;
@@ -61,7 +74,7 @@
     curToggleBtn.addEventListener("click", function () {
       currencyMode = currencyMode === "toman" ? "usd" : "toman";
       curToggleBtn.classList.toggle("is-usd", currencyMode === "usd");
-      if (curToggleLabel) curToggleLabel.textContent = currencyMode === "usd" ? "USDT" : "تومان";
+      if (curToggleLabel) curToggleLabel.textContent = currencyMode === "usd" ? "دلار" : "تومان";
       renderAll();
     });
   }
@@ -72,19 +85,27 @@
     if (currencyMode === "usd") {
       return usd > 0 ? CS.faPriceUsd(usd) : (toman > 0 && lastUsdRate > 0 ? CS.faPriceUsd(toman / lastUsdRate) : "—");
     }
-    return CS.faNum(toman) + " ت";
+    return CS.faNum(toman) + " تومان";
   }
 
   // قیمت واحد — برای تتر/تومان/دلار نقدی هرگز نماد $ نمایش داده نمی‌شود
   function unitDisplay(it) {
     const pt = it.unit_price_toman || 0, pu = it.unit_price_usd || 0;
-    if (it.kind === "toman") return currencyMode === "usd" ? "—" : "۱ ت";
-    if (it.kind === "usdt") return currencyMode === "usd" ? "۱ USDT" : CS.faNum(pt) + " ت";
-    if (it.kind === "usd_cash") return currencyMode === "usd" ? "۱ USD" : CS.faNum(pt) + " ت";
+    if (it.kind === "toman") return currencyMode === "usd" ? "—" : "۱ تومان";
+    if (it.kind === "usdt") return currencyMode === "usd" ? "۱ تتر" : CS.faNum(pt) + " تومان";
+    if (it.kind === "usd_cash") return currencyMode === "usd" ? "۱ دلار" : CS.faNum(pt) + " تومان";
     if (currencyMode === "usd") {
       return pu > 0 ? CS.faPriceUsd(pu) : (pt > 0 && lastUsdRate > 0 ? CS.faPriceUsd(pt / lastUsdRate) : "—");
     }
-    return CS.faNum(pt) + " ت";
+    return CS.faNum(pt) + " تومان";
+  }
+
+  // میانگین قیمت خرید (هماهنگ با حالت ارز)
+  function buyDisplay(it) {
+    const b = it.buy_price;
+    if (b == null || !(b > 0)) return '<span class="pf2-dim">—</span>';
+    if (currencyMode === "usd") return lastUsdRate > 0 ? CS.faPriceUsd(b / lastUsdRate) : "—";
+    return CS.faNum(b) + " تومان";
   }
 
   // تغییر ۲۴ساعته با درنظرگرفتن حالت ارز:
@@ -179,7 +200,7 @@
       if (!chatReady) {
         chatReady = true; buildInput();
         const assetSummary = allItems.length
-          ? "دارایی‌های فعلی شما: " + allItems.map(it => CS.faNum(it.amount) + " " + (it.name || it.symbol)).join("، ") + "."
+          ? "دارایی‌های فعلی شما: " + allItems.map(it => amtFmt(it.amount) + " " + (it.name || it.symbol)).join("، ") + "."
           : "";
         bot("سلام! " + (assetSummary ? assetSummary + "<br><br>" : "") +
           "می‌توانید دارایی‌های جدید را به زبان ساده وارد کنید یا سؤال سرمایه‌گذاری بپرسید.");
@@ -276,7 +297,7 @@
         tip.innerHTML =
           '<div class="pf2-alloc-tip__name"><span class="pf2-alloc-tip__dot" style="background:' +
           PALETTE[idx % PALETTE.length] + '"></span>' + esc(it.name) + "</div>" +
-          '<div class="pf2-alloc-tip__row"><span>مقدار</span><b>' + CS.faNum(it.amount) + " " + esc(unitWord(it)) + "</b></div>" +
+          '<div class="pf2-alloc-tip__row"><span>مقدار</span><b>' + amtFmt(it.amount) + " " + esc(unitWord(it)) + "</b></div>" +
           '<div class="pf2-alloc-tip__row"><span>ارزش</span><b>' + valDisplay(it) + "</b></div>" +
           '<div class="pf2-alloc-tip__row"><span>سهم</span><b>' + CS.toFa((it.weight || 0).toFixed(1)) + "٪</b></div>";
         tip.hidden = false;
@@ -311,7 +332,7 @@
     if (it.kind === "coin") return "عدد";
     if (it.kind === "silver") return "گرم";
     if (it.kind === "oil") return "بشکه";
-    if (it.kind === "usdt") return "USDT";
+    if (it.kind === "usdt") return "تتر";
     if (it.kind === "toman") return "تومان";
     if (it.kind === "usd_cash") return "دلار";
     return it.symbol || "";
@@ -355,7 +376,7 @@
     const q = ($("holdSearch").value || "").trim().toLowerCase();
     const list = q ? items.filter(it => ((it.name || "") + (it.symbol || "")).toLowerCase().indexOf(q) !== -1) : items;
     if (!list.length) {
-      body.innerHTML = '<tr><td colspan="8" class="pf2-empty">' +
+      body.innerHTML = '<tr><td colspan="9" class="pf2-empty">' +
         (items.length ? "دارایی‌ای با این فیلتر یافت نشد." : "هنوز دارایی‌ای اضافه نشده است. روی «افزودن دارایی» بزنید.") + "</td></tr>";
       return;
     }
@@ -371,8 +392,9 @@
           '</span><span class="pf2-asset__sym">' + esc(symLabel(it)) + "</span></span></div></td>" +
         '<td class="pf2-num">' + price + "</td>" +
         '<td class="pf2-num"><b>' + val + "</b></td>" +
-        '<td class="pf2-num">' + CS.faNum(it.amount) + "</td>" +
+        '<td class="pf2-num">' + amtFmt(it.amount) + "</td>" +
         "<td>" + c24 + "</td><td>" + c30 + "</td>" +
+        '<td class="pf2-num">' + buyDisplay(it) + "</td>" +
         "<td>" + pnl + "</td>" +
         '<td class="pf2-actions-cell"><button class="pf2-menu__btn" data-id="' + it.id + '" title="عملیات" aria-label="عملیات">⋯</button></td>' +
         "</tr>";
@@ -384,7 +406,7 @@
     if (it.kind === "coin") return "عدد";
     if (it.kind === "silver") return "هر گرم";
     if (it.kind === "oil") return "بشکه";
-    if (it.kind === "usdt") return "USDT";
+    if (it.kind === "usdt") return "تتر";
     if (it.kind === "usd_cash") return "دلار نقدی";
     return "تومان";
   }
@@ -398,9 +420,9 @@
   const actModal = $("assetActionModal");
 
   function openAssetAction(it) {
-    actState = { id: it.id, amount: it.amount, name: it.name, mode: null };
+    actState = { id: it.id, amount: it.amount, buy_price: it.buy_price, name: it.name, mode: null };
     $("actTitle").textContent = "عملیات — " + (it.name || "");
-    $("actSub").textContent = "مقدار فعلی: " + CS.faNum(it.amount);
+    $("actSub").textContent = "مقدار فعلی: " + amtFmt(it.amount);
     $("actStepChoose").hidden = false;
     $("actStepInput").hidden = true;
     $("actMsg").hidden = true;
@@ -409,24 +431,32 @@
   function setActMode(mode) {
     if (!actState) return;
     actState.mode = mode;
-    const titles = { edit: "مقدار جدید را وارد کنید", add: "چه مقدار اضافه شود؟", remove: "چه مقدار حذف شود؟" };
-    const labels = { edit: "مقدار جدید", add: "مقدار افزوده", remove: "مقدار حذف" };
-    $("actLabel").textContent = labels[mode];
-    $("actSub").textContent = titles[mode] + " — مقدار فعلی: " + CS.faNum(actState.amount);
     const inp = $("actInput");
-    inp.value = mode === "edit" ? actState.amount : "";
     $("actDeleteAll").hidden = (mode !== "remove");
     $("actMsg").hidden = true;
+    if (mode === "buyprice") {
+      const cur = actState.buy_price, inUsd = currencyMode === "usd";
+      $("actLabel").textContent = inUsd ? "میانگین قیمت خرید (دلار)" : "میانگین قیمت خرید (تومان)";
+      inp.value = (cur != null && cur > 0)
+        ? (inUsd && lastUsdRate > 0 ? +(cur / lastUsdRate).toFixed(6) : cur) : "";
+      $("actSub").textContent = "برای پاک‌کردن، خالی بگذارید و «تأیید» را بزنید.";
+    } else {
+      const titles = { edit: "مقدار جدید را وارد کنید", add: "چه مقدار اضافه شود؟", remove: "چه مقدار حذف شود؟" };
+      const labels = { edit: "مقدار جدید", add: "مقدار افزوده", remove: "مقدار حذف" };
+      $("actLabel").textContent = labels[mode];
+      $("actSub").textContent = titles[mode] + " — مقدار فعلی: " + amtFmt(actState.amount);
+      inp.value = mode === "edit" ? actState.amount : "";
+    }
     $("actStepChoose").hidden = true;
     $("actStepInput").hidden = false;
     inp.focus();
   }
   function showActMsg(t) { const m = $("actMsg"); m.hidden = false; m.className = "auth-msg auth-msg--err"; m.textContent = t; }
-  async function patchAsset(id, amount) {
+  async function patchAsset(id, body) {
     try {
       const r = await fetch("/api/portfolio/assets/" + id, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: amount }),
+        body: JSON.stringify(body),
       });
       const d = await r.json().catch(() => ({}));
       if (r.ok && d.ok !== false) { actModal.hidden = true; await loadPortfolio(); }
@@ -435,6 +465,17 @@
   }
   function confirmAction() {
     if (!actState || !actState.mode) return;
+    if (actState.mode === "buyprice") {
+      const raw = $("actInput").value.trim();
+      let bp = raw === "" ? null : parseFloat(raw);
+      if (raw !== "" && !(bp >= 0)) return showActMsg("قیمت را درست وارد کنید.");
+      if (bp && currencyMode === "usd") {
+        if (lastUsdRate <= 0) return showActMsg("نرخ دلار در دسترس نیست؛ قیمت را به تومان وارد کنید.");
+        bp = bp * lastUsdRate;   // ذخیره همیشه به تومان
+      }
+      patchAsset(actState.id, { buy_price: bp });
+      return;
+    }
     const x = parseFloat($("actInput").value);
     let newAmount;
     if (actState.mode === "edit") {
@@ -447,7 +488,7 @@
       if (!(x > 0)) return showActMsg("مقدار حذف را وارد کنید.");
       newAmount = actState.amount - x;   // ≤ ۰ ⇒ بک‌اند کل دارایی را حذف می‌کند
     }
-    patchAsset(actState.id, newAmount);
+    patchAsset(actState.id, { amount: newAmount });
   }
 
   if (actModal) {
@@ -461,7 +502,7 @@
       $("actSub").textContent = "مقدار فعلی: " + CS.faNum(actState ? actState.amount : 0);
     });
     $("actConfirm").addEventListener("click", confirmAction);
-    $("actDeleteAll").addEventListener("click", () => { if (actState) patchAsset(actState.id, 0); });
+    $("actDeleteAll").addEventListener("click", () => { if (actState) patchAsset(actState.id, { amount: 0 }); });
     $("actInput").addEventListener("keydown", (e) => { if (e.key === "Enter") confirmAction(); });
   }
 
@@ -487,7 +528,7 @@
       $("sumToman").textContent = totalUsd > 0 ? CS.faPriceUsd(totalUsd) : "—";
       $("sumUsd").textContent = "";
     } else {
-      $("sumToman").textContent = items.length ? CS.faNum(d.total_toman) + " ت" : "—";
+      $("sumToman").textContent = items.length ? CS.faNum(d.total_toman) + " تومان" : "—";
       $("sumUsd").textContent = items.length ? CS.faPriceUsd(d.total_usd) : "";
     }
     // تغییر ۲۴ساعتهٔ وزنی (با درنظرگرفتن حالت ارز)
@@ -497,7 +538,7 @@
       if (c != null) { wsum += c * (it.value_toman || 0); w += (it.value_toman || 0); }
     });
     const el = $("sumChg");
-    if (w > 0) { const avg = wsum / w; el.className = "pf2-chg chg " + CS.chgClass(avg); el.textContent = CS.faPct(avg) + " (۲۴س)"; }
+    if (w > 0) { const avg = wsum / w; el.className = "pf2-chg chg " + CS.chgClass(avg); el.textContent = CS.faPct(avg) + " (۲۴ ساعته)"; }
     else { el.textContent = ""; }
   }
 
@@ -613,7 +654,7 @@
     const box = $("instList");
     if (!list.length) { box.innerHTML = '<p class="pf2-empty">موردی یافت نشد.</p>'; return; }
     box.innerHTML = list.map((it) => {
-      const price = it.price_toman ? CS.faNum(it.price_toman) + " ت" : (it.price_usd ? CS.faPriceUsd(it.price_usd) : "—");
+      const price = it.price_toman ? CS.faNum(it.price_toman) + " تومان" : (it.price_usd ? CS.faPriceUsd(it.price_usd) : "—");
       const chg = it.change_24h == null ? "" : '<span class="chg ' + CS.chgClass(it.change_24h) + '">' + CS.faPct(it.change_24h) + "</span>";
       return '<button class="pf2-inst" data-i="' + catalog.indexOf(it) + '">' + assetIcon(it) +
         '<span class="pf2-inst__txt"><span class="pf2-inst__name">' + esc(it.name) + '</span>' +
@@ -635,7 +676,7 @@
     picked = it;
     $("addStep1").hidden = true; $("addStep2").hidden = false;
     $("addStepHint").textContent = "مقدار و (اختیاری) قیمت خرید را وارد کنید.";
-    const price = it.price_toman ? CS.faNum(it.price_toman) + " ت" : CS.faPriceUsd(it.price_usd);
+    const price = it.price_toman ? CS.faNum(it.price_toman) + " تومان" : CS.faPriceUsd(it.price_usd);
     $("pickedInst").innerHTML = assetIcon(it) +
       '<div><div class="pf2-picked__name">' + esc(it.name) + ' <span>' + esc(it.symbol) + "</span></div>" +
       '<div class="pf2-picked__price">قیمت فعلی: ' + price + "</div></div>";

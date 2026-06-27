@@ -196,12 +196,23 @@ def delete_asset(uid: str, asset_id: int) -> bool:
         return cur.rowcount > 0
 
 
-def update_asset(uid: str, asset_id: int, amount: float) -> bool:
-    """به‌روزرسانی مقدار یک دارایی (ویرایش/افزایش/کاهش مقدار)."""
+def update_asset(uid: str, asset_id: int, amount: float | None = None,
+                 buy_price: Any = "__keep__") -> bool:
+    """به‌روزرسانی گزینشیِ مقدار و/یا میانگین قیمت خرید یک دارایی."""
+    sets: list[str] = []
+    vals: list[Any] = []
+    if amount is not None:
+        sets.append("amount = ?")
+        vals.append(amount)
+    if buy_price != "__keep__":
+        sets.append("buy_price = ?")
+        vals.append(buy_price)
+    if not sets:
+        return False
+    vals.extend([uid, asset_id])
     with _LOCK, _conn() as conn:
         cur = conn.execute(
-            "UPDATE assets SET amount = ? WHERE uid = ? AND id = ?",
-            (amount, uid, asset_id),
+            f"UPDATE assets SET {', '.join(sets)} WHERE uid = ? AND id = ?", vals
         )
         return cur.rowcount > 0
 

@@ -84,21 +84,26 @@ async def get_price_table() -> dict[str, Any]:
         xag_chg = (cm.get("XAG") or {}).get("change_24h") or 0.0
         oil_usd = (cm.get("OIL") or {}).get("price") or 0.0
         oil_chg = (cm.get("OIL") or {}).get("change_24h") or 0.0
+    # تغییر ۳۰روزه از سری یک‌ماههٔ Yahoo (close ابتدا تا انتها)
+    xau_chg30 = xag_chg30 = oil_chg30 = None
     if isinstance(comm, dict):
         cc = comm.get("commodities") or {}
         xau_usd = (cc.get("XAU") or {}).get("price") or xau_usd
         xag_usd = (cc.get("XAG") or {}).get("price") or xag_usd
         oil_usd = (cc.get("OIL") or {}).get("price") or oil_usd
+        xau_chg30 = _chg30(cc.get("XAU"))
+        xag_chg30 = _chg30(cc.get("XAG"))
+        oil_chg30 = _chg30(cc.get("OIL"))
 
     gold24 = gold18 * PURITY_24K_FACTOR
     silver_gram = (xag_usd / GRAMS_PER_OUNCE * usd_toman) if (xag_usd and usd_toman) else 0.0
 
     metals_tbl: dict[str, dict[str, Any]] = {}
-    metals_tbl["gold18"] = _row("طلای ۱۸ عیار", "هر گرم", gold18, usd_toman, gold18_chg, "gold")
-    metals_tbl["gold24"] = _row("طلای ۲۴ عیار", "هر گرم", gold24, usd_toman, gold18_chg, "gold")
-    metals_tbl["silver"] = _row("نقره", "هر گرم", silver_gram, usd_toman, xag_chg, "silver")
+    metals_tbl["gold18"] = _row("طلای ۱۸ عیار", "هر گرم", gold18, usd_toman, gold18_chg, "gold", xau_chg30)
+    metals_tbl["gold24"] = _row("طلای ۲۴ عیار", "هر گرم", gold24, usd_toman, gold18_chg, "gold", xau_chg30)
+    metals_tbl["silver"] = _row("نقره", "هر گرم", silver_gram, usd_toman, xag_chg, "silver", xag_chg30)
     if oil_usd and usd_toman:
-        metals_tbl["oil"] = _row("نفت خام", "بشکه", oil_usd * usd_toman, usd_toman, oil_chg, "oil")
+        metals_tbl["oil"] = _row("نفت خام", "بشکه", oil_usd * usd_toman, usd_toman, oil_chg, "oil", oil_chg30)
     metals_tbl["usdt"] = _row("تتر (USDT)", "USDT", usd_toman, usd_toman, usd_chg, "cash")
     metals_tbl["toman"] = _row("تومان نقد", "نقد", 1.0, usd_toman, 0.0, "cash")
     # دلار نقدی (اسکناس) از SourceArena؛ نبودِ منبع ⇒ همان نرخ تتر
@@ -110,7 +115,7 @@ async def get_price_table() -> dict[str, Any]:
         live = coins_raw.get(kind) or 0.0
         melt = spec["pure_g"] * gold24
         price = live or melt
-        row = _row(spec["name"], "عدد", price, usd_toman, gold18_chg, "coin")
+        row = _row(spec["name"], "عدد", price, usd_toman, gold18_chg, "coin", xau_chg30)
         row["estimated"] = not bool(live)        # True یعنی از ارزش ذوب تخمین زده شده
         metals_tbl[f"coin_{kind}"] = row
 
@@ -190,6 +195,16 @@ def change_24h_for(kind: str, symbol: str | None, purity: str | None,
     return row.get("change_24h") if row else None
 
 
+def change_30d_for(kind: str, symbol: str | None, purity: str | None,
+                   table: dict[str, Any]) -> float | None:
+    """تغییر ۳۰روزهٔ دارایی‌های غیر‌کریپتو (طلا/نقره/نفت/سکه) از جدول مرکزی."""
+    if kind == "crypto":
+        return None
+    iid = _encode_id(kind, purity)
+    row = (table.get("metals") or {}).get(iid)
+    return row.get("change_30d") if row else None
+
+
 # ───────────────────────── کمکی‌ها ─────────────────────────
 async def _crypto_tickers() -> dict[str, dict[str, Any]]:
     """همهٔ جفت‌های USDT توبیت: نماد ⇒ {price_usd, change_24h, volume}."""
@@ -219,13 +234,22 @@ async def _crypto_tickers() -> dict[str, dict[str, Any]]:
 
 
 def _row(name: str, sub: str, price_toman: float, usd_toman: float,
-         chg: float | None, group: str) -> dict[str, Any]:
+         chg: float | None, group: str, chg30: float | None = None) -> dict[str, Any]:
     return {
         "name": name, "sub": sub, "group": group,
         "price_toman": round(price_toman) if price_toman else 0,
         "price_usd": round(price_toman / usd_toman, 4) if (price_toman and usd_toman) else 0.0,
         "change_24h": round(chg, 2) if chg is not None else None,
+        "change_30d": round(chg30, 2) if chg30 is not None else None,
     }
+
+
+def _chg30(item: dict[str, Any] | None) -> float | None:
+    """درصد تغییر ۳۰روزه از سری روزانهٔ یک‌ماهه (spark): (آخر − اول) / اول."""
+    sp = (item or {}).get("spark") or []
+    if len(sp) >= 2 and sp[0]:
+        return round((sp[-1] - sp[0]) / sp[0] * 100, 2)
+    return None
 
 
 def _encode_id(kind: str, purity: str | None) -> str:

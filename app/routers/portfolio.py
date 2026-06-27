@@ -317,15 +317,35 @@ async def get_assets(request: Request):
 
 @router.patch("/api/portfolio/assets/{asset_id}")
 async def update_asset(request: Request, asset_id: int, payload: dict[str, Any] = Body(...)):
-    """به‌روزرسانی مقدار دارایی؛ مقدار ≤ ۰ ⇒ حذف کامل دارایی."""
+    """به‌روزرسانی مقدار و/یا میانگین قیمت خرید دارایی؛ مقدار ≤ ۰ ⇒ حذف کامل."""
     uid, is_new = _uid(request)
-    try:
-        amount = float(payload.get("amount"))
-    except (TypeError, ValueError):
-        return _json({"error": "مقدار نامعتبر است"}, uid, is_new, 400)
-    if amount <= 0:
-        return _json({"ok": db.delete_asset(uid, asset_id), "deleted": True}, uid, is_new)
-    return _json({"ok": db.update_asset(uid, asset_id, amount)}, uid, is_new)
+    has_amount = "amount" in payload
+    has_buy = "buy_price" in payload
+    if not has_amount and not has_buy:
+        return _json({"error": "موردی برای تغییر داده نشد"}, uid, is_new, 400)
+
+    amount: float | None = None
+    if has_amount:
+        try:
+            amount = float(payload.get("amount"))
+        except (TypeError, ValueError):
+            return _json({"error": "مقدار نامعتبر است"}, uid, is_new, 400)
+        if amount <= 0:
+            return _json({"ok": db.delete_asset(uid, asset_id), "deleted": True}, uid, is_new)
+
+    buy_price: Any = "__keep__"
+    if has_buy:
+        bp = payload.get("buy_price")
+        if bp in (None, ""):
+            buy_price = None
+        else:
+            try:
+                buy_price = float(bp)
+            except (TypeError, ValueError):
+                return _json({"error": "قیمت خرید نامعتبر است"}, uid, is_new, 400)
+
+    return _json({"ok": db.update_asset(uid, asset_id, amount=amount, buy_price=buy_price)},
+                 uid, is_new)
 
 
 @router.delete("/api/portfolio/assets/{asset_id}")

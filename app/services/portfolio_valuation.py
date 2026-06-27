@@ -52,7 +52,8 @@ async def value_portfolio(assets: list[dict[str, Any]]) -> dict[str, Any]:
             "value_usd": round(value_toman / usd_toman, 2) if usd_toman else 0.0,
             "pnl_pct": pnl_pct,
             "change_24h": instruments.change_24h_for(kind, symbol, purity, table),
-            "change_30d": chg30.get((symbol or "").upper()) if kind == "crypto" else None,
+            "change_30d": chg30.get((symbol or "").upper()) if kind == "crypto"
+                          else instruments.change_30d_for(kind, symbol, purity, table),
         })
 
     for it in items:
