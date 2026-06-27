@@ -216,30 +216,93 @@
     const list = (items || []).filter(it => (it.weight || 0) > 0);
     if (!list.length) {
       box.innerHTML = '<div class="pf2-chart-empty">هنوز دارایی‌ای ثبت نشده است.</div>';
+      box.onmousemove = null;
       return;
     }
-    box.innerHTML = allocType === "bar" ? allocBar(list) : allocPie(list);
+    if (allocType === "bar") {
+      box.innerHTML = allocBar(list);
+      box.onmousemove = null;
+      return;
+    }
+    box.innerHTML = allocPie(list) + '<div class="pf2-alloc-tip" id="allocTip" hidden></div>';
+    wireAllocPie(box, list);
   }
 
   function allocPie(items) {
-    const cx = 100, cy = 100, r = 90;
+    const cx = 100, cy = 100, r = 86;   // کمی کوچک‌تر تا فضای «بیرون‌زدن» قطعه بماند
     let startAngle = -Math.PI / 2, paths = "";
     items.forEach((it, i) => {
       const weight = it.weight || 0;
       if (weight <= 0) return;
       const angle = (weight / 100) * 2 * Math.PI;
       const endAngle = startAngle + angle;
+      const mid = (startAngle + endAngle) / 2;
+      const dx = (Math.cos(mid) * 10).toFixed(2), dy = (Math.sin(mid) * 10).toFixed(2);
       const x1 = cx + r * Math.cos(startAngle), y1 = cy + r * Math.sin(startAngle);
       const x2 = cx + r * Math.cos(endAngle), y2 = cy + r * Math.sin(endAngle);
       const largeArc = angle > Math.PI ? 1 : 0;
-      paths += '<path d="M ' + cx + " " + cy +
-        " L " + x1.toFixed(2) + " " + y1.toFixed(2) +
-        " A " + r + " " + r + " 0 " + largeArc + " 1 " + x2.toFixed(2) + " " + y2.toFixed(2) +
-        ' Z" fill="' + PALETTE[i % PALETTE.length] + '" stroke="var(--surface-solid)" stroke-width="1.5"/>';
+      // قطعهٔ کامل (دایره) با یک نماد، تا حلقه‌ساز نباشد
+      const d = (weight >= 99.999)
+        ? ("M " + cx + " " + (cy - r) + " A " + r + " " + r + " 0 1 1 " + cx + " " + (cy + r) +
+           " A " + r + " " + r + " 0 1 1 " + cx + " " + (cy - r) + " Z")
+        : ("M " + cx + " " + cy + " L " + x1.toFixed(2) + " " + y1.toFixed(2) +
+           " A " + r + " " + r + " 0 " + largeArc + " 1 " + x2.toFixed(2) + " " + y2.toFixed(2) + " Z");
+      paths += '<path class="pf2-slice" data-i="' + i + '" data-dx="' + dx + '" data-dy="' + dy + '" ' +
+        'd="' + d + '" fill="' + PALETTE[i % PALETTE.length] + '" stroke="var(--surface-solid)" stroke-width="1.5"/>';
       startAngle = endAngle;
     });
-    return '<svg viewBox="0 0 200 200" class="pf2-pie" width="180" height="180" style="margin:0 auto;display:block">' +
-      paths + "</svg>";
+    return '<svg viewBox="0 0 200 200" class="pf2-pie" id="allocPieSvg" width="180" height="180" ' +
+      'style="margin:0 auto;display:block;overflow:visible">' + paths + "</svg>";
+  }
+
+  // تعامل هاوِر: قطعهٔ زیر نشانگر بیرون می‌زند (انیمیشن) و جزئیات نمایش داده می‌شود
+  function wireAllocPie(box, list) {
+    const svg = box.querySelector("#allocPieSvg");
+    const tip = box.querySelector("#allocTip");
+    if (!svg || !tip) return;
+    svg.querySelectorAll(".pf2-slice").forEach(path => {
+      const i = +path.dataset.i;
+      path.addEventListener("mouseenter", () => {
+        path.style.transform = "translate(" + path.dataset.dx + "px," + path.dataset.dy + "px)";
+        svg.appendChild(path);   // آوردن قطعه به جلو
+        const it = list[i];
+        tip.innerHTML =
+          '<div class="pf2-alloc-tip__name"><span class="pf2-alloc-tip__dot" style="background:' +
+          PALETTE[i % PALETTE.length] + '"></span>' + esc(it.name) + "</div>" +
+          '<div class="pf2-alloc-tip__row"><span>مقدار</span><b>' + CS.faNum(it.amount) + " " + esc(unitWord(it)) + "</b></div>" +
+          '<div class="pf2-alloc-tip__row"><span>ارزش</span><b>' + valDisplay(it) + "</b></div>" +
+          '<div class="pf2-alloc-tip__row"><span>سهم</span><b>' + CS.toFa((it.weight || 0).toFixed(1)) + "٪</b></div>";
+        tip.hidden = false;
+      });
+      path.addEventListener("mouseleave", () => {
+        path.style.transform = "";
+        tip.hidden = true;
+      });
+    });
+    // جای‌گذاری تول‌تیپ نزدیک نشانگر (یک listener؛ با انتساب، تکراری نمی‌شود)
+    box.onmousemove = (e) => {
+      if (tip.hidden) return;
+      const rect = box.getBoundingClientRect();
+      let x = e.clientX - rect.left + 14, y = e.clientY - rect.top + 14;
+      const tw = tip.offsetWidth, th = tip.offsetHeight;
+      if (x + tw > rect.width) x = rect.width - tw - 4;
+      if (y + th > rect.height) y = Math.max(4, e.clientY - rect.top - th - 10);
+      if (x < 0) x = 4;
+      tip.style.left = x + "px";
+      tip.style.top = y + "px";
+    };
+  }
+
+  // واحد کوتاهِ هر دارایی برای نمایش در تول‌تیپ
+  function unitWord(it) {
+    if (it.kind === "gold") return "گرم";
+    if (it.kind === "coin") return "عدد";
+    if (it.kind === "silver") return "گرم";
+    if (it.kind === "oil") return "بشکه";
+    if (it.kind === "usdt") return "USDT";
+    if (it.kind === "toman") return "تومان";
+    if (it.kind === "usd_cash") return "دلار";
+    return it.symbol || "";
   }
 
   function allocBar(items) {
