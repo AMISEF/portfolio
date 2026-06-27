@@ -153,13 +153,17 @@
       sub.textContent = "";
       const u = currentUser || {};
       const roleFa = { admin: "ادمین", support: "پشتیبان", member: "عضو" }[u.role] || "عضو";
+      // شناسهٔ کاربری و نقش فقط برای کارکنان (ادمین/پشتیبان) نمایش داده می‌شود؛
+      // برای حفظ امنیت، کاربران عادی این اطلاعات را نمی‌بینند.
+      const meta = u.is_staff
+        ? '<div class="auth-account__meta">شناسه: ' + (u.user_code || "—") + ' • نقش: ' + roleFa + '</div>'
+        : "";
       body.innerHTML =
         '<div class="auth-account">' +
         '<div class="auth-account__avatar">' + ((u.name && u.name[0]) || "👤") + '</div>' +
         '<div class="auth-account__name">' + (u.name || "کاربر") + '</div>' +
         '<div class="auth-account__email">' + (u.email || "") + '</div>' +
-        '<div class="auth-account__meta">شناسه: ' + (u.user_code || "—") +
-          ' • نقش: ' + roleFa + '</div>' +
+        meta +
         '</div>' +
         (u.is_staff ? '<a class="btn-primary btn-admin" href="/admin">ورود به پنل مدیریت</a>' : '') +
         '<button class="btn-primary btn-danger" id="btnLogout">خروج از حساب</button>';
