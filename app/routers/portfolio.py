@@ -149,7 +149,7 @@ def _parse_dify_assets(uid: str, raw_json: str) -> bool:
     if not isinstance(assets, list) or not assets:
         return False
 
-    db.clear_assets(uid)
+    merged = []
     for a in assets:
         kind_dify = (a.get("kind") or "other").lower()
         kind = _DIFY_KIND.get(kind_dify, "toman")
@@ -182,7 +182,7 @@ def _parse_dify_assets(uid: str, raw_json: str) -> bool:
             if rate > 0:
                 buy_price = buy_price * rate
 
-        db.add_asset(uid, {
+        merged.append({
             "kind": kind,
             "symbol": symbol if kind == "crypto" else _DIFY_SYMBOL.get(kind, kind.upper()),
             "name": name,
@@ -191,6 +191,8 @@ def _parse_dify_assets(uid: str, raw_json: str) -> bool:
             "purity": _DIFY_PURITY.get(kind_dify),
             "horizon": None,
         })
+
+    db.merge_assets(uid, merged)
     return True
 
 

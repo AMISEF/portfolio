@@ -973,3 +973,85 @@ a { color: inherit; text-decoration: none; }
   .admin__tools { width: 100%; }
   .btn-export { flex: 1; justify-content: center; }
 }
+.adm-badge--danger { background: rgba(234,57,67,.14); color: var(--down); border-color: rgba(234,57,67,.3); }
+
+/* ==========================================================================
+   فوتر
+   ========================================================================== */
+.cs-footer {
+  border-top: 1px solid var(--border); background: var(--surface-solid);
+  padding: 20px 0; margin-top: 18px;
+}
+.cs-footer__inner {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+}
+.cs-footer__brand {
+  display: flex; align-items: center; gap: 10px;
+}
+.cs-footer__logo { width: 36px; height: 36px; border-radius: 10px; object-fit: contain; }
+.cs-footer__name { font-weight: 900; font-size: .95rem; color: var(--heading); }
+.cs-footer__links {
+  display: flex; align-items: center; gap: 18px;
+}
+.cs-footer__link {
+  display: inline-flex; align-items: center; gap: 7px; font-size: .85rem; font-weight: 700;
+  color: var(--text-soft); transition: var(--trans);
+}
+.cs-footer__link:hover { color: var(--brand-dark); }
+.cs-footer__link svg { color: currentColor; }
+@media (max-width: 560px) {
+  .cs-footer__inner { justify-content: center; text-align: center; }
+  .cs-footer__links { flex-wrap: wrap; justify-content: center; }
+}
+
+/* ==========================================================================
+   پورتفولیو — کنترل‌های اضافه
+   ========================================================================== */
+/* دکمهٔ تبدیل ارز (تومان ↔ USDT) */
+.pf2-cur-toggle {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px;
+  border-radius: var(--radius-pill); border: 1.5px solid var(--border);
+  background: var(--surface-2); color: var(--text-soft); font-family: var(--font);
+  font-weight: 800; font-size: .8rem; cursor: pointer; transition: var(--trans);
+}
+.pf2-cur-toggle:hover { border-color: var(--brand); color: var(--brand-dark); }
+.pf2-cur-toggle.is-usd { border-color: var(--brand); background: rgba(25,195,179,.1); color: var(--brand-dark); }
+[data-theme="dark"] .pf2-cur-toggle.is-usd { color: var(--brand-light); }
+
+/* تاگل نوع نمودار */
+.pf2-chart-toggle {
+  display: inline-flex; gap: 3px; background: var(--surface-2); padding: 3px; border-radius: var(--radius-sm);
+}
+.pf2-chart-toggle button {
+  width: 30px; height: 26px; border: none; background: none; border-radius: 7px;
+  cursor: pointer; display: grid; place-items: center; color: var(--text-dim); transition: var(--trans);
+}
+.pf2-chart-toggle button svg { width: 15px; height: 15px; }
+.pf2-chart-toggle button.is-active { background: var(--brand); color: var(--on-brand); }
+
+/* تاگل ارز در مودال ورود دارایی */
+.pf2-buy-row { display: flex; flex-direction: column; gap: 6px; }
+.pf2-buy-cur { display: inline-flex; align-items: center; gap: 6px; }
+.pf2-buy-cur span { font-size: .76rem; color: var(--text-dim); font-weight: 700; }
+.pf2-cur-btn { border: 1px solid var(--border); background: var(--surface-2); color: var(--text-soft);
+  font-family: var(--font); font-weight: 800; font-size: .74rem; padding: 3px 10px;
+  border-radius: var(--radius-pill); cursor: pointer; transition: var(--trans); }
+.pf2-cur-btn.is-active { background: var(--brand); color: var(--on-brand); border-color: transparent; }
+
+/* نمودار میله‌ای */
+.pf2-bar-svg { display: block; height: 240px; }
+
+/* آیکون ارز با تصویر */
+.pf2-ic img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.pf2-ic__letter { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-weight: 900; color: #fff; }
+
+/* پای‌چارت */
+.pf2-pie { display: block; }
+.pf2-pie-wrap { position: relative; }
+.pf2-pie__center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px; pointer-events: none;
+}
+.pf2-pie__lbl { font-size: .72rem; color: var(--text-dim); }
+.pf2-pie__val { font-size: .9rem; font-weight: 900; color: var(--heading); text-align: center; }

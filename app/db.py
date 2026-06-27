@@ -201,6 +201,31 @@ def clear_assets(uid: str) -> None:
         conn.execute("DELETE FROM assets WHERE uid = ?", (uid,))
 
 
+def merge_assets(uid: str, new_assets: list[dict[str, Any]]) -> None:
+    """ادغام دارایی‌های AI با دارایی‌های موجود — بدون پاک‌کردن دارایی‌های دستی."""
+    with _LOCK, _conn() as conn:
+        for a in new_assets:
+            row = conn.execute(
+                "SELECT id FROM assets WHERE uid = ? AND kind = ? AND symbol = ? "
+                "AND (purity IS NULL AND ? IS NULL OR purity = ?)",
+                (uid, a["kind"], a["symbol"], a.get("purity"), a.get("purity")),
+            ).fetchone()
+            if row:
+                sets, vals = ["amount = ?"], [a["amount"]]
+                if a.get("buy_price") is not None:
+                    sets.append("buy_price = ?")
+                    vals.append(a["buy_price"])
+                vals.append(row["id"])
+                conn.execute(f"UPDATE assets SET {', '.join(sets)} WHERE id = ?", vals)
+            else:
+                conn.execute(
+                    "INSERT INTO assets (uid, kind, symbol, name, amount, buy_price, purity, horizon) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (uid, a["kind"], a["symbol"], a["name"], a["amount"],
+                     a.get("buy_price"), a.get("purity"), a.get("horizon")),
+                )
+
+
 def reassign_assets(from_uid: str, to_uid: str) -> None:
     """انتقال دارایی‌ها و پروفایل ریسک از یک شناسه به شناسهٔ دیگر (هنگام ورود)."""
     with _LOCK, _conn() as conn:
@@ -332,12 +357,13 @@ def update_user_registration(user_id: int, *, first_name: str | None, last_name:
 
 # ---- مدیریت کاربران (ادمین) ----
 def list_users() -> list[dict[str, Any]]:
-    """فهرست همهٔ کاربران + تعداد دارایی‌های هرکدام (برای پنل ادمین)."""
+    """فهرست همهٔ کاربران + تعداد دارایی + پروفایل ریسک (برای پنل ادمین)."""
     with _LOCK, _conn() as conn:
         rows = conn.execute(
             "SELECT u.*, "
-            "(SELECT COUNT(*) FROM assets a WHERE a.uid = u.uid OR a.uid = 'u' || u.id) "
-            "AS asset_count "
+            "(SELECT COUNT(*) FROM assets a WHERE a.uid = u.uid OR a.uid = 'u' || u.id) AS asset_count, "
+            "(SELECT rp.percent FROM risk_profiles rp WHERE rp.uid = u.uid) AS risk_percent, "
+            "(SELECT rp.label FROM risk_profiles rp WHERE rp.uid = u.uid) AS risk_label "
             "FROM users u ORDER BY u.id"
         ).fetchall()
         return [dict(r) for r in rows]

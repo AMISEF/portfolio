@@ -108,10 +108,17 @@
       '<span class="adm-user__uname">' + uname + "</span></span></div>";
   }
 
+  function riskCell(u) {
+    if (u.risk_percent == null) return '<span class="adm-badge">—</span>';
+    const pct = Math.round(u.risk_percent);
+    const cls = pct < 40 ? "adm-badge--ok" : pct < 70 ? "adm-badge--pending" : "adm-badge--danger";
+    return '<span class="adm-badge ' + cls + '">' + pct + '٪ · ' + esc(u.risk_label || "") + "</span>";
+  }
+
   function renderTable() {
     const body = $("admBody");
     if (!filtered.length) {
-      body.innerHTML = '<tr><td colspan="10" class="adm-empty">کاربری یافت نشد.</td></tr>';
+      body.innerHTML = '<tr><td colspan="11" class="adm-empty">کاربری یافت نشد.</td></tr>';
       updateSelCount();
       return;
     }
@@ -127,6 +134,7 @@
         "<td>" + roleCell(u) + "</td>" +
         "<td>" + subCell(u) + "</td>" +
         '<td><button class="adm-link" data-act="assets" data-id="' + u.id + '">' + (u.asset_count || 0) + " دارایی</button></td>" +
+        "<td>" + riskCell(u) + "</td>" +
         "<td>" + (u.verified ? '<span class="adm-badge adm-badge--ok"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>تأیید</span>' : '<span class="adm-badge adm-badge--pending">معلق</span>') + "</td>" +
         '<td class="adm-col-actions">' + actionsCell(u) + "</td>" +
         "</tr>";
