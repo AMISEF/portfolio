@@ -30,7 +30,7 @@ from app import db
 from app.config import settings
 from app.routers.auth import account_display_name, current_user
 from app.services import auth as auth_svc
-from app.services import crypto_box, xlsx
+from app.services import crypto_box, portfolio_valuation, xlsx
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -242,6 +242,48 @@ async def remove_user(request: Request, user_id: int):
         return _deny("نمی‌توانید حساب خودتان را حذف کنید.", 400)
     db.delete_user(user_id)
     return JSONResponse({"ok": True})
+
+
+# ───────────────────────── سبد کاربر (ادمین) ─────────────────────────
+@router.get("/admin/user-portfolio/{user_id}", response_class=HTMLResponse)
+async def admin_user_portfolio_page(request: Request, user_id: int):
+    user = _staff(request)
+    if not user:
+        return RedirectResponse("/", status_code=302)
+    target = db.get_user_by_id(user_id)
+    if not target:
+        return JSONResponse({"error": "کاربر یافت نشد."}, status_code=404)
+    ctx = {
+        "request": request,
+        "brand_fa": settings.app_brand_fa,
+        "title_fa": "مدیریت سرمایه",
+        "active": "portfolio",
+        "account_name": account_display_name(request),
+        "admin_user_id": user_id,
+        "admin_user_name": target.get("name") or target.get("email") or f"کاربر {user_id}",
+    }
+    return templates.TemplateResponse("portfolio_assistant.html", ctx)
+
+
+@router.get("/api/admin/users/{user_id}/portfolio/value")
+async def admin_user_portfolio_value(request: Request, user_id: int):
+    if not _staff(request):
+        return _deny()
+    assets = db.user_assets(user_id)
+    valued = await portfolio_valuation.value_portfolio(assets)
+    return JSONResponse(valued)
+
+
+@router.get("/api/admin/users/{user_id}/portfolio/history")
+async def admin_user_portfolio_history(request: Request, user_id: int, days: int = 365):
+    if not _staff(request):
+        return _deny()
+    u = db.get_user_by_id(user_id)
+    if not u:
+        return _deny("کاربر یافت نشد.", 404)
+    uid = u.get("uid") or f"u{user_id}"
+    history = db.get_portfolio_history(uid, days)
+    return JSONResponse({"history": history})
 
 
 # ───────────────────────── خروجی اکسل ─────────────────────────

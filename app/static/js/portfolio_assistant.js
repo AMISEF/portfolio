@@ -5,6 +5,12 @@
   const CS = w.CS;
   const $ = (id) => document.getElementById(id);
 
+  // در حالت ادمین، pfRoot یک data-admin-uid دارد؛ در غیر این صورت رشتهٔ خالی است.
+  const ADMIN_UID = (function () {
+    const el = document.getElementById("pfRoot");
+    return el ? (el.dataset.adminUid || "") : "";
+  })();
+
   const PALETTE = ["#2D63B0", "#19C3B3", "#F59E0B", "#EA3943", "#6F95C8",
                    "#4ED9CC", "#128F84", "#A6F0E8", "#214E8A", "#16C784",
                    "#e07b39", "#9b59b6", "#1abc9c", "#c0392b", "#d35400"];
@@ -396,7 +402,7 @@
         "<td>" + c24 + "</td><td>" + c30 + "</td>" +
         '<td class="pf2-num">' + buyDisplay(it) + "</td>" +
         "<td>" + pnl + "</td>" +
-        '<td class="pf2-actions-cell"><button class="pf2-menu__btn" data-id="' + it.id + '" title="عملیات" aria-label="عملیات">⋯</button></td>' +
+        (ADMIN_UID ? '<td></td>' : '<td class="pf2-actions-cell"><button class="pf2-menu__btn" data-id="' + it.id + '" title="عملیات" aria-label="عملیات">⋯</button></td>') +
         "</tr>";
     }).join("");
   }
@@ -453,6 +459,7 @@
   }
   function showActMsg(t) { const m = $("actMsg"); m.hidden = false; m.className = "auth-msg auth-msg--err"; m.textContent = t; }
   async function patchAsset(id, body) {
+    if (ADMIN_UID) return;
     try {
       const r = await fetch("/api/portfolio/assets/" + id, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -551,7 +558,10 @@
 
   async function loadPortfolio() {
     try {
-      const d = await CS.fetchJSON("/api/portfolio/assets");
+      const url = ADMIN_UID
+        ? "/api/admin/users/" + ADMIN_UID + "/portfolio/value"
+        : "/api/portfolio/assets";
+      const d = await CS.fetchJSON(url);
       allItems = d.items || [];
       summary(d); renderAll();
     } catch (e) { console.warn("portfolio:", e); }
@@ -582,7 +592,10 @@
   async function loadHistory(days) {
     const box = $("pfChart");
     try {
-      const d = await CS.fetchJSON("/api/portfolio/history?days=" + days);
+      const url = ADMIN_UID
+        ? "/api/admin/users/" + ADMIN_UID + "/portfolio/history?days=" + days
+        : "/api/portfolio/history?days=" + days;
+      const d = await CS.fetchJSON(url);
       historyPts = (d.history || []).map(p => ({ t: Date.parse(p.ts.replace(" ", "T") + "Z"), v: p.total_toman }))
         .filter(p => p.v > 0);
       renderChart();
@@ -743,8 +756,12 @@
   });
 
   // ───────────────────────── راه‌اندازی ─────────────────────────
+  if (ADMIN_UID) {
+    if ($("addAssetBtn")) $("addAssetBtn").hidden = true;
+    if ($("aiToggle")) $("aiToggle").hidden = true;
+  }
   loadPortfolio();
   loadHistory(30);
-  loadCatalog();
+  if (!ADMIN_UID) loadCatalog();
   setInterval(loadPortfolio, 20000);
 })(window);
