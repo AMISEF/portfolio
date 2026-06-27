@@ -255,31 +255,43 @@
       'style="margin:0 auto;display:block;overflow:visible">' + paths + "</svg>";
   }
 
-  // تعامل هاوِر: قطعهٔ زیر نشانگر بیرون می‌زند (انیمیشن) و جزئیات نمایش داده می‌شود
+  // تعامل هاوِر: تنها قطعهٔ زیر نشانگر بیرون می‌زند، بقیه برمی‌گردند، و خروج موس همه‌چیز را می‌بندد.
+  // با تفویض رویداد روی SVG و یک «اندیس فعال» مدیریت می‌شود (بدون جابه‌جایی DOM که رویدادها را می‌شکست).
   function wireAllocPie(box, list) {
     const svg = box.querySelector("#allocPieSvg");
     const tip = box.querySelector("#allocTip");
     if (!svg || !tip) return;
-    svg.querySelectorAll(".pf2-slice").forEach(path => {
-      const i = +path.dataset.i;
-      path.addEventListener("mouseenter", () => {
-        path.style.transform = "translate(" + path.dataset.dx + "px," + path.dataset.dy + "px)";
-        svg.appendChild(path);   // آوردن قطعه به جلو
-        const it = list[i];
+    const slices = Array.prototype.slice.call(svg.querySelectorAll(".pf2-slice"));
+    let active = -1;
+
+    function setActive(idx) {
+      if (idx === active) return;
+      active = idx;
+      slices.forEach((p, j) => {
+        p.classList.toggle("is-on", j === idx);
+        p.style.transform = (j === idx) ? ("translate(" + p.dataset.dx + "px," + p.dataset.dy + "px)") : "";
+      });
+      const it = idx >= 0 ? list[idx] : null;
+      if (it) {
         tip.innerHTML =
           '<div class="pf2-alloc-tip__name"><span class="pf2-alloc-tip__dot" style="background:' +
-          PALETTE[i % PALETTE.length] + '"></span>' + esc(it.name) + "</div>" +
+          PALETTE[idx % PALETTE.length] + '"></span>' + esc(it.name) + "</div>" +
           '<div class="pf2-alloc-tip__row"><span>مقدار</span><b>' + CS.faNum(it.amount) + " " + esc(unitWord(it)) + "</b></div>" +
           '<div class="pf2-alloc-tip__row"><span>ارزش</span><b>' + valDisplay(it) + "</b></div>" +
           '<div class="pf2-alloc-tip__row"><span>سهم</span><b>' + CS.toFa((it.weight || 0).toFixed(1)) + "٪</b></div>";
         tip.hidden = false;
-      });
-      path.addEventListener("mouseleave", () => {
-        path.style.transform = "";
+      } else {
         tip.hidden = true;
-      });
+      }
+    }
+
+    svg.addEventListener("mousemove", (e) => {
+      const slice = (e.target && e.target.closest) ? e.target.closest(".pf2-slice") : null;
+      setActive(slice ? (+slice.dataset.i) : -1);
     });
-    // جای‌گذاری تول‌تیپ نزدیک نشانگر (یک listener؛ با انتساب، تکراری نمی‌شود)
+    svg.addEventListener("mouseleave", () => setActive(-1));
+
+    // جای‌گذاری تول‌تیپ نزدیک نشانگر
     box.onmousemove = (e) => {
       if (tip.hidden) return;
       const rect = box.getBoundingClientRect();
