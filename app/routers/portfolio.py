@@ -34,6 +34,9 @@ from app.services import portfolio_valuation, risk
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+# نسخهٔ استاتیک مشترک تا کش CSS/JS با هر استقرار باطل شود
+from app.routers.pages import STATIC_V  # noqa: E402
+templates.env.globals["static_v"] = STATIC_V
 
 _COOKIE = "cs_uid"
 _COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 2   # دو سال
@@ -59,12 +62,14 @@ def _json(data: Any, uid: str, is_new: bool, status: int = 200) -> JSONResponse:
 
 
 def _ctx(request: Request, active: str) -> dict:
+    from app.routers.auth import account_display_name
     return {
         "request": request,
         "brand_fa": settings.app_brand_fa,
         "title_fa": settings.app_title_fa,
         "subtitle_fa": settings.app_subtitle_fa,
         "active": active,
+        "account_name": account_display_name(request),
     }
 
 
