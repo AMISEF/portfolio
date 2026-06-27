@@ -3,15 +3,41 @@
 
 {% block content %}
 <section class="admin" data-is-admin="{{ 'true' if me.is_admin else 'false' }}">
-  <div class="admin__head">
-    <div>
-      <h1 class="admin__title">پنل مدیریت کاربران</h1>
-      <p class="admin__sub">شما به‌عنوان <b>{{ 'ادمین' if me.role == 'admin' else 'پشتیبان' }}</b> وارد شده‌اید.</p>
+  <!-- سربرگ -->
+  <div class="admin__hero">
+    <div class="admin__hero-main">
+      <div class="admin__hero-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div>
+        <h1 class="admin__title">پنل مدیریت کاربران</h1>
+        <p class="admin__sub">خوش آمدید — شما با نقش
+          <span class="role-chip role-chip--{{ me.role }}">{{ 'ادمین' if me.role == 'admin' else 'پشتیبان' }}</span>
+          وارد شده‌اید.</p>
+      </div>
+    </div>
+    <div class="admin__stats" id="admStats">
+      <div class="stat-card"><span class="stat-card__num" id="statTotal">—</span><span class="stat-card__lbl">کل کاربران</span></div>
+      <div class="stat-card"><span class="stat-card__num" id="statVerified">—</span><span class="stat-card__lbl">تأییدشده</span></div>
+      <div class="stat-card"><span class="stat-card__num" id="statPaid">—</span><span class="stat-card__lbl">اشتراک فعال</span></div>
+    </div>
+  </div>
+
+  <!-- نوار ابزار -->
+  <div class="admin__toolbar">
+    <div class="adm-search-wrap">
+      <svg class="adm-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="search" id="admSearch" class="adm-search" placeholder="جستجو بر اساس نام، ایمیل، شماره یا شناسه…">
     </div>
     <div class="admin__tools">
-      <input type="search" id="admSearch" class="adm-search" placeholder="جستجو: نام، ایمیل، شماره، شناسه…">
-      <button class="btn-soft" id="admExportXlsx">خروجی اکسل</button>
-      <button class="btn-soft" id="admExportPdf">خروجی PDF</button>
+      <button class="btn-export btn-export--xlsx" id="admExportXlsx">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        خروجی اکسل
+      </button>
+      <button class="btn-export btn-export--pdf" id="admExportPdf">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+        خروجی PDF
+      </button>
     </div>
   </div>
 
@@ -24,21 +50,20 @@
     <table class="adm-table" id="admTable">
       <thead>
         <tr>
-          <th class="adm-col-check"></th>
+          <th class="adm-col-check"><span class="adm-th-box"></span></th>
+          <th>کاربر</th>
           <th>شناسه</th>
-          <th>نام کاربری</th>
-          <th>نام و نام خانوادگی</th>
           <th>ایمیل</th>
           <th>شماره تماس</th>
           <th>نقش</th>
           <th>اشتراک</th>
           <th>دارایی</th>
-          <th>تأیید</th>
-          <th>اقدامات</th>
+          <th>وضعیت</th>
+          <th class="adm-col-actions">اقدامات</th>
         </tr>
       </thead>
       <tbody id="admBody">
-        <tr><td colspan="11" class="adm-empty">در حال بارگذاری…</td></tr>
+        <tr><td colspan="10" class="adm-empty">در حال بارگذاری…</td></tr>
       </tbody>
     </table>
   </div>

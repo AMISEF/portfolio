@@ -35,9 +35,20 @@
   // ---------- بارگذاری ----------
   async function load() {
     const r = await api("/api/admin/users");
-    if (!r.ok) { $("admBody").innerHTML = '<tr><td colspan="11" class="adm-empty">دسترسی غیرمجاز.</td></tr>'; return; }
+    if (!r.ok) { $("admBody").innerHTML = '<tr><td colspan="10" class="adm-empty">دسترسی غیرمجاز.</td></tr>'; return; }
     users = r.data.users || [];
+    updateStats();
     applyFilter();
+  }
+
+  function updateStats() {
+    const total = users.length;
+    const verified = users.filter(function (u) { return u.verified; }).length;
+    const paid = users.filter(function (u) { return u.subscription && u.subscription !== "free"; }).length;
+    const fa = function (n) { return Number(n).toLocaleString("fa-IR"); };
+    if ($("statTotal")) $("statTotal").textContent = fa(total);
+    if ($("statVerified")) $("statVerified").textContent = fa(verified);
+    if ($("statPaid")) $("statPaid").textContent = fa(paid);
   }
 
   function applyFilter() {
@@ -65,38 +76,59 @@
     return '<span class="adm-tier adm-tier--' + esc(u.subscription) + '">' + esc(tier) + "</span>" + exp;
   }
 
+  var ICONS = {
+    sub: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  };
   function actionsCell(u) {
     let html = '<div class="adm-actions">';
-    html += '<button class="adm-btn" data-act="sub" data-id="' + u.id + '">اشتراک</button>';
+    html += '<button class="adm-ibtn" data-act="sub" data-id="' + u.id + '" title="مدیریت اشتراک" aria-label="مدیریت اشتراک">' + ICONS.sub + "</button>";
     if (IS_ADMIN) {
-      html += '<button class="adm-btn" data-act="edit" data-id="' + u.id + '">ویرایش</button>';
-      html += '<button class="adm-btn adm-btn--danger" data-act="del" data-id="' + u.id + '">حذف</button>';
+      html += '<button class="adm-ibtn" data-act="edit" data-id="' + u.id + '" title="ویرایش کاربر" aria-label="ویرایش کاربر">' + ICONS.edit + "</button>";
+      html += '<button class="adm-ibtn adm-ibtn--danger" data-act="del" data-id="' + u.id + '" title="حذف کاربر" aria-label="حذف کاربر">' + ICONS.del + "</button>";
     }
     html += "</div>";
     return html;
   }
 
+  // آواتار با حرف اول نام و رنگِ پایدار بر اساس شناسه
+  function avatarHue(u) { return (Number(u.id) * 47) % 360; }
+  function initial(u) {
+    const n = (u.full_name || u.username || u.email || "?").trim();
+    return n ? n[0].toUpperCase() : "?";
+  }
+  function userCell(u) {
+    const hue = avatarHue(u);
+    const name = esc(u.full_name || "بدون نام");
+    const uname = u.username ? "@" + esc(u.username) : "—";
+    return '<div class="adm-user">' +
+      '<span class="adm-avatar" style="--h:' + hue + '">' + esc(initial(u)) + "</span>" +
+      '<span class="adm-user__txt"><span class="adm-user__name">' + name + "</span>" +
+      '<span class="adm-user__uname">' + uname + "</span></span></div>";
+  }
+
   function renderTable() {
     const body = $("admBody");
     if (!filtered.length) {
-      body.innerHTML = '<tr><td colspan="11" class="adm-empty">کاربری یافت نشد.</td></tr>';
+      body.innerHTML = '<tr><td colspan="10" class="adm-empty">کاربری یافت نشد.</td></tr>';
       updateSelCount();
       return;
     }
     body.innerHTML = filtered.map(function (u) {
       const checked = selected.has(u.id) ? " checked" : "";
-      return '<tr data-id="' + u.id + '">' +
-        '<td class="adm-col-check"><input type="checkbox" class="adm-row-check" data-id="' + u.id + '"' + checked + "></td>" +
-        "<td>" + esc(u.user_code) + "</td>" +
-        "<td>" + esc(u.username || "—") + "</td>" +
-        "<td>" + esc(u.full_name || "—") + "</td>" +
-        "<td>" + esc(u.email) + "</td>" +
+      const sel = selected.has(u.id) ? " is-selected" : "";
+      return '<tr data-id="' + u.id + '" class="adm-row' + sel + '">' +
+        '<td class="adm-col-check"><label class="adm-cb"><input type="checkbox" class="adm-row-check" data-id="' + u.id + '"' + checked + "><span></span></label></td>" +
+        "<td>" + userCell(u) + "</td>" +
+        '<td><code class="adm-code">' + esc(u.user_code || "—") + "</code></td>" +
+        '<td class="adm-email">' + esc(u.email) + "</td>" +
         '<td class="adm-phone" dir="ltr">' + esc(u.phone || "—") + "</td>" +
         "<td>" + roleCell(u) + "</td>" +
         "<td>" + subCell(u) + "</td>" +
         '<td><button class="adm-link" data-act="assets" data-id="' + u.id + '">' + (u.asset_count || 0) + " دارایی</button></td>" +
-        "<td>" + (u.verified ? '<span class="adm-badge adm-badge--ok">تأیید</span>' : '<span class="adm-badge">معلق</span>') + "</td>" +
-        "<td>" + actionsCell(u) + "</td>" +
+        "<td>" + (u.verified ? '<span class="adm-badge adm-badge--ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>تأیید</span>' : '<span class="adm-badge adm-badge--pending">معلق</span>') + "</td>" +
+        '<td class="adm-col-actions">' + actionsCell(u) + "</td>" +
         "</tr>";
     }).join("");
     updateSelCount();
@@ -116,6 +148,8 @@
     if (t.classList.contains("adm-row-check")) {
       const id = +t.dataset.id;
       if (t.checked) selected.add(id); else selected.delete(id);
+      const row = t.closest("tr");
+      if (row) row.classList.toggle("is-selected", t.checked);
       updateSelCount();
       return;
     }

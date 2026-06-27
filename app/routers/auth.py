@@ -51,6 +51,18 @@ def current_user(request: Request) -> dict[str, Any] | None:
     return db.get_session_user(token)
 
 
+def account_display_name(request: Request) -> str | None:
+    """نام نمایشیِ کاربرِ نشستِ فعلی برای دکمهٔ حساب در هدر (یا None اگر مهمان است).
+    سمت سرور رندر می‌شود تا نام بلافاصله و در همهٔ صفحات نمایش داده شود."""
+    user = current_user(request)
+    if not user:
+        return None
+    full = user.get("name") or " ".join(
+        x for x in (user.get("first_name"), user.get("last_name")) if x
+    )
+    return (full or user.get("username") or user.get("email") or "").strip() or None
+
+
 def _role_for(email: str, current: str | None = None) -> str:
     """نقش کاربر: ایمیل‌های فهرستِ ادمین همیشه «admin» می‌شوند."""
     if email and email.lower() in settings.admin_email_list:
