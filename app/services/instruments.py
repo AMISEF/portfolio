@@ -68,12 +68,14 @@ async def get_price_table() -> dict[str, Any]:
 
     gold18 = xau_usd = xag_usd = oil_usd = 0.0
     gold18_chg = xau_chg = xag_chg = oil_chg = usd_chg = 0.0
+    sa_usd_toman = 0.0          # دلار نقدی/آزاد از SourceArena (اسکناس)
     coins_raw: dict[str, float] = {}
     if isinstance(metals, dict):
         g = metals.get("gold_18k") or {}
         gold18 = g.get("price") or 0.0
         gold18_chg = g.get("change_24h") or 0.0
         usd_chg = metals.get("usd_change_24h") or 0.0
+        sa_usd_toman = metals.get("usd_toman") or 0.0
         coins_raw = metals.get("coins") or {}
         cm = metals.get("commodities") or {}
         xau_usd = (cm.get("XAU") or {}).get("price") or 0.0
@@ -99,6 +101,9 @@ async def get_price_table() -> dict[str, Any]:
         metals_tbl["oil"] = _row("نفت خام", "بشکه", oil_usd * usd_toman, usd_toman, oil_chg, "oil")
     metals_tbl["usdt"] = _row("تتر (USDT)", "USDT", usd_toman, usd_toman, usd_chg, "cash")
     metals_tbl["toman"] = _row("تومان نقد", "نقد", 1.0, usd_toman, 0.0, "cash")
+    # دلار نقدی (اسکناس) از SourceArena؛ نبودِ منبع ⇒ همان نرخ تتر
+    usd_cash_toman = sa_usd_toman or usd_toman
+    metals_tbl["usd_cash"] = _row("دلار نقدی", "اسکناس", usd_cash_toman, usd_toman, usd_chg, "cash")
 
     # سکه‌ها: قیمت زنده (با حباب) از SourceArena؛ نبود ⇒ ارزش ذوب از طلای ۲۴ع.
     for kind, spec in COIN_SPECS.items():
@@ -159,6 +164,8 @@ def unit_price_toman(kind: str, symbol: str | None, purity: str | None,
         return (c.get("price_usd") or 0.0) * usd_toman
     if kind == "usdt":
         return usd_toman
+    if kind == "usd_cash":
+        return (metals.get("usd_cash") or {}).get("price_toman", 0.0)
     if kind == "toman":
         return 1.0
     if kind == "gold":
@@ -237,7 +244,7 @@ def _decode_id(iid: str) -> tuple[str, str | None, str]:
         return "gold", "24", "GOLD24"
     if iid.startswith("coin_"):
         return "coin", iid[5:], iid.upper()
-    if iid in ("silver", "oil", "usdt", "toman"):
+    if iid in ("silver", "oil", "usdt", "toman", "usd_cash"):
         return iid, None, iid.upper()
     return iid, None, iid.upper()
 

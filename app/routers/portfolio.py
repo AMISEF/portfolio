@@ -267,7 +267,7 @@ async def portfolio_history(request: Request, days: int = 365):
 
 
 # ───────────────────────── API: دارایی‌ها ─────────────────────────
-_KINDS = {"crypto", "gold", "coin", "silver", "oil", "usdt", "toman"}
+_KINDS = {"crypto", "gold", "coin", "silver", "oil", "usdt", "toman", "usd_cash"}
 
 
 @router.post("/api/portfolio/assets")
@@ -313,6 +313,19 @@ async def get_assets(request: Request):
         except Exception:  # noqa: BLE001
             pass
     return _json(valued, uid, is_new)
+
+
+@router.patch("/api/portfolio/assets/{asset_id}")
+async def update_asset(request: Request, asset_id: int, payload: dict[str, Any] = Body(...)):
+    """به‌روزرسانی مقدار دارایی؛ مقدار ≤ ۰ ⇒ حذف کامل دارایی."""
+    uid, is_new = _uid(request)
+    try:
+        amount = float(payload.get("amount"))
+    except (TypeError, ValueError):
+        return _json({"error": "مقدار نامعتبر است"}, uid, is_new, 400)
+    if amount <= 0:
+        return _json({"ok": db.delete_asset(uid, asset_id), "deleted": True}, uid, is_new)
+    return _json({"ok": db.update_asset(uid, asset_id, amount)}, uid, is_new)
 
 
 @router.delete("/api/portfolio/assets/{asset_id}")

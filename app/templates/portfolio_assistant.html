@@ -39,14 +39,6 @@
     <div class="card__head">
       <span class="card__title">روند ارزش سبد</span>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <div class="pf2-chart-toggle" id="pfChartType">
-          <button class="is-active" data-type="area" title="نمودار خطی">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          </button>
-          <button data-type="bar" title="نمودار میله‌ای">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-          </button>
-        </div>
         <div class="pf2-tf" id="pfTf">
           <button data-d="7">۷ روز</button>
           <button data-d="30" class="is-active">۳۰ روز</button>
@@ -60,18 +52,22 @@
     </div>
   </div>
 
-  <!-- تخصیص دارایی -->
+  <!-- نمودار دارایی -->
   <div class="card pf2-card pf2-alloccard">
-    <div class="card__head"><span class="card__title">تخصیص دارایی</span></div>
+    <div class="card__head">
+      <span class="card__title">نمودار دارایی</span>
+      <div class="pf2-chart-toggle" id="allocChartType">
+        <button class="is-active" data-type="pie" title="نمودار دایره‌ای">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+        </button>
+        <button data-type="bar" title="نمودار میله‌ای">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </button>
+      </div>
+    </div>
     <div class="card__body">
       <div class="pf2-alloc">
-        <div class="pf2-pie-wrap" style="width:180px;height:180px;margin:0 auto">
-          <svg viewBox="0 0 200 200" class="pf2-pie" id="pieChart" width="180" height="180"></svg>
-          <div class="pf2-pie__center">
-            <span class="pf2-pie__lbl">ارزش کل</span>
-            <span class="pf2-pie__val" id="pieTotal">—</span>
-          </div>
-        </div>
+        <div class="pf2-alloc-chart" id="allocChart"></div>
         <div class="pf2-legend" id="portLegend"></div>
       </div>
     </div>
@@ -94,10 +90,10 @@
           <tr>
             <th>دارایی</th>
             <th>قیمت واحد</th>
+            <th>ارزش</th>
+            <th>مقدار</th>
             <th>تغییر ۲۴س</th>
             <th>تغییر ۳۰ر</th>
-            <th>مقدار</th>
-            <th>ارزش</th>
             <th>سود/زیان</th>
             <th></th>
           </tr>
@@ -171,6 +167,45 @@
       <div class="pf2-add-actions">
         <button class="btn btn--ghost" id="addBack">بازگشت</button>
         <button class="btn btn--brand" id="addSave">افزودن به سبد</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- مودال عملیات دارایی (ویرایش/افزودن/حذف) -->
+<div class="modal-overlay" id="assetActionModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true">
+    <button class="modal__close" id="actClose" aria-label="بستن">×</button>
+    <h2 class="modal__title" id="actTitle">عملیات دارایی</h2>
+    <p class="modal__sub" id="actSub"></p>
+
+    <!-- گام انتخاب عملیات -->
+    <div id="actStepChoose" class="pf2-act-choose">
+      <button class="btn btn--ghost" data-mode="edit">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        ویرایش مقدار
+      </button>
+      <button class="btn btn--ghost" data-mode="add">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        افزودن مقدار
+      </button>
+      <button class="btn btn--ghost pf2-act-del" data-mode="remove">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        حذف
+      </button>
+    </div>
+
+    <!-- گام ورود مقدار -->
+    <div id="actStepInput" hidden>
+      <div class="field">
+        <label id="actLabel" for="actInput">مقدار</label>
+        <input type="number" id="actInput" inputmode="decimal" step="any" min="0">
+      </div>
+      <p class="auth-msg" id="actMsg" hidden></p>
+      <div class="pf2-add-actions">
+        <button class="btn btn--ghost pf2-act-del" id="actDeleteAll" hidden>حذف کل دارایی</button>
+        <button class="btn btn--ghost" id="actBack">بازگشت</button>
+        <button class="btn btn--brand" id="actConfirm">تأیید</button>
       </div>
     </div>
   </div>

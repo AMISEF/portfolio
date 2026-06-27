@@ -1045,6 +1045,25 @@ a { color: inherit; text-decoration: none; }
 .pf2-ic img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .pf2-ic__letter { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
   font-weight: 900; color: #fff; }
+/* آیکون با تصویرِ محلی (شمش طلا/نقره/نفت/تتر) — کاملِ تصویر دیده شود */
+.pf2-ic--img { background: var(--surface-2); overflow: hidden; }
+.pf2-ic--img img { width: 100%; height: 100%; border-radius: 50%; object-fit: contain; }
+
+/* نمودار دارایی (دایره‌ای/میله‌ای) */
+.pf2-alloc-chart { width: 100%; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+
+/* سلول عملیات + منوی سه‌نقطه */
+.pf2-actions-cell { text-align: left; }
+.pf2-menu__btn { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text-soft); font-size: 1.2rem; line-height: 1; cursor: pointer;
+  transition: var(--trans); }
+.pf2-menu__btn:hover { border-color: var(--brand); color: var(--brand-dark); transform: translateY(-1px); }
+
+/* مودال عملیات دارایی */
+.pf2-act-choose { display: flex; flex-direction: column; gap: 10px; }
+.pf2-act-choose .btn { width: 100%; justify-content: flex-start; }
+.pf2-act-del { color: var(--down) !important; }
+.pf2-act-del:hover { background: rgba(234,57,67,.1) !important; }
 
 /* پای‌چارت */
 .pf2-pie { display: block; }
