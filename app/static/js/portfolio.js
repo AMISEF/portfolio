@@ -10,12 +10,11 @@
   function show(el) { [introCard, quizCard, resultCard].forEach(c => c.hidden = (c !== el)); }
 
   async function init() {
-    // اگر کاربر قبلاً آزمون داده، مستقیم نتیجه را نشان بده
+    // اگر کاربر قبلاً آزمون داده، مستقیم به مدیریت سرمایه برو
     try {
       const r = await CS.fetchJSON("/api/portfolio/risk");
       if (r && r.profile) {
-        renderResult({ percent: r.profile.percent, label: r.profile.label,
-                       key: r.profile.category, desc: descFor(r.profile.percent) });
+        window.location.replace("/portfolio/assistant");
         return;
       }
     } catch (e) { /* ادامه با معرفی */ }

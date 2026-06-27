@@ -1,12 +1,13 @@
-/* مدیریت سرمایه — ردیاب سبد (خلاصه، دونات تخصیص، جدول دارایی، نمودار روند)
-   + انتخابگر افزودن دارایی (همهٔ ارزهای Toobit + طلا/سکه/نقره/نفت) + دستیار چت. */
+/* مدیریت سرمایه — ردیاب سبد (خلاصه، پای‌چارت، جدول دارایی، نمودار روند)
+   + انتخابگر افزودن دارایی + دستیار چت. */
 (function (w) {
   "use strict";
   const CS = w.CS;
   const $ = (id) => document.getElementById(id);
 
   const PALETTE = ["#2D63B0", "#19C3B3", "#F59E0B", "#EA3943", "#6F95C8",
-                   "#4ED9CC", "#128F84", "#A6F0E8", "#214E8A", "#16C784"];
+                   "#4ED9CC", "#128F84", "#A6F0E8", "#214E8A", "#16C784",
+                   "#e07b39", "#9b59b6", "#1abc9c", "#c0392b", "#d35400"];
   const GROUP_ICON = { gold: "🥇", coin: "🪙", silver: "⚪", oil: "🛢️", cash: "₮" };
 
   function esc(v) {
@@ -15,13 +16,50 @@
   }
   function hueOf(s) { let h = 0; for (const c of (s || "?")) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
 
+  // آیکون دارایی: تصویر CDN برای کریپتو + حرف اول برای بقیه
   function assetIcon(it) {
     if (it.group === "crypto" || it.kind === "crypto") {
+      const sym = (it.symbol || "").toLowerCase();
       const h = hueOf(it.symbol);
-      return '<span class="pf2-ic" style="background:linear-gradient(135deg,hsl(' + h +
-        ' 70% 52%),hsl(' + h + ' 65% 38%))">' + esc((it.symbol || "?")[0]) + "</span>";
+      const bg = "linear-gradient(135deg,hsl(" + h + " 70% 52%),hsl(" + h + " 65% 38%))";
+      const letter = esc((it.symbol || "?")[0]);
+      return '<span class="pf2-ic" style="background:' + bg + ';position:relative;overflow:hidden">' +
+        '<img src="https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/32/color/' + sym + '.png" ' +
+        'alt="" onerror="this.style.display=\'none\'" ' +
+        'style="position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover">' +
+        '<span style="position:relative;z-index:1">' + letter + "</span>" +
+        "</span>";
     }
     return '<span class="pf2-ic pf2-ic--metal">' + (GROUP_ICON[it.group] || "💠") + "</span>";
+  }
+
+  // ─────────────────────────── تبدیل ارز ───────────────────────────
+  let currencyMode = "toman"; // "toman" | "usd"
+  let lastUsdRate = 0;
+
+  const curToggleBtn = $("curToggle");
+  const curToggleLabel = $("curToggleLabel");
+
+  if (curToggleBtn) {
+    curToggleBtn.addEventListener("click", function () {
+      currencyMode = currencyMode === "toman" ? "usd" : "toman";
+      curToggleBtn.classList.toggle("is-usd", currencyMode === "usd");
+      if (curToggleLabel) curToggleLabel.textContent = currencyMode === "usd" ? "USDT" : "تومان";
+      renderAll();
+    });
+  }
+
+  function valDisplay(toman, usd) {
+    if (currencyMode === "usd") {
+      return usd > 0 ? CS.faPriceUsd(usd) : (toman > 0 && lastUsdRate > 0 ? CS.faPriceUsd(toman / lastUsdRate) : "—");
+    }
+    return CS.faNum(toman) + " ت";
+  }
+  function unitDisplay(priceToman, priceUsd) {
+    if (currencyMode === "usd") {
+      return priceUsd > 0 ? CS.faPriceUsd(priceUsd) : (priceToman > 0 && lastUsdRate > 0 ? CS.faPriceUsd(priceToman / lastUsdRate) : "—");
+    }
+    return CS.faNum(priceToman) + " ت";
   }
 
   // ───────────────────────── چت دستیار ─────────────────────────
@@ -101,36 +139,74 @@
     if (!card.hidden) {
       if (!chatReady) {
         chatReady = true; buildInput();
-        bot("سلام! می‌توانید دارایی‌هایتان را به زبان ساده بنویسید (مثلاً «۰.۵ بیت‌کوین روی ۶۰ هزار دلار») یا سؤال سرمایه‌گذاری بپرسید.");
+        // سلام اولیه همراه با دارایی‌های موجود
+        const assetSummary = allItems.length
+          ? "دارایی‌های فعلی شما: " + allItems.map(it => CS.faNum(it.amount) + " " + (it.name || it.symbol)).join("، ") + "."
+          : "";
+        bot("سلام! " + (assetSummary ? assetSummary + "<br><br>" : "") +
+          "می‌توانید دارایی‌های جدید را به زبان ساده وارد کنید یا سؤال سرمایه‌گذاری بپرسید.");
       }
       card.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   });
 
-  // ───────────────────────── سبد: خلاصه/دونات/جدول ─────────────────────────
+  // ───────────────────────── سبد: داده ─────────────────────────
   let allItems = [];
 
-  function donut(items) {
-    const svg = $("donut"); svg.innerHTML = "";
-    const r = 46, cx = 60, cy = 60, C = 2 * Math.PI * r;
+  function renderAll() {
+    pieChart(allItems);
+    legend(allItems);
+    holdings(allItems);
+    updateSummaryDisplay();
+  }
+
+  // ───────────────────────── پای‌چارت (توپر) ─────────────────────────
+  function pieChart(items) {
+    const svg = $("pieChart");
+    if (!svg) return;
+    svg.innerHTML = "";
+    const total = $("pieTotal");
+    if (total) {
+      if (currencyMode === "usd") {
+        const totalUsd = items.reduce((s, it) => s + (it.value_usd || 0), 0);
+        total.textContent = totalUsd > 0 ? CS.faPriceUsd(totalUsd) : (lastUsdRate > 0 ? CS.faPriceUsd(items.reduce((s, it) => s + (it.value_toman || 0), 0) / lastUsdRate) : "—");
+      } else {
+        const totalToman = items.reduce((s, it) => s + (it.value_toman || 0), 0);
+        total.textContent = totalToman > 0 ? CS.faNum(Math.round(totalToman)) + " ت" : "—";
+      }
+    }
     if (!items.length) {
-      svg.innerHTML = '<circle cx="60" cy="60" r="46" fill="none" stroke="var(--border-strong)" stroke-width="15"/>';
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", "100"); circle.setAttribute("cy", "100"); circle.setAttribute("r", "90");
+      circle.setAttribute("fill", "var(--border)");
+      svg.appendChild(circle);
       return;
     }
-    let off = 0;
+    const cx = 100, cy = 100, r = 90;
+    let startAngle = -Math.PI / 2;
     items.forEach((it, i) => {
-      const seg = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      seg.setAttribute("cx", cx); seg.setAttribute("cy", cy); seg.setAttribute("r", r);
-      seg.setAttribute("fill", "none"); seg.setAttribute("stroke", PALETTE[i % PALETTE.length]);
-      seg.setAttribute("stroke-width", "15");
-      const len = (it.weight || 0) / 100 * C;
-      seg.setAttribute("stroke-dasharray", len + " " + (C - len));
-      seg.setAttribute("stroke-dashoffset", -off);
-      seg.setAttribute("transform", "rotate(-90 60 60)");
-      seg.setAttribute("stroke-linecap", "butt");
-      svg.appendChild(seg); off += len;
+      const weight = it.weight || 0;
+      if (weight <= 0) return;
+      const angle = (weight / 100) * 2 * Math.PI;
+      const endAngle = startAngle + angle;
+      const x1 = cx + r * Math.cos(startAngle), y1 = cy + r * Math.sin(startAngle);
+      const x2 = cx + r * Math.cos(endAngle),   y2 = cy + r * Math.sin(endAngle);
+      const largeArc = angle > Math.PI ? 1 : 0;
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d",
+        "M " + cx + " " + cy +
+        " L " + x1.toFixed(2) + " " + y1.toFixed(2) +
+        " A " + r + " " + r + " 0 " + largeArc + " 1 " + x2.toFixed(2) + " " + y2.toFixed(2) +
+        " Z"
+      );
+      path.setAttribute("fill", PALETTE[i % PALETTE.length]);
+      path.setAttribute("stroke", "var(--surface-solid)");
+      path.setAttribute("stroke-width", "1.5");
+      svg.appendChild(path);
+      startAngle = endAngle;
     });
   }
+
   function legend(items) {
     $("portLegend").innerHTML = items.map((it, i) =>
       '<div class="pf2-legend__row"><span class="pf2-legend__dot" style="background:' +
@@ -152,14 +228,16 @@
       const c24 = chgCell(it.change_24h), c30 = chgCell(it.change_30d);
       const pnl = (it.pnl_pct == null) ? '<span class="pf2-dim">—</span>'
         : '<span class="chg ' + CS.chgClass(it.pnl_pct) + '">' + CS.faPct(it.pnl_pct) + "</span>";
+      const price = unitDisplay(it.unit_price_toman, it.unit_price_usd);
+      const val = valDisplay(it.value_toman, it.value_usd);
       return '<tr data-id="' + it.id + '">' +
         '<td><div class="pf2-asset">' + assetIcon(it) +
           '<span class="pf2-asset__txt"><span class="pf2-asset__name">' + esc(it.name) +
           '</span><span class="pf2-asset__sym">' + esc(symLabel(it)) + "</span></span></div></td>" +
-        '<td class="pf2-num">' + CS.faNum(it.unit_price_toman) + " ت</td>" +
+        '<td class="pf2-num">' + price + "</td>" +
         "<td>" + c24 + "</td><td>" + c30 + "</td>" +
         '<td class="pf2-num">' + CS.faNum(it.amount) + "</td>" +
-        '<td class="pf2-num"><b>' + CS.faNum(it.value_toman) + " ت</b><span class=\"pf2-usd\">" + CS.faPriceUsd(it.value_usd) + "</span></td>" +
+        '<td class="pf2-num"><b>' + val + "</b></td>" +
         "<td>" + pnl + "</td>" +
         '<td><button class="pf2-del" title="حذف" aria-label="حذف">×</button></td>' +
         "</tr>";
@@ -187,12 +265,22 @@
     return '<span class="chg ' + CS.chgClass(v) + '">' + CS.faPct(v) + "</span>";
   }
 
-  function summary(d) {
+  // ───────────────────────── خلاصه ─────────────────────────
+  let lastSummaryData = null;
+
+  function updateSummaryDisplay() {
+    if (!lastSummaryData) return;
+    const d = lastSummaryData;
     const items = d.items || [];
-    $("sumToman").textContent = items.length ? CS.faNum(d.total_toman) + " ت" : "—";
-    $("sumUsd").textContent = items.length ? CS.faPriceUsd(d.total_usd) : "";
-    $("donutTotal").textContent = items.length ? CS.faNum(d.total_toman) + " ت" : "—";
-    // تغییر ۲۴ساعتهٔ وزنی کل سبد
+    if (currencyMode === "usd") {
+      const totalUsd = d.total_usd || 0;
+      $("sumToman").textContent = totalUsd > 0 ? CS.faPriceUsd(totalUsd) : "—";
+      $("sumUsd").textContent = "";
+    } else {
+      $("sumToman").textContent = items.length ? CS.faNum(d.total_toman) + " ت" : "—";
+      $("sumUsd").textContent = items.length ? CS.faPriceUsd(d.total_usd) : "";
+    }
+    // تغییر ۲۴ساعتهٔ وزنی
     let wsum = 0, w = 0;
     items.forEach(it => { if (it.change_24h != null) { wsum += it.change_24h * (it.value_toman || 0); w += (it.value_toman || 0); } });
     const el = $("sumChg");
@@ -200,34 +288,64 @@
     else { el.textContent = ""; }
   }
 
+  function summary(d) {
+    lastSummaryData = d;
+    if (d.usd_toman > 0) lastUsdRate = d.usd_toman;
+    updateSummaryDisplay();
+  }
+
   async function loadPortfolio() {
     try {
       const d = await CS.fetchJSON("/api/portfolio/assets");
       allItems = d.items || [];
-      summary(d); donut(allItems); legend(allItems); holdings(allItems);
+      summary(d); renderAll();
     } catch (e) { console.warn("portfolio:", e); }
   }
   $("holdSearch").addEventListener("input", () => holdings(allItems));
 
-  // ───────────────────────── نمودار روند ارزش ─────────────────────────
+  // ───────────────────────── نمودار روند ─────────────────────────
+  let chartType = "area";
+  let historyPts = [];
+
+  const pfChartTypeEl = $("pfChartType");
+  if (pfChartTypeEl) {
+    pfChartTypeEl.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      pfChartTypeEl.querySelectorAll("button").forEach(x => x.classList.remove("is-active"));
+      b.classList.add("is-active"); chartType = b.dataset.type;
+      renderChart();
+    });
+  }
+
+  function renderChart() {
+    const box = $("pfChart");
+    if (historyPts.length < 2) {
+      box.innerHTML = '<div class="pf2-chart-empty">روند ارزش پس از چند بار به‌روزرسانی نمایش داده می‌شود.<br>(هر ساعت یک نقطه ثبت می‌شود)</div>';
+      return;
+    }
+    box.innerHTML = chartType === "bar" ? barChart(historyPts) : areaChart(historyPts);
+  }
+
   async function loadHistory(days) {
     const box = $("pfChart");
     try {
       const d = await CS.fetchJSON("/api/portfolio/history?days=" + days);
-      const h = (d.history || []).map(p => ({ t: Date.parse(p.ts.replace(" ", "T") + "Z"), v: p.total_toman }))
+      historyPts = (d.history || []).map(p => ({ t: Date.parse(p.ts.replace(" ", "T") + "Z"), v: p.total_toman }))
         .filter(p => p.v > 0);
-      if (h.length < 2) {
-        box.innerHTML = '<div class="pf2-chart-empty">روند ارزش پس از چند بار به‌روزرسانی نمایش داده می‌شود.<br>(هر ساعت یک نقطه ثبت می‌شود)</div>';
-        return;
-      }
-      box.innerHTML = areaChart(h);
+      renderChart();
     } catch (e) { box.innerHTML = '<div class="pf2-chart-empty">خطا در بارگذاری روند.</div>'; }
   }
+
+  // نمودار ناحیه‌ای (خطی)
   function areaChart(pts) {
-    const W = 760, H = 240, padL = 8, padR = 64, padT = 14, padB = 22;
+    const W = 760, H = 240, padL = 8, padR = 72, padT = 18, padB = 32;
     const xs = pts.map(p => p.t), vs = pts.map(p => p.v);
     const xmin = Math.min(...xs), xmax = Math.max(...xs) || xmin + 1;
-    let vmin = Math.min(...vs), vmax = Math.max(...vs); if (vmax === vmin) { vmax = vmin * 1.01 + 1; }
+    let vmin = Math.min(...vs), vmax = Math.max(...vs);
+    // پدینگ ۵٪ برای دید بهتر
+    const vpad = Math.max((vmax - vmin) * 0.08, vmax * 0.005);
+    if (vmax === vmin) { vmax = vmin * 1.02 + 1000; vmin = Math.max(0, vmin * 0.98); }
+    else { vmax += vpad; vmin = Math.max(0, vmin - vpad); }
     const pw = W - padL - padR, ph = H - padT - padB;
     const X = t => padL + (xmax === xmin ? pw / 2 : (t - xmin) / (xmax - xmin) * pw);
     const Y = v => padT + (vmax - v) / (vmax - vmin) * ph;
@@ -239,19 +357,71 @@
       const gy = padT + ph * g / 4, gv = vmax - (vmax - vmin) * g / 4;
       grid += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (padL + pw) + '" y2="' + gy.toFixed(1) +
         '" stroke="var(--border)" stroke-width="1"/>' +
-        '<text x="' + (padL + pw + 6) + '" y="' + (gy + 3).toFixed(1) + '" fill="var(--text-dim)" font-size="9">' +
-        CS.faNum(Math.round(gv)) + "</text>";
+        '<text x="' + (padL + pw + 6) + '" y="' + (gy + 4).toFixed(1) + '" fill="var(--text-dim)" font-size="9" text-anchor="start">' +
+        CS.faNum(Math.round(gv / 1e6) > 0 ? Math.round(gv / 1e6) + "M" : Math.round(gv)) + "</text>";
+    }
+    // برچسب تاریخ محور x
+    const tickCount = Math.min(pts.length, 5);
+    let xLabels = "";
+    for (let k = 0; k < tickCount; k++) {
+      const idx = Math.round(k * (pts.length - 1) / (tickCount - 1 || 1));
+      const p = pts[idx];
+      const d = new Date(p.t);
+      const label = (d.getMonth() + 1) + "/" + d.getDate();
+      xLabels += '<text x="' + X(p.t).toFixed(1) + '" y="' + (padT + ph + 14) + '" fill="var(--text-dim)" font-size="8.5" text-anchor="middle">' + label + "</text>";
     }
     const last = pts[pts.length - 1];
-    return '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" preserveAspectRatio="none" class="pf2-area">' +
+    return '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" class="pf2-area">' +
       '<defs><linearGradient id="pfg" x1="0" y1="0" x2="0" y2="1">' +
       '<stop offset="0" stop-color="var(--brand)" stop-opacity=".35"/>' +
       '<stop offset="1" stop-color="var(--brand)" stop-opacity="0"/></linearGradient></defs>' +
-      grid + '<path d="' + area + '" fill="url(#pfg)"/>' +
+      grid + xLabels +
+      '<path d="' + area + '" fill="url(#pfg)"/>' +
       '<path d="' + line + '" fill="none" stroke="var(--brand)" stroke-width="2"/>' +
       '<circle cx="' + X(last.t).toFixed(1) + '" cy="' + Y(last.v).toFixed(1) + '" r="3.5" fill="var(--brand)"/>' +
       "</svg>";
   }
+
+  // نمودار میله‌ای
+  function barChart(pts) {
+    const W = 760, H = 240, padL = 8, padR = 72, padT = 18, padB = 32;
+    const vs = pts.map(p => p.v);
+    let vmin = Math.min(...vs), vmax = Math.max(...vs);
+    const vpad = Math.max((vmax - vmin) * 0.08, vmax * 0.005);
+    if (vmax === vmin) { vmax = vmin * 1.02 + 1000; vmin = Math.max(0, vmin * 0.98); }
+    else { vmax += vpad; vmin = Math.max(0, vmin - vpad); }
+    const pw = W - padL - padR, ph = H - padT - padB;
+    const Y = v => padT + (vmax - v) / (vmax - vmin) * ph;
+    const barW = Math.max(3, Math.min(28, pw / pts.length * 0.65));
+    const step = pw / pts.length;
+    let bars = "", grid = "", xLabels = "";
+    for (let g = 0; g <= 4; g++) {
+      const gy = padT + ph * g / 4, gv = vmax - (vmax - vmin) * g / 4;
+      grid += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (padL + pw) + '" y2="' + gy.toFixed(1) +
+        '" stroke="var(--border)" stroke-width="1"/>' +
+        '<text x="' + (padL + pw + 6) + '" y="' + (gy + 4).toFixed(1) + '" fill="var(--text-dim)" font-size="9" text-anchor="start">' +
+        CS.faNum(Math.round(gv / 1e6) > 0 ? Math.round(gv / 1e6) + "M" : Math.round(gv)) + "</text>";
+    }
+    pts.forEach((p, i) => {
+      const cx = padL + (i + 0.5) * step;
+      const y = Y(p.v), barH = padT + ph - y;
+      bars += '<rect x="' + (cx - barW / 2).toFixed(1) + '" y="' + y.toFixed(1) +
+        '" width="' + barW.toFixed(1) + '" height="' + Math.max(0, barH).toFixed(1) +
+        '" rx="3" fill="var(--brand)" opacity="0.85"/>';
+    });
+    const tickCount = Math.min(pts.length, 5);
+    for (let k = 0; k < tickCount; k++) {
+      const idx = Math.round(k * (pts.length - 1) / (tickCount - 1 || 1));
+      const p = pts[idx];
+      const d = new Date(p.t);
+      const cx = padL + (idx + 0.5) * step;
+      xLabels += '<text x="' + cx.toFixed(1) + '" y="' + (padT + ph + 14) + '" fill="var(--text-dim)" font-size="8.5" text-anchor="middle">' +
+        (d.getMonth() + 1) + "/" + d.getDate() + "</text>";
+    }
+    return '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" class="pf2-bar-svg">' +
+      grid + bars + xLabels + "</svg>";
+  }
+
   $("pfTf").addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b) return;
     $("pfTf").querySelectorAll("button").forEach(x => x.classList.remove("is-active"));
@@ -259,7 +429,7 @@
   });
 
   // ───────────────────────── انتخابگر افزودن دارایی ─────────────────────────
-  let catalog = [], catGroup = "", picked = null;
+  let catalog = [], catGroup = "", picked = null, buyCurMode = "toman";
 
   async function loadCatalog() {
     try {
@@ -274,7 +444,7 @@
     list = list.slice(0, 120);
     const box = $("instList");
     if (!list.length) { box.innerHTML = '<p class="pf2-empty">موردی یافت نشد.</p>'; return; }
-    box.innerHTML = list.map((it, i) => {
+    box.innerHTML = list.map((it) => {
       const price = it.price_toman ? CS.faNum(it.price_toman) + " ت" : (it.price_usd ? CS.faPriceUsd(it.price_usd) : "—");
       const chg = it.change_24h == null ? "" : '<span class="chg ' + CS.chgClass(it.change_24h) + '">' + CS.faPct(it.change_24h) + "</span>";
       return '<button class="pf2-inst" data-i="' + catalog.indexOf(it) + '">' + assetIcon(it) +
@@ -284,6 +454,15 @@
     }).join("");
     box.querySelectorAll(".pf2-inst").forEach(b => b.addEventListener("click", () => pick(catalog[+b.dataset.i])));
   }
+
+  // برچسب هوشمند مقدار بر اساس نوع دارایی
+  function amountLabel(it) {
+    if (!it) return "مقدار";
+    if (it.group === "gold" || it.kind === "gold") return "چند گرم";
+    if (it.group === "coin" || it.kind === "coin") return "چند عدد";
+    return "چه مقدار";
+  }
+
   function pick(it) {
     picked = it;
     $("addStep1").hidden = true; $("addStep2").hidden = false;
@@ -292,7 +471,13 @@
     $("pickedInst").innerHTML = assetIcon(it) +
       '<div><div class="pf2-picked__name">' + esc(it.name) + ' <span>' + esc(it.symbol) + "</span></div>" +
       '<div class="pf2-picked__price">قیمت فعلی: ' + price + "</div></div>";
+    // برچسب هوشمند
+    const aLbl = $("addAmountLbl");
+    if (aLbl) aLbl.textContent = amountLabel(it);
     $("addAmount").value = ""; $("addBuy").value = ""; $("addMsg").hidden = true;
+    // reset buy currency
+    buyCurMode = "toman";
+    $("buyCurToman").classList.add("is-active"); $("buyCurUsd").classList.remove("is-active");
     $("addAmount").focus();
   }
   function openAdd() {
@@ -308,11 +493,18 @@
     if (!picked) return;
     const amount = parseFloat($("addAmount").value);
     if (!(amount > 0)) { showAddMsg("مقدار را درست وارد کنید.", "err"); return; }
-    const buy = parseFloat($("addBuy").value);
+    let buyRaw = parseFloat($("addBuy").value);
+    let buyToman = isNaN(buyRaw) ? null : buyRaw;
+    // تبدیل دلار به تومان با نرخ کنونی
+    if (buyToman !== null && buyCurMode === "usd" && lastUsdRate > 0) {
+      buyToman = buyToman * lastUsdRate;
+    } else if (buyToman !== null && buyCurMode === "usd" && lastUsdRate <= 0) {
+      showAddMsg("نرخ دلار در دسترس نیست. لطفاً قیمت را به تومان وارد کنید.", "err"); return;
+    }
     const body = {
       kind: picked.kind, symbol: picked.symbol, name: picked.name,
       amount: amount, purity: picked.purity || null,
-      buy_price: isNaN(buy) ? null : buy,
+      buy_price: buyToman,
     };
     const r = await fetch("/api/portfolio/assets", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -333,6 +525,15 @@
     const b = e.target.closest("button"); if (!b) return;
     $("instCats").querySelectorAll("button").forEach(x => x.classList.remove("is-active"));
     b.classList.add("is-active"); catGroup = b.dataset.g; renderInst();
+  });
+
+  // تاگل ارز قیمت خرید
+  const buyCurTomanBtn = $("buyCurToman"), buyCurUsdBtn = $("buyCurUsd");
+  if (buyCurTomanBtn) buyCurTomanBtn.addEventListener("click", () => {
+    buyCurMode = "toman"; buyCurTomanBtn.classList.add("is-active"); buyCurUsdBtn.classList.remove("is-active");
+  });
+  if (buyCurUsdBtn) buyCurUsdBtn.addEventListener("click", () => {
+    buyCurMode = "usd"; buyCurUsdBtn.classList.add("is-active"); buyCurTomanBtn.classList.remove("is-active");
   });
 
   // ───────────────────────── راه‌اندازی ─────────────────────────

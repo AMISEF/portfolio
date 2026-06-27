@@ -18,6 +18,10 @@
     <span class="pf2-summary__usd" id="sumUsd"></span>
   </div>
   <div class="pf2-summary__actions">
+    <button class="pf2-cur-toggle" id="curToggle" title="تبدیل ارز">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <span id="curToggleLabel">تومان</span>
+    </button>
     <button class="btn btn--brand" id="addAssetBtn">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
       افزودن دارایی
@@ -34,11 +38,21 @@
   <div class="card pf2-card pf2-chartcard">
     <div class="card__head">
       <span class="card__title">روند ارزش سبد</span>
-      <div class="pf2-tf" id="pfTf">
-        <button data-d="7">۷ روز</button>
-        <button data-d="30" class="is-active">۳۰ روز</button>
-        <button data-d="90">۳ ماه</button>
-        <button data-d="365">۱ سال</button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div class="pf2-chart-toggle" id="pfChartType">
+          <button class="is-active" data-type="area" title="نمودار خطی">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </button>
+          <button data-type="bar" title="نمودار میله‌ای">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </button>
+        </div>
+        <div class="pf2-tf" id="pfTf">
+          <button data-d="7">۷ روز</button>
+          <button data-d="30" class="is-active">۳۰ روز</button>
+          <button data-d="90">۳ ماه</button>
+          <button data-d="365">۱ سال</button>
+        </div>
       </div>
     </div>
     <div class="card__body">
@@ -51,11 +65,11 @@
     <div class="card__head"><span class="card__title">تخصیص دارایی</span></div>
     <div class="card__body">
       <div class="pf2-alloc">
-        <div class="pf2-donut">
-          <svg viewBox="0 0 120 120" id="donut"></svg>
-          <div class="pf2-donut__center">
-            <span class="pf2-donut__lbl">ارزش کل</span>
-            <span class="pf2-donut__val" id="donutTotal">—</span>
+        <div class="pf2-pie-wrap" style="width:180px;height:180px;margin:0 auto">
+          <svg viewBox="0 0 200 200" class="pf2-pie" id="pieChart" width="180" height="180"></svg>
+          <div class="pf2-pie__center">
+            <span class="pf2-pie__lbl">ارزش کل</span>
+            <span class="pf2-pie__val" id="pieTotal">—</span>
           </div>
         </div>
         <div class="pf2-legend" id="portLegend"></div>
@@ -141,11 +155,15 @@
       <div class="pf2-picked" id="pickedInst"></div>
       <div class="field-row">
         <div class="field">
-          <label for="addAmount">مقدار</label>
+          <label for="addAmount" id="addAmountLbl">مقدار</label>
           <input type="number" id="addAmount" inputmode="decimal" placeholder="مثلاً 0.5" step="any" min="0">
         </div>
-        <div class="field">
-          <label for="addBuy" id="addBuyLbl">قیمت خرید هر واحد (تومان) — اختیاری</label>
+        <div class="field pf2-buy-row">
+          <div class="pf2-buy-cur">
+            <span>قیمت خرید هر واحد — اختیاری</span>
+            <button type="button" class="pf2-cur-btn is-active" id="buyCurToman">تومان</button>
+            <button type="button" class="pf2-cur-btn" id="buyCurUsd">دلار</button>
+          </div>
           <input type="number" id="addBuy" inputmode="decimal" placeholder="برای محاسبهٔ سود/زیان" step="any" min="0">
         </div>
       </div>
