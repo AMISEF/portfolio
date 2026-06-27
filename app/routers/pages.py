@@ -31,7 +31,8 @@ def _static_version() -> str:
     return str(int(latest))
 
 
-templates.env.globals["static_v"] = _static_version()
+STATIC_V = _static_version()
+templates.env.globals["static_v"] = STATIC_V
 
 
 def _ctx(request: Request, active: str) -> dict:
