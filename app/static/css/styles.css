@@ -1050,7 +1050,24 @@ a { color: inherit; text-decoration: none; }
 .pf2-ic--img img { width: 100%; height: 100%; border-radius: 50%; object-fit: contain; }
 
 /* نمودار دارایی (دایره‌ای/میله‌ای) */
-.pf2-alloc-chart { width: 100%; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+.pf2-alloc-chart { position: relative; width: 100%; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+
+/* قطعهٔ پای‌چارت: بیرون‌زدن نرم هنگام هاوِر */
+.pf2-slice { cursor: pointer; transform-box: fill-box;
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), filter .2s ease; }
+.pf2-slice:hover { filter: brightness(1.08) drop-shadow(0 5px 10px rgba(0,0,0,.28)); }
+
+/* تول‌تیپ جزئیات دارایی */
+.pf2-alloc-tip { position: absolute; z-index: 10; pointer-events: none; min-width: 156px;
+  background: var(--surface-solid); border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop); padding: 10px 12px; font-size: .8rem; }
+.pf2-alloc-tip[hidden] { display: none; }
+.pf2-alloc-tip__name { display: flex; align-items: center; gap: 6px; font-weight: 800;
+  color: var(--heading); margin-bottom: 7px; }
+.pf2-alloc-tip__dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.pf2-alloc-tip__row { display: flex; justify-content: space-between; gap: 14px;
+  color: var(--text-soft); padding: 2px 0; }
+.pf2-alloc-tip__row b { color: var(--text); font-family: var(--font-mono); font-weight: 800; }
 
 /* سلول عملیات + منوی سه‌نقطه */
 .pf2-actions-cell { text-align: left; }
