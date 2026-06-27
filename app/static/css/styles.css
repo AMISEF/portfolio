@@ -797,9 +797,74 @@ a { color: inherit; text-decoration: none; }
 .adm-pw-note { font-size: .76rem; color: var(--text-dim); margin: -2px 0 12px; }
 .adm-pw-note code { background: var(--surface-2); padding: 2px 6px; border-radius: 5px;
   font-family: var(--font-mono); }
-.adm-sub-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-.adm-sub-actions .btn-primary, .adm-sub-actions .btn-soft { width: auto; flex: 1; }
+.adm-sub-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+.adm-sub-actions .btn-primary, .adm-sub-actions .btn-soft { width: auto; flex: 1; min-width: 92px; }
 .adm-table--mini { white-space: normal; margin-top: 8px; box-shadow: none; }
+
+/* ---------- مودال اشتراک ---------- */
+.modal--sub { max-width: 440px; }
+.sub-modal__head { display: flex; align-items: center; gap: 13px; margin-bottom: 16px; }
+.sub-modal__icon { flex: none; width: 46px; height: 46px; display: grid; place-items: center;
+  border-radius: 14px; color: #fff;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+  box-shadow: var(--shadow-brand); }
+.sub-modal__head .modal__title { margin: 0; }
+.sub-modal__head .modal__sub { margin: 3px 0 0; font-size: .8rem; }
+.sub-modal__head .modal__sub b { color: var(--text-soft); }
+.sub-label { display: block; font-size: .78rem; font-weight: 800; color: var(--text-soft);
+  margin: 14px 0 8px; }
+
+/* کارت‌های انتخاب سطح */
+.tier-pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.tier-opt { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 13px 6px 11px;
+  border-radius: var(--radius-md); border: 1.5px solid var(--border); background: var(--surface-2);
+  cursor: pointer; font-family: var(--font); transition: var(--trans); position: relative; }
+.tier-opt:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+.tier-opt__badge { font-weight: 900; font-size: .82rem; padding: 2px 10px; border-radius: var(--radius-pill);
+  background: var(--chip); color: var(--text-soft); letter-spacing: .02em; }
+.tier-opt__name { font-weight: 800; font-size: .84rem; color: var(--heading); margin-top: 3px; }
+.tier-opt__desc { font-size: .68rem; color: var(--text-dim); }
+.tier-opt.is-active { border-color: var(--brand); background: rgba(25,195,179,.1);
+  box-shadow: 0 0 0 3px rgba(25,195,179,.14); }
+.tier-opt.is-active .tier-opt__badge { background: linear-gradient(135deg, var(--brand), var(--brand-dark)); color: #fff; }
+.tier-opt--vip.is-active { border-color: var(--warn); box-shadow: 0 0 0 3px rgba(245,158,11,.16); }
+.tier-opt--vip.is-active { background: rgba(245,158,11,.1); }
+.tier-opt--vip.is-active .tier-opt__badge { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.tier-opt.is-active::after { content: "✓"; position: absolute; top: 6px; left: 8px;
+  font-size: .7rem; font-weight: 900; color: var(--brand-dark); }
+.tier-opt--vip.is-active::after { color: #d97706; }
+[data-theme="dark"] .tier-opt.is-active::after { color: var(--brand-light); }
+[data-theme="dark"] .tier-opt--vip.is-active::after { color: #fbbf24; }
+
+/* چیپ‌های مدت + ورودی روز */
+.day-presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.day-chip { flex: 1; min-width: 64px; height: 38px; border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border); background: var(--surface-2); color: var(--text-soft);
+  font-family: var(--font); font-weight: 700; font-size: .82rem; cursor: pointer; transition: var(--trans); }
+.day-chip:hover { border-color: var(--border-strong); color: var(--text); }
+.day-chip.is-active { border-color: var(--brand); background: rgba(25,195,179,.12); color: var(--brand-dark); }
+[data-theme="dark"] .day-chip.is-active { color: var(--brand-light); }
+.day-input { position: relative; margin-top: 9px; }
+.day-input input { width: 100%; height: 44px; padding: 0 14px; border-radius: var(--radius-md);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font-family: var(--font); font-size: .9rem; }
+.day-input input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(25,195,179,.14); }
+.day-input__unit { position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  font-size: .8rem; color: var(--text-dim); pointer-events: none; }
+
+/* ---------- tooltip سفارشی ---------- */
+.tip { position: relative; }
+.tip::after, .tip::before { position: absolute; bottom: calc(100% + 9px); right: 50%; transform: translateX(50%) translateY(4px);
+  opacity: 0; pointer-events: none; transition: opacity .16s ease, transform .16s ease; z-index: 90; }
+.tip::after { content: attr(data-tip); white-space: nowrap; padding: 6px 11px; border-radius: 9px;
+  background: var(--blue-900); color: #fff; font-size: .74rem; font-weight: 700;
+  box-shadow: var(--shadow-pop); }
+.tip::before { content: ""; bottom: calc(100% + 3px); width: 0; height: 0;
+  border: 6px solid transparent; border-top-color: var(--blue-900); }
+[data-theme="dark"] .tip::after { background: #06101e; border: 1px solid var(--border-strong); }
+[data-theme="dark"] .tip::before { border-top-color: #06101e; }
+.tip:hover::after, .tip:hover::before, .tip:focus-visible::after, .tip:focus-visible::before {
+  opacity: 1; transform: translateX(50%) translateY(0); }
 
 @media (max-width: 760px) {
   .admin__hero { padding: 18px; }

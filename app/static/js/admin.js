@@ -83,10 +83,10 @@
   };
   function actionsCell(u) {
     let html = '<div class="adm-actions">';
-    html += '<button class="adm-ibtn" data-act="sub" data-id="' + u.id + '" title="مدیریت اشتراک" aria-label="مدیریت اشتراک">' + ICONS.sub + "</button>";
+    html += '<button class="adm-ibtn tip" data-act="sub" data-id="' + u.id + '" data-tip="مدیریت اشتراک" aria-label="مدیریت اشتراک">' + ICONS.sub + "</button>";
     if (IS_ADMIN) {
-      html += '<button class="adm-ibtn" data-act="edit" data-id="' + u.id + '" title="ویرایش کاربر" aria-label="ویرایش کاربر">' + ICONS.edit + "</button>";
-      html += '<button class="adm-ibtn adm-ibtn--danger" data-act="del" data-id="' + u.id + '" title="حذف کاربر" aria-label="حذف کاربر">' + ICONS.del + "</button>";
+      html += '<button class="adm-ibtn tip" data-act="edit" data-id="' + u.id + '" data-tip="ویرایش کاربر" aria-label="ویرایش کاربر">' + ICONS.edit + "</button>";
+      html += '<button class="adm-ibtn adm-ibtn--danger tip" data-act="del" data-id="' + u.id + '" data-tip="حذف کاربر" aria-label="حذف کاربر">' + ICONS.del + "</button>";
     }
     html += "</div>";
     return html;
@@ -247,15 +247,46 @@
 
   // ---------- اشتراک ----------
   let subUserId = null;
+  function setTier(tier) {
+    $("admSubTier").value = tier;
+    document.querySelectorAll("#admSubTierPick .tier-opt").forEach(function (b) {
+      const on = b.dataset.tier === tier;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-checked", on ? "true" : "false");
+    });
+  }
+  function setDays(days) {
+    $("admSubDays").value = days;
+    document.querySelectorAll("#admSubDayPresets .day-chip").forEach(function (b) {
+      b.classList.toggle("is-active", +b.dataset.days === +days);
+    });
+  }
   function openSub(id) {
     const u = findUser(id);
     if (!u) return;
     subUserId = id;
     $("admSubMsg").hidden = true;
-    $("admSubUser").textContent = (u.full_name || u.email) + " — اشتراک فعلی: " + (TIER_FA[u.subscription] || u.subscription);
-    $("admSubTier").value = u.subscription === "free" ? "pro" : u.subscription;
+    const sub = TIER_FA[u.subscription] || u.subscription;
+    const exp = u.sub_expires_at ? " (تا " + fmtDate(u.sub_expires_at) + ")" : "";
+    $("admSubUser").innerHTML = esc(u.full_name || u.email) +
+      ' — اشتراک فعلی: <b>' + esc(sub) + "</b>" + esc(exp);
+    setTier(u.subscription === "free" ? "pro" : u.subscription);
+    setDays(30);
     $("admSubModal").hidden = false;
   }
+  $("admSubTierPick").addEventListener("click", function (e) {
+    const b = e.target.closest(".tier-opt");
+    if (b) setTier(b.dataset.tier);
+  });
+  $("admSubDayPresets").addEventListener("click", function (e) {
+    const b = e.target.closest(".day-chip");
+    if (b) setDays(b.dataset.days);
+  });
+  $("admSubDays").addEventListener("input", function () {
+    document.querySelectorAll("#admSubDayPresets .day-chip").forEach(function (b) {
+      b.classList.toggle("is-active", +b.dataset.days === +$("admSubDays").value);
+    });
+  });
   async function subAction(action) {
     if (subUserId == null) return;
     const body = { action: action, tier: $("admSubTier").value, days: +$("admSubDays").value || 30 };
