@@ -58,17 +58,21 @@ async def value_portfolio(assets: list[dict[str, Any]]) -> dict[str, Any]:
     for it in items:
         it["weight"] = round(it["value_toman"] / total_toman * 100, 2) if total_toman else 0.0
 
+    # تغییر ۲۴ساعتهٔ دلار/تتر — برای محاسبهٔ تغییر دارایی تومان نقدی در حالت دلاری
+    usd_change_24h = instruments.change_24h_for("usdt", None, None, table)
+
     return {
         "items": items,
         "total_toman": round(total_toman),
         "total_usd": round(total_toman / usd_toman, 2) if usd_toman else 0.0,
         "usd_toman": round(usd_toman),
+        "usd_change_24h": usd_change_24h,
     }
 
 
 def _group(kind: str | None) -> str:
     return {"crypto": "crypto", "gold": "gold", "coin": "coin", "silver": "silver",
-            "oil": "oil", "usdt": "cash", "toman": "cash"}.get(kind or "", "other")
+            "oil": "oil", "usdt": "cash", "toman": "cash", "usd_cash": "cash"}.get(kind or "", "other")
 
 
 async def _changes_30d(symbols: list[str]) -> dict[str, float]:

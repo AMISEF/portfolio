@@ -1,4 +1,4 @@
-/* مدیریت سرمایه — ردیاب سبد (خلاصه، پای‌چارت، جدول دارایی، نمودار روند)
+/* مدیریت سرمایه — ردیاب سبد (خلاصه، نمودار دارایی، جدول دارایی، نمودار روند)
    + انتخابگر افزودن دارایی + دستیار چت. */
 (function (w) {
   "use strict";
@@ -8,7 +8,15 @@
   const PALETTE = ["#2D63B0", "#19C3B3", "#F59E0B", "#EA3943", "#6F95C8",
                    "#4ED9CC", "#128F84", "#A6F0E8", "#214E8A", "#16C784",
                    "#e07b39", "#9b59b6", "#1abc9c", "#c0392b", "#d35400"];
-  const GROUP_ICON = { gold: "🥇", coin: "🪙", silver: "⚪", oil: "🛢️", cash: "₮" };
+
+  // آیکون‌های محلی (شمش/فلز/نقد) — همان فایل‌هایی که در ریپو هستند
+  const IMG_ICON = {
+    gold: "/static/img/gold18.png",
+    silver: "/static/img/xag.png",
+    oil: "/static/img/oil.png",
+    usdt: "/static/img/usdt.png",
+  };
+  const EMOJI_ICON = { coin: "🪙", toman: "﷼", usd_cash: "💵", cash: "₮" };
 
   function esc(v) {
     return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -16,26 +24,35 @@
   }
   function hueOf(s) { let h = 0; for (const c of (s || "?")) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
 
-  // آیکون دارایی: تصویر CDN برای کریپتو + حرف اول برای بقیه
+  // آیکون دارایی: فقط تصویر ارز (با fallback حرف اول فقط هنگام خطای بارگذاری)
   function assetIcon(it) {
-    if (it.group === "crypto" || it.kind === "crypto") {
+    const kind = it.kind || it.group;
+    if (kind === "crypto") {
       const sym = (it.symbol || "").toLowerCase();
       const h = hueOf(it.symbol);
       const bg = "linear-gradient(135deg,hsl(" + h + " 70% 52%),hsl(" + h + " 65% 38%))";
       const letter = esc((it.symbol || "?")[0]);
+      // حرف اول زیر تصویر است؛ با بارگذاری موفقِ تصویر پنهان می‌شود (بدون روی‌هم‌افتادگی).
       return '<span class="pf2-ic" style="background:' + bg + ';position:relative;overflow:hidden">' +
+        '<span class="pf2-ic__letter">' + letter + "</span>" +
         '<img src="https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/32/color/' + sym + '.png" ' +
-        'alt="" onerror="this.style.display=\'none\'" ' +
+        'alt="" loading="lazy" ' +
+        'onload="var p=this.previousElementSibling; if(p) p.style.display=\'none\'" ' +
+        'onerror="this.remove()" ' +
         'style="position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover">' +
-        '<span style="position:relative;z-index:1">' + letter + "</span>" +
         "</span>";
     }
-    return '<span class="pf2-ic pf2-ic--metal">' + (GROUP_ICON[it.group] || "💠") + "</span>";
+    const img = IMG_ICON[kind];
+    if (img) {
+      return '<span class="pf2-ic pf2-ic--img"><img src="' + img + '" alt="" loading="lazy"></span>';
+    }
+    return '<span class="pf2-ic pf2-ic--metal">' + (EMOJI_ICON[kind] || EMOJI_ICON[it.group] || "💠") + "</span>";
   }
 
   // ─────────────────────────── تبدیل ارز ───────────────────────────
   let currencyMode = "toman"; // "toman" | "usd"
   let lastUsdRate = 0;
+  let usdChange24 = 0;        // تغییر ۲۴ساعتهٔ دلار/تتر
 
   const curToggleBtn = $("curToggle");
   const curToggleLabel = $("curToggleLabel");
@@ -49,17 +66,39 @@
     });
   }
 
-  function valDisplay(toman, usd) {
+  // ارزشِ نمایشی هر دارایی (تومان یا دلار)
+  function valDisplay(it) {
+    const toman = it.value_toman || 0, usd = it.value_usd || 0;
     if (currencyMode === "usd") {
       return usd > 0 ? CS.faPriceUsd(usd) : (toman > 0 && lastUsdRate > 0 ? CS.faPriceUsd(toman / lastUsdRate) : "—");
     }
     return CS.faNum(toman) + " ت";
   }
-  function unitDisplay(priceToman, priceUsd) {
+
+  // قیمت واحد — برای تتر/تومان/دلار نقدی هرگز نماد $ نمایش داده نمی‌شود
+  function unitDisplay(it) {
+    const pt = it.unit_price_toman || 0, pu = it.unit_price_usd || 0;
+    if (it.kind === "toman") return currencyMode === "usd" ? "—" : "۱ ت";
+    if (it.kind === "usdt") return currencyMode === "usd" ? "۱ USDT" : CS.faNum(pt) + " ت";
+    if (it.kind === "usd_cash") return currencyMode === "usd" ? "۱ USD" : CS.faNum(pt) + " ت";
     if (currencyMode === "usd") {
-      return priceUsd > 0 ? CS.faPriceUsd(priceUsd) : (priceToman > 0 && lastUsdRate > 0 ? CS.faPriceUsd(priceToman / lastUsdRate) : "—");
+      return pu > 0 ? CS.faPriceUsd(pu) : (pt > 0 && lastUsdRate > 0 ? CS.faPriceUsd(pt / lastUsdRate) : "—");
     }
-    return CS.faNum(priceToman) + " ت";
+    return CS.faNum(pt) + " ت";
+  }
+
+  // تغییر ۲۴ساعته با درنظرگرفتن حالت ارز:
+  //  • تومان نقد: در حالت تومان ثابت (۰)؛ در حالت تتر، معکوسِ تغییر تتر (تتر بالا ⇒ قرمز)
+  //  • تتر: در حالت تومان با نرخ دلار حرکت می‌کند؛ در حالت تتر ثابت (۰)
+  function change24(it) {
+    if (it.kind === "toman") return currencyMode === "usd" ? -(usdChange24 || 0) : 0;
+    if (it.kind === "usd_cash") return currencyMode === "usd" ? 0 : (usdChange24 || it.change_24h || 0);
+    if (it.kind === "usdt") return currencyMode === "usd" ? 0 : (usdChange24 != null ? usdChange24 : (it.change_24h || 0));
+    return it.change_24h;
+  }
+  function change30(it) {
+    if (it.kind === "toman" || it.kind === "usdt" || it.kind === "usd_cash") return null;
+    return it.change_30d;
   }
 
   // ───────────────────────── چت دستیار ─────────────────────────
@@ -139,7 +178,6 @@
     if (!card.hidden) {
       if (!chatReady) {
         chatReady = true; buildInput();
-        // سلام اولیه همراه با دارایی‌های موجود
         const assetSummary = allItems.length
           ? "دارایی‌های فعلی شما: " + allItems.map(it => CS.faNum(it.amount) + " " + (it.name || it.symbol)).join("، ") + "."
           : "";
@@ -154,57 +192,78 @@
   let allItems = [];
 
   function renderAll() {
-    pieChart(allItems);
+    renderAlloc(allItems);
     legend(allItems);
     holdings(allItems);
     updateSummaryDisplay();
   }
 
-  // ───────────────────────── پای‌چارت (توپر) ─────────────────────────
-  function pieChart(items) {
-    const svg = $("pieChart");
-    if (!svg) return;
-    svg.innerHTML = "";
-    const total = $("pieTotal");
-    if (total) {
-      if (currencyMode === "usd") {
-        const totalUsd = items.reduce((s, it) => s + (it.value_usd || 0), 0);
-        total.textContent = totalUsd > 0 ? CS.faPriceUsd(totalUsd) : (lastUsdRate > 0 ? CS.faPriceUsd(items.reduce((s, it) => s + (it.value_toman || 0), 0) / lastUsdRate) : "—");
-      } else {
-        const totalToman = items.reduce((s, it) => s + (it.value_toman || 0), 0);
-        total.textContent = totalToman > 0 ? CS.faNum(Math.round(totalToman)) + " ت" : "—";
-      }
-    }
-    if (!items.length) {
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("cx", "100"); circle.setAttribute("cy", "100"); circle.setAttribute("r", "90");
-      circle.setAttribute("fill", "var(--border)");
-      svg.appendChild(circle);
+  // ───────────────────────── نمودار دارایی (دایره‌ای/میله‌ای) ─────────────────────────
+  let allocType = "pie"; // "pie" | "bar"
+  const allocToggle = $("allocChartType");
+  if (allocToggle) {
+    allocToggle.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      allocToggle.querySelectorAll("button").forEach(x => x.classList.remove("is-active"));
+      b.classList.add("is-active"); allocType = b.dataset.type;
+      renderAlloc(allItems);
+    });
+  }
+
+  function renderAlloc(items) {
+    const box = $("allocChart");
+    if (!box) return;
+    const list = (items || []).filter(it => (it.weight || 0) > 0);
+    if (!list.length) {
+      box.innerHTML = '<div class="pf2-chart-empty">هنوز دارایی‌ای ثبت نشده است.</div>';
       return;
     }
+    box.innerHTML = allocType === "bar" ? allocBar(list) : allocPie(list);
+  }
+
+  function allocPie(items) {
     const cx = 100, cy = 100, r = 90;
-    let startAngle = -Math.PI / 2;
+    let startAngle = -Math.PI / 2, paths = "";
     items.forEach((it, i) => {
       const weight = it.weight || 0;
       if (weight <= 0) return;
       const angle = (weight / 100) * 2 * Math.PI;
       const endAngle = startAngle + angle;
       const x1 = cx + r * Math.cos(startAngle), y1 = cy + r * Math.sin(startAngle);
-      const x2 = cx + r * Math.cos(endAngle),   y2 = cy + r * Math.sin(endAngle);
+      const x2 = cx + r * Math.cos(endAngle), y2 = cy + r * Math.sin(endAngle);
       const largeArc = angle > Math.PI ? 1 : 0;
-      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("d",
-        "M " + cx + " " + cy +
+      paths += '<path d="M ' + cx + " " + cy +
         " L " + x1.toFixed(2) + " " + y1.toFixed(2) +
         " A " + r + " " + r + " 0 " + largeArc + " 1 " + x2.toFixed(2) + " " + y2.toFixed(2) +
-        " Z"
-      );
-      path.setAttribute("fill", PALETTE[i % PALETTE.length]);
-      path.setAttribute("stroke", "var(--surface-solid)");
-      path.setAttribute("stroke-width", "1.5");
-      svg.appendChild(path);
+        ' Z" fill="' + PALETTE[i % PALETTE.length] + '" stroke="var(--surface-solid)" stroke-width="1.5"/>';
       startAngle = endAngle;
     });
+    return '<svg viewBox="0 0 200 200" class="pf2-pie" width="180" height="180" style="margin:0 auto;display:block">' +
+      paths + "</svg>";
+  }
+
+  function allocBar(items) {
+    const W = 320, H = 200, padL = 8, padR = 8, padT = 14, padB = 30;
+    const max = Math.max.apply(null, items.map(it => it.weight || 0).concat([1]));
+    const n = items.length;
+    const pw = W - padL - padR, ph = H - padT - padB;
+    const step = pw / n;
+    const bw = Math.min(42, step * 0.62);
+    let bars = "";
+    items.forEach((it, i) => {
+      const weight = it.weight || 0;
+      const h = ph * (weight / max);
+      const x = padL + (i + 0.5) * step;
+      const y = padT + ph - h;
+      bars += '<rect x="' + (x - bw / 2).toFixed(1) + '" y="' + y.toFixed(1) +
+        '" width="' + bw.toFixed(1) + '" height="' + Math.max(0, h).toFixed(1) +
+        '" rx="4" fill="' + PALETTE[i % PALETTE.length] + '"/>' +
+        '<text x="' + x.toFixed(1) + '" y="' + (y - 4).toFixed(1) + '" fill="var(--text-soft)" font-size="9" text-anchor="middle">' +
+        CS.toFa(weight.toFixed(weight < 10 ? 1 : 0)) + "٪</text>" +
+        '<text x="' + x.toFixed(1) + '" y="' + (padT + ph + 13).toFixed(1) + '" fill="var(--text-dim)" font-size="9" text-anchor="middle">' +
+        esc((it.symbol || it.name || "").toString().slice(0, 5)) + "</text>";
+    });
+    return '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" class="pf2-bar-svg" style="height:200px">' + bars + "</svg>";
   }
 
   function legend(items) {
@@ -215,6 +274,7 @@
     ).join("");
   }
 
+  // ───────────────────────── جدول دارایی‌ها ─────────────────────────
   function holdings(items) {
     const body = $("holdBody");
     const q = ($("holdSearch").value || "").trim().toLowerCase();
@@ -225,31 +285,23 @@
       return;
     }
     body.innerHTML = list.map(it => {
-      const c24 = chgCell(it.change_24h), c30 = chgCell(it.change_30d);
+      const c24 = chgCell(change24(it)), c30 = chgCell(change30(it));
       const pnl = (it.pnl_pct == null) ? '<span class="pf2-dim">—</span>'
         : '<span class="chg ' + CS.chgClass(it.pnl_pct) + '">' + CS.faPct(it.pnl_pct) + "</span>";
-      const price = unitDisplay(it.unit_price_toman, it.unit_price_usd);
-      const val = valDisplay(it.value_toman, it.value_usd);
+      const price = unitDisplay(it);
+      const val = valDisplay(it);
       return '<tr data-id="' + it.id + '">' +
         '<td><div class="pf2-asset">' + assetIcon(it) +
           '<span class="pf2-asset__txt"><span class="pf2-asset__name">' + esc(it.name) +
           '</span><span class="pf2-asset__sym">' + esc(symLabel(it)) + "</span></span></div></td>" +
         '<td class="pf2-num">' + price + "</td>" +
-        "<td>" + c24 + "</td><td>" + c30 + "</td>" +
-        '<td class="pf2-num">' + CS.faNum(it.amount) + "</td>" +
         '<td class="pf2-num"><b>' + val + "</b></td>" +
+        '<td class="pf2-num">' + CS.faNum(it.amount) + "</td>" +
+        "<td>" + c24 + "</td><td>" + c30 + "</td>" +
         "<td>" + pnl + "</td>" +
-        '<td><button class="pf2-del" title="حذف" aria-label="حذف">×</button></td>' +
+        '<td class="pf2-actions-cell"><button class="pf2-menu__btn" data-id="' + it.id + '" title="عملیات" aria-label="عملیات">⋯</button></td>' +
         "</tr>";
     }).join("");
-    body.querySelectorAll(".pf2-del").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
-        const tr = e.target.closest("tr"); const id = tr.dataset.id;
-        if (!confirm("این دارایی از سبد حذف شود؟")) return;
-        await fetch("/api/portfolio/assets/" + id, { method: "DELETE" });
-        await loadPortfolio();
-      });
-    });
   }
   function symLabel(it) {
     if (it.kind === "crypto") return it.symbol;
@@ -258,12 +310,95 @@
     if (it.kind === "silver") return "هر گرم";
     if (it.kind === "oil") return "بشکه";
     if (it.kind === "usdt") return "USDT";
-    return "نقد";
+    if (it.kind === "usd_cash") return "دلار نقدی";
+    return "تومان";
   }
   function chgCell(v) {
     if (v == null) return '<span class="pf2-dim">—</span>';
     return '<span class="chg ' + CS.chgClass(v) + '">' + CS.faPct(v) + "</span>";
   }
+
+  // ───────────────────────── مودال عملیات (ویرایش/افزودن/حذف) ─────────────────────────
+  let actState = null;
+  const actModal = $("assetActionModal");
+
+  function openAssetAction(it) {
+    actState = { id: it.id, amount: it.amount, name: it.name, mode: null };
+    $("actTitle").textContent = "عملیات — " + (it.name || "");
+    $("actSub").textContent = "مقدار فعلی: " + CS.faNum(it.amount);
+    $("actStepChoose").hidden = false;
+    $("actStepInput").hidden = true;
+    $("actMsg").hidden = true;
+    actModal.hidden = false;
+  }
+  function setActMode(mode) {
+    if (!actState) return;
+    actState.mode = mode;
+    const titles = { edit: "مقدار جدید را وارد کنید", add: "چه مقدار اضافه شود؟", remove: "چه مقدار حذف شود؟" };
+    const labels = { edit: "مقدار جدید", add: "مقدار افزوده", remove: "مقدار حذف" };
+    $("actLabel").textContent = labels[mode];
+    $("actSub").textContent = titles[mode] + " — مقدار فعلی: " + CS.faNum(actState.amount);
+    const inp = $("actInput");
+    inp.value = mode === "edit" ? actState.amount : "";
+    $("actDeleteAll").hidden = (mode !== "remove");
+    $("actMsg").hidden = true;
+    $("actStepChoose").hidden = true;
+    $("actStepInput").hidden = false;
+    inp.focus();
+  }
+  function showActMsg(t) { const m = $("actMsg"); m.hidden = false; m.className = "auth-msg auth-msg--err"; m.textContent = t; }
+  async function patchAsset(id, amount) {
+    try {
+      const r = await fetch("/api/portfolio/assets/" + id, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: amount }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.ok !== false) { actModal.hidden = true; await loadPortfolio(); }
+      else showActMsg(d.error || "خطا در ثبت تغییر.");
+    } catch (e) { showActMsg("خطا در ارتباط با سرور."); }
+  }
+  function confirmAction() {
+    if (!actState || !actState.mode) return;
+    const x = parseFloat($("actInput").value);
+    let newAmount;
+    if (actState.mode === "edit") {
+      if (!(x > 0)) return showActMsg("مقدار را درست وارد کنید.");
+      newAmount = x;
+    } else if (actState.mode === "add") {
+      if (!(x > 0)) return showActMsg("مقدار افزوده را وارد کنید.");
+      newAmount = actState.amount + x;
+    } else { // remove
+      if (!(x > 0)) return showActMsg("مقدار حذف را وارد کنید.");
+      newAmount = actState.amount - x;   // ≤ ۰ ⇒ بک‌اند کل دارایی را حذف می‌کند
+    }
+    patchAsset(actState.id, newAmount);
+  }
+
+  if (actModal) {
+    $("actClose").addEventListener("click", () => { actModal.hidden = true; });
+    actModal.addEventListener("click", (e) => { if (e.target === actModal) actModal.hidden = true; });
+    $("actStepChoose").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-mode]"); if (b) setActMode(b.dataset.mode);
+    });
+    $("actBack").addEventListener("click", () => {
+      $("actStepInput").hidden = true; $("actStepChoose").hidden = false;
+      $("actSub").textContent = "مقدار فعلی: " + CS.faNum(actState ? actState.amount : 0);
+    });
+    $("actConfirm").addEventListener("click", confirmAction);
+    $("actDeleteAll").addEventListener("click", () => { if (actState) patchAsset(actState.id, 0); });
+    $("actInput").addEventListener("keydown", (e) => { if (e.key === "Enter") confirmAction(); });
+  }
+
+  // باز کردن منوی عملیات (تفویض رویداد روی بدنهٔ جدول)
+  $("holdBody").addEventListener("click", (e) => {
+    const btn = e.target.closest(".pf2-menu__btn");
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const it = allItems.find(x => String(x.id) === String(id));
+    if (it) openAssetAction(it);
+  });
+  $("holdSearch").addEventListener("input", () => holdings(allItems));
 
   // ───────────────────────── خلاصه ─────────────────────────
   let lastSummaryData = null;
@@ -280,9 +415,12 @@
       $("sumToman").textContent = items.length ? CS.faNum(d.total_toman) + " ت" : "—";
       $("sumUsd").textContent = items.length ? CS.faPriceUsd(d.total_usd) : "";
     }
-    // تغییر ۲۴ساعتهٔ وزنی
+    // تغییر ۲۴ساعتهٔ وزنی (با درنظرگرفتن حالت ارز)
     let wsum = 0, w = 0;
-    items.forEach(it => { if (it.change_24h != null) { wsum += it.change_24h * (it.value_toman || 0); w += (it.value_toman || 0); } });
+    items.forEach(it => {
+      const c = change24(it);
+      if (c != null) { wsum += c * (it.value_toman || 0); w += (it.value_toman || 0); }
+    });
     const el = $("sumChg");
     if (w > 0) { const avg = wsum / w; el.className = "pf2-chg chg " + CS.chgClass(avg); el.textContent = CS.faPct(avg) + " (۲۴س)"; }
     else { el.textContent = ""; }
@@ -291,6 +429,7 @@
   function summary(d) {
     lastSummaryData = d;
     if (d.usd_toman > 0) lastUsdRate = d.usd_toman;
+    if (d.usd_change_24h != null) usdChange24 = d.usd_change_24h;
     updateSummaryDisplay();
   }
 
@@ -301,20 +440,18 @@
       summary(d); renderAll();
     } catch (e) { console.warn("portfolio:", e); }
   }
-  $("holdSearch").addEventListener("input", () => holdings(allItems));
 
-  // ───────────────────────── نمودار روند ─────────────────────────
-  let chartType = "area";
+  // ───────────────────────── نمودار روند (فقط ناحیه‌ای) ─────────────────────────
   let historyPts = [];
 
-  const pfChartTypeEl = $("pfChartType");
-  if (pfChartTypeEl) {
-    pfChartTypeEl.addEventListener("click", (e) => {
-      const b = e.target.closest("button"); if (!b) return;
-      pfChartTypeEl.querySelectorAll("button").forEach(x => x.classList.remove("is-active"));
-      b.classList.add("is-active"); chartType = b.dataset.type;
-      renderChart();
-    });
+  // قالب تاریخِ شمسی برای برچسب محور افقی
+  function jalaliLabel(ts) {
+    try {
+      return new Date(ts).toLocaleDateString("fa-IR", { month: "numeric", day: "numeric" });
+    } catch (e) {
+      const d = new Date(ts);
+      return CS.toFa((d.getMonth() + 1) + "/" + d.getDate());
+    }
   }
 
   function renderChart() {
@@ -323,7 +460,7 @@
       box.innerHTML = '<div class="pf2-chart-empty">روند ارزش پس از چند بار به‌روزرسانی نمایش داده می‌شود.<br>(هر ساعت یک نقطه ثبت می‌شود)</div>';
       return;
     }
-    box.innerHTML = chartType === "bar" ? barChart(historyPts) : areaChart(historyPts);
+    box.innerHTML = areaChart(historyPts);
   }
 
   async function loadHistory(days) {
@@ -336,13 +473,11 @@
     } catch (e) { box.innerHTML = '<div class="pf2-chart-empty">خطا در بارگذاری روند.</div>'; }
   }
 
-  // نمودار ناحیه‌ای (خطی)
   function areaChart(pts) {
     const W = 760, H = 240, padL = 8, padR = 72, padT = 18, padB = 32;
     const xs = pts.map(p => p.t), vs = pts.map(p => p.v);
     const xmin = Math.min(...xs), xmax = Math.max(...xs) || xmin + 1;
     let vmin = Math.min(...vs), vmax = Math.max(...vs);
-    // پدینگ ۵٪ برای دید بهتر
     const vpad = Math.max((vmax - vmin) * 0.08, vmax * 0.005);
     if (vmax === vmin) { vmax = vmin * 1.02 + 1000; vmin = Math.max(0, vmin * 0.98); }
     else { vmax += vpad; vmin = Math.max(0, vmin - vpad); }
@@ -360,15 +495,13 @@
         '<text x="' + (padL + pw + 6) + '" y="' + (gy + 4).toFixed(1) + '" fill="var(--text-dim)" font-size="9" text-anchor="start">' +
         CS.faNum(Math.round(gv / 1e6) > 0 ? Math.round(gv / 1e6) + "M" : Math.round(gv)) + "</text>";
     }
-    // برچسب تاریخ محور x
+    // برچسب تاریخ شمسی محور افقی
     const tickCount = Math.min(pts.length, 5);
     let xLabels = "";
     for (let k = 0; k < tickCount; k++) {
       const idx = Math.round(k * (pts.length - 1) / (tickCount - 1 || 1));
       const p = pts[idx];
-      const d = new Date(p.t);
-      const label = (d.getMonth() + 1) + "/" + d.getDate();
-      xLabels += '<text x="' + X(p.t).toFixed(1) + '" y="' + (padT + ph + 14) + '" fill="var(--text-dim)" font-size="8.5" text-anchor="middle">' + label + "</text>";
+      xLabels += '<text x="' + X(p.t).toFixed(1) + '" y="' + (padT + ph + 14) + '" fill="var(--text-dim)" font-size="8.5" text-anchor="middle">' + jalaliLabel(p.t) + "</text>";
     }
     const last = pts[pts.length - 1];
     return '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" class="pf2-area">' +
@@ -380,46 +513,6 @@
       '<path d="' + line + '" fill="none" stroke="var(--brand)" stroke-width="2"/>' +
       '<circle cx="' + X(last.t).toFixed(1) + '" cy="' + Y(last.v).toFixed(1) + '" r="3.5" fill="var(--brand)"/>' +
       "</svg>";
-  }
-
-  // نمودار میله‌ای
-  function barChart(pts) {
-    const W = 760, H = 240, padL = 8, padR = 72, padT = 18, padB = 32;
-    const vs = pts.map(p => p.v);
-    let vmin = Math.min(...vs), vmax = Math.max(...vs);
-    const vpad = Math.max((vmax - vmin) * 0.08, vmax * 0.005);
-    if (vmax === vmin) { vmax = vmin * 1.02 + 1000; vmin = Math.max(0, vmin * 0.98); }
-    else { vmax += vpad; vmin = Math.max(0, vmin - vpad); }
-    const pw = W - padL - padR, ph = H - padT - padB;
-    const Y = v => padT + (vmax - v) / (vmax - vmin) * ph;
-    const barW = Math.max(3, Math.min(28, pw / pts.length * 0.65));
-    const step = pw / pts.length;
-    let bars = "", grid = "", xLabels = "";
-    for (let g = 0; g <= 4; g++) {
-      const gy = padT + ph * g / 4, gv = vmax - (vmax - vmin) * g / 4;
-      grid += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (padL + pw) + '" y2="' + gy.toFixed(1) +
-        '" stroke="var(--border)" stroke-width="1"/>' +
-        '<text x="' + (padL + pw + 6) + '" y="' + (gy + 4).toFixed(1) + '" fill="var(--text-dim)" font-size="9" text-anchor="start">' +
-        CS.faNum(Math.round(gv / 1e6) > 0 ? Math.round(gv / 1e6) + "M" : Math.round(gv)) + "</text>";
-    }
-    pts.forEach((p, i) => {
-      const cx = padL + (i + 0.5) * step;
-      const y = Y(p.v), barH = padT + ph - y;
-      bars += '<rect x="' + (cx - barW / 2).toFixed(1) + '" y="' + y.toFixed(1) +
-        '" width="' + barW.toFixed(1) + '" height="' + Math.max(0, barH).toFixed(1) +
-        '" rx="3" fill="var(--brand)" opacity="0.85"/>';
-    });
-    const tickCount = Math.min(pts.length, 5);
-    for (let k = 0; k < tickCount; k++) {
-      const idx = Math.round(k * (pts.length - 1) / (tickCount - 1 || 1));
-      const p = pts[idx];
-      const d = new Date(p.t);
-      const cx = padL + (idx + 0.5) * step;
-      xLabels += '<text x="' + cx.toFixed(1) + '" y="' + (padT + ph + 14) + '" fill="var(--text-dim)" font-size="8.5" text-anchor="middle">' +
-        (d.getMonth() + 1) + "/" + d.getDate() + "</text>";
-    }
-    return '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" class="pf2-bar-svg">' +
-      grid + bars + xLabels + "</svg>";
   }
 
   $("pfTf").addEventListener("click", (e) => {
@@ -471,11 +564,9 @@
     $("pickedInst").innerHTML = assetIcon(it) +
       '<div><div class="pf2-picked__name">' + esc(it.name) + ' <span>' + esc(it.symbol) + "</span></div>" +
       '<div class="pf2-picked__price">قیمت فعلی: ' + price + "</div></div>";
-    // برچسب هوشمند
     const aLbl = $("addAmountLbl");
     if (aLbl) aLbl.textContent = amountLabel(it);
     $("addAmount").value = ""; $("addBuy").value = ""; $("addMsg").hidden = true;
-    // reset buy currency
     buyCurMode = "toman";
     $("buyCurToman").classList.add("is-active"); $("buyCurUsd").classList.remove("is-active");
     $("addAmount").focus();
@@ -495,7 +586,6 @@
     if (!(amount > 0)) { showAddMsg("مقدار را درست وارد کنید.", "err"); return; }
     let buyRaw = parseFloat($("addBuy").value);
     let buyToman = isNaN(buyRaw) ? null : buyRaw;
-    // تبدیل دلار به تومان با نرخ کنونی
     if (buyToman !== null && buyCurMode === "usd" && lastUsdRate > 0) {
       buyToman = buyToman * lastUsdRate;
     } else if (buyToman !== null && buyCurMode === "usd" && lastUsdRate <= 0) {

@@ -196,6 +196,16 @@ def delete_asset(uid: str, asset_id: int) -> bool:
         return cur.rowcount > 0
 
 
+def update_asset(uid: str, asset_id: int, amount: float) -> bool:
+    """به‌روزرسانی مقدار یک دارایی (ویرایش/افزایش/کاهش مقدار)."""
+    with _LOCK, _conn() as conn:
+        cur = conn.execute(
+            "UPDATE assets SET amount = ? WHERE uid = ? AND id = ?",
+            (amount, uid, asset_id),
+        )
+        return cur.rowcount > 0
+
+
 def clear_assets(uid: str) -> None:
     with _LOCK, _conn() as conn:
         conn.execute("DELETE FROM assets WHERE uid = ?", (uid,))
