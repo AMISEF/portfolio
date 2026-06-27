@@ -92,14 +92,15 @@
             <th>قیمت واحد</th>
             <th>ارزش</th>
             <th>مقدار</th>
-            <th>تغییر ۲۴س</th>
-            <th>تغییر ۳۰ر</th>
-            <th>سود/زیان</th>
+            <th>تغییر ۲۴ ساعته</th>
+            <th>تغییر ۳۰ روزه</th>
+            <th>میانگین قیمت خرید</th>
+            <th>سود / زیان</th>
             <th></th>
           </tr>
         </thead>
         <tbody id="holdBody">
-          <tr><td colspan="8" class="pf2-empty">هنوز دارایی‌ای اضافه نشده است. روی «افزودن دارایی» بزنید.</td></tr>
+          <tr><td colspan="9" class="pf2-empty">هنوز دارایی‌ای اضافه نشده است. روی «افزودن دارایی» بزنید.</td></tr>
         </tbody>
       </table>
     </div>
@@ -188,6 +189,10 @@
       <button class="btn btn--ghost" data-mode="add">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
         افزودن مقدار
+      </button>
+      <button class="btn btn--ghost" data-mode="buyprice">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        ویرایش میانگین قیمت خرید
       </button>
       <button class="btn btn--ghost pf2-act-del" data-mode="remove">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
