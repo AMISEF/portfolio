@@ -76,7 +76,31 @@ async def get_metals() -> dict[str, Any]:
         "usd_change_24h": usd_change,
         "gold_18k": {"name": "طلای ۱۸ عیار", "sub": "هر گرم", "price": round(gold18), "change_24h": gold18_change},
         "commodities": commodities,
+        # سکه‌های ایرانی (تومان، قیمت معاملاتی شاملِ حباب). کلیدهای محتمل امتحان
+        # می‌شوند؛ هرکدام نبود، instruments.py از ارزش ذوب تخمین می‌زند.
+        "coins": _coins(data),
+        "usd_toman": round(usd_toman) if usd_toman else 0,
     }
+
+
+# نگاشت نوع سکه ⇒ کلیدهای محتمل در پاسخ SourceArena
+_COIN_KEYS = {
+    "emami": ("emami", "sekee", "seke_emami", "seke", "sekeemami", "coin_emami"),
+    "bahar": ("bahar", "azadi", "bahar_azadi", "seke_bahar", "old_coin"),
+    "half": ("nim", "nim_sekee", "half", "nimsekee", "seke_nim"),
+    "quarter": ("rob", "rob_sekee", "quarter", "robsekee", "seke_rob"),
+    "gram": ("gerami", "sekee_gerami", "gram_coin", "seke_gerami", "gerami_coin"),
+}
+
+
+def _coins(data: dict) -> dict[str, float]:
+    """قیمت معاملاتی سکه‌ها (تومان) از کلیدهای محتمل؛ فقط مقادیر مثبت."""
+    out: dict[str, float] = {}
+    for kind, keys in _COIN_KEYS.items():
+        val, _ = _first(data, *keys)
+        if val > 0:
+            out[kind] = round(val)
+    return out
 
 
 async def metals() -> dict[str, Any]:

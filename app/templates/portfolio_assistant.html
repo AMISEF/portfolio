@@ -1,56 +1,161 @@
 {% extends "base.html" %}
-{% block title %}{{ brand_fa }} — دستیار مدیریت سرمایه{% endblock %}
+{% block title %}{{ brand_fa }} — مدیریت سرمایه{% endblock %}
 {% block content %}
 
 <section class="pf-head rise">
-  <div class="pf-head__title">دستیار <span class="accent">مدیریت سرمایه</span></div>
-  <p class="pf-head__sub">دارایی‌هایت را وارد کن تا ارزش زنده و سبد پیشنهادی را ببینی.</p>
+  <div class="pf-head__title">مدیریت <span class="accent">سرمایه</span></div>
+  <p class="pf-head__sub">سبد دارایی‌هایت را بساز و ارزش زنده، تخصیص و روند آن را ببین.</p>
 </section>
 
-<div class="asst-grid rise">
+<!-- نوار خلاصه -->
+<div class="pf2-summary card rise">
+  <div class="pf2-summary__main">
+    <span class="pf2-summary__lbl">ارزش کل سبد</span>
+    <div class="pf2-summary__row">
+      <span class="pf2-summary__toman" id="sumToman">—</span>
+      <span class="pf2-chg" id="sumChg"></span>
+    </div>
+    <span class="pf2-summary__usd" id="sumUsd"></span>
+  </div>
+  <div class="pf2-summary__actions">
+    <button class="btn btn--brand" id="addAssetBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      افزودن دارایی
+    </button>
+    <button class="btn btn--ghost" id="aiToggle">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      دستیار هوش مصنوعی
+    </button>
+  </div>
+</div>
 
-  <!-- چت‌بات -->
-  <div class="card asst-chat">
+<div class="pf2-grid rise">
+  <!-- نمودار ارزش سبد -->
+  <div class="card pf2-card pf2-chartcard">
     <div class="card__head">
-      <span class="card__title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        چت‌بات کریپتو اسمارت
-      </span>
-      <span class="live-badge live-badge--brand"><span class="live-dot live-dot--brand"></span> آنلاین</span>
+      <span class="card__title">روند ارزش سبد</span>
+      <div class="pf2-tf" id="pfTf">
+        <button data-d="7">۷ روز</button>
+        <button data-d="30" class="is-active">۳۰ روز</button>
+        <button data-d="90">۳ ماه</button>
+        <button data-d="365">۱ سال</button>
+      </div>
     </div>
     <div class="card__body">
-      <div class="chat" id="chat"></div>
-      <div class="chat__input" id="chatInput"></div>
+      <div class="pf2-chart" id="pfChart"></div>
     </div>
   </div>
 
-  <!-- سبد دارایی -->
-  <div class="card asst-port">
-    <div class="card__head">
-      <span class="card__title">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
-        سبد دارایی شما
-      </span>
-      <span class="src-tag" id="portSrc"></span>
-    </div>
+  <!-- تخصیص دارایی -->
+  <div class="card pf2-card pf2-alloccard">
+    <div class="card__head"><span class="card__title">تخصیص دارایی</span></div>
     <div class="card__body">
-      <div class="port-summary">
-        <div class="port-chart">
+      <div class="pf2-alloc">
+        <div class="pf2-donut">
           <svg viewBox="0 0 120 120" id="donut"></svg>
-          <div class="port-chart__center">
-            <span class="port-chart__lbl">ارزش کل</span>
-            <span class="port-chart__toman" id="totalToman">—</span>
-            <span class="port-chart__usd" id="totalUsd">—</span>
+          <div class="pf2-donut__center">
+            <span class="pf2-donut__lbl">ارزش کل</span>
+            <span class="pf2-donut__val" id="donutTotal">—</span>
           </div>
         </div>
-        <div class="port-legend" id="portLegend"></div>
-      </div>
-      <div class="port-list" id="portList">
-        <p class="port-empty">هنوز دارایی‌ای اضافه نشده است.</p>
+        <div class="pf2-legend" id="portLegend"></div>
       </div>
     </div>
   </div>
+</div>
 
+<!-- جدول دارایی‌ها -->
+<div class="card pf2-card pf2-holdings rise">
+  <div class="card__head">
+    <span class="card__title">دارایی‌های من</span>
+    <div class="pf2-search-wrap">
+      <svg class="pf2-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="search" id="holdSearch" class="pf2-search" placeholder="فیلتر دارایی…">
+    </div>
+  </div>
+  <div class="card__body">
+    <div class="pf2-table-wrap">
+      <table class="pf2-table" id="holdTable">
+        <thead>
+          <tr>
+            <th>دارایی</th>
+            <th>قیمت واحد</th>
+            <th>تغییر ۲۴س</th>
+            <th>تغییر ۳۰ر</th>
+            <th>مقدار</th>
+            <th>ارزش</th>
+            <th>سود/زیان</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="holdBody">
+          <tr><td colspan="8" class="pf2-empty">هنوز دارایی‌ای اضافه نشده است. روی «افزودن دارایی» بزنید.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- دستیار هوش مصنوعی (تاشو) -->
+<div class="card pf2-card asst-chat" id="aiCard" hidden>
+  <div class="card__head">
+    <span class="card__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      چت‌بات کریپتو اسمارت
+    </span>
+    <span class="live-badge live-badge--brand"><span class="live-dot live-dot--brand"></span> آنلاین</span>
+  </div>
+  <div class="card__body">
+    <div class="chat" id="chat"></div>
+    <div class="chat__input" id="chatInput"></div>
+  </div>
+</div>
+
+<!-- مودال افزودن دارایی -->
+<div class="modal-overlay" id="addAssetModal" hidden>
+  <div class="modal modal--wide" role="dialog" aria-modal="true">
+    <button class="modal__close" id="addClose" aria-label="بستن">×</button>
+    <h2 class="modal__title">افزودن دارایی</h2>
+    <p class="modal__sub" id="addStepHint">یک دارایی را از فهرست انتخاب کنید (ارز دیجیتال، طلا، سکه، نقره، نفت).</p>
+
+    <!-- گام ۱: انتخاب ابزار -->
+    <div id="addStep1">
+      <div class="pf2-search-wrap pf2-search-wrap--modal">
+        <svg class="pf2-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="search" id="instSearch" class="pf2-search" placeholder="جستجو: بیت‌کوین، BTC، طلا، سکه امامی، نقره…">
+      </div>
+      <div class="pf2-cats" id="instCats">
+        <button data-g="" class="is-active">همه</button>
+        <button data-g="crypto">ارز دیجیتال</button>
+        <button data-g="gold">طلا</button>
+        <button data-g="coin">سکه</button>
+        <button data-g="silver">نقره</button>
+        <button data-g="oil">نفت</button>
+        <button data-g="cash">نقد/تتر</button>
+      </div>
+      <div class="pf2-inst-list" id="instList"><p class="pf2-empty">در حال بارگذاری فهرست…</p></div>
+    </div>
+
+    <!-- گام ۲: مقدار و قیمت خرید -->
+    <div id="addStep2" hidden>
+      <div class="pf2-picked" id="pickedInst"></div>
+      <div class="field-row">
+        <div class="field">
+          <label for="addAmount">مقدار</label>
+          <input type="number" id="addAmount" inputmode="decimal" placeholder="مثلاً 0.5" step="any" min="0">
+        </div>
+        <div class="field">
+          <label for="addBuy" id="addBuyLbl">قیمت خرید هر واحد (تومان) — اختیاری</label>
+          <input type="number" id="addBuy" inputmode="decimal" placeholder="برای محاسبهٔ سود/زیان" step="any" min="0">
+        </div>
+      </div>
+      <p class="auth-msg" id="addMsg" hidden></p>
+      <div class="pf2-add-actions">
+        <button class="btn btn--ghost" id="addBack">بازگشت</button>
+        <button class="btn btn--brand" id="addSave">افزودن به سبد</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 {% endblock %}

@@ -98,6 +98,16 @@ def init_db() -> None:
                 created_at  TEXT NOT NULL DEFAULT (datetime('now'))
             );
             CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+            -- تاریخچهٔ ارزش کل سبد (برای نمودار پورتفولیو)
+            CREATE TABLE IF NOT EXISTS portfolio_history (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                uid          TEXT NOT NULL,
+                ts           TEXT NOT NULL DEFAULT (datetime('now')),
+                total_toman  REAL NOT NULL,
+                total_usd    REAL NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_pfhist_uid ON portfolio_history(uid, ts);
             """
         )
         _migrate_users(conn)
@@ -195,6 +205,36 @@ def reassign_assets(from_uid: str, to_uid: str) -> None:
     """انتقال دارایی‌ها و پروفایل ریسک از یک شناسه به شناسهٔ دیگر (هنگام ورود)."""
     with _LOCK, _conn() as conn:
         conn.execute("UPDATE assets SET uid = ? WHERE uid = ?", (to_uid, from_uid))
+        conn.execute("UPDATE portfolio_history SET uid = ? WHERE uid = ?", (to_uid, from_uid))
+
+
+# ---- تاریخچهٔ ارزش سبد ----
+def record_portfolio_value(uid: str, total_toman: float, total_usd: float) -> None:
+    """ثبت ارزش کل سبد. گلوگاه: حداکثر هر ۱ ساعت یک نمونه برای هر کاربر."""
+    with _LOCK, _conn() as conn:
+        last = conn.execute(
+            "SELECT ts FROM portfolio_history WHERE uid = ? ORDER BY ts DESC LIMIT 1", (uid,)
+        ).fetchone()
+        if last:
+            recent = conn.execute(
+                "SELECT (julianday('now') - julianday(?)) * 24 AS hrs", (last["ts"],)
+            ).fetchone()
+            if recent and recent["hrs"] is not None and recent["hrs"] < 1.0:
+                return
+        conn.execute(
+            "INSERT INTO portfolio_history (uid, total_toman, total_usd) VALUES (?, ?, ?)",
+            (uid, float(total_toman), float(total_usd)),
+        )
+
+
+def get_portfolio_history(uid: str, days: int = 365) -> list[dict[str, Any]]:
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT ts, total_toman, total_usd FROM portfolio_history "
+            "WHERE uid = ? AND ts >= datetime('now', ?) ORDER BY ts",
+            (uid, f"-{int(days)} days"),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
 
 # ---- کاربران ----
