@@ -80,9 +80,11 @@
     sub: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>',
     edit: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
     del: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    pf: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1"/><rect x="13" y="13" width="9" height="9" rx="1"/><rect x="2" y="13" width="9" height="9" rx="1"/></svg>',
   };
   function actionsCell(u) {
     let html = '<div class="adm-actions">';
+    html += '<button class="adm-ibtn tip" data-act="pf" data-id="' + u.id + '" data-tip="مشاهدهٔ سبد" aria-label="مشاهدهٔ سبد">' + ICONS.pf + "</button>";
     html += '<button class="adm-ibtn tip" data-act="sub" data-id="' + u.id + '" data-tip="مدیریت اشتراک" aria-label="مدیریت اشتراک">' + ICONS.sub + "</button>";
     if (IS_ADMIN) {
       html += '<button class="adm-ibtn tip" data-act="edit" data-id="' + u.id + '" data-tip="ویرایش کاربر" aria-label="ویرایش کاربر">' + ICONS.edit + "</button>";
@@ -169,6 +171,7 @@
     else if (act === "del") delUser(id);
     else if (act === "sub") openSub(id);
     else if (act === "assets") openAssets(id);
+    else if (act === "pf") openPortfolio(id);
   });
 
   $("admBody").addEventListener("change", function (e) {
@@ -312,6 +315,22 @@
   $("admSubUpgrade").onclick = function () { subAction("upgrade"); };
   $("admSubRenew").onclick = function () { subAction("renew"); };
   $("admSubRemove").onclick = function () { subAction("remove"); };
+
+  // ---------- نمایش سبد کامل کاربر ----------
+  function openPortfolio(id) {
+    $("admPfFrame").src = "/admin/user-portfolio/" + id;
+    $("admPfOverlay").hidden = false;
+  }
+  $("admPfClose").addEventListener("click", function () {
+    $("admPfOverlay").hidden = true;
+    $("admPfFrame").src = "";
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !$("admPfOverlay").hidden) {
+      $("admPfOverlay").hidden = true;
+      $("admPfFrame").src = "";
+    }
+  });
 
   // ---------- دارایی‌ها ----------
   const KIND_FA = { crypto: "رمزارز", gold: "طلا", usdt: "تتر", toman: "تومان/ریال" };

@@ -143,6 +143,17 @@
     <div id="admAssetsBody"></div>
   </div>
 </div>
+
+<!-- پوشش تمام‌صفحه: نمایش کامل سبد کاربر -->
+<div id="admPfOverlay" hidden style="position:fixed;inset:0;z-index:9000;background:var(--bg,#0f1117)">
+  <button id="admPfClose" aria-label="بستن" title="بستن"
+    style="position:absolute;top:10px;left:14px;z-index:10;font-size:26px;line-height:1;
+           background:none;border:none;cursor:pointer;color:var(--text,#e2e8f0);padding:4px 8px;
+           border-radius:6px;transition:background .15s"
+    onmouseover="this.style.background='rgba(255,255,255,.1)'"
+    onmouseout="this.style.background='none'">×</button>
+  <iframe id="admPfFrame" src="" style="width:100%;height:100%;border:none;display:block"></iframe>
+</div>
 {% endblock %}
 
 {% block scripts %}
