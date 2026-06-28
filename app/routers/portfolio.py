@@ -30,8 +30,8 @@ from fastapi.templating import Jinja2Templates
 
 from app import db
 from app.config import settings
-from app.routers.auth import account_display_name, current_user
-from app.services import instruments, portfolio_valuation, risk
+from app.routers.auth import account_display_name, current_user, has_active_subscription
+from app.services import algo_allocation, instruments, portfolio_valuation, risk
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -80,9 +80,9 @@ async def portfolio_page(request: Request):
 @router.get("/portfolio/assistant", response_class=HTMLResponse)
 async def assistant_page(request: Request):
     user = current_user(request)
-    return templates.TemplateResponse(
-        "portfolio_assistant.html", _ctx(request, "portfolio", bool(user))
-    )
+    ctx = _ctx(request, "portfolio", bool(user))
+    ctx["has_sub"] = has_active_subscription(user)
+    return templates.TemplateResponse("portfolio_assistant.html", ctx)
 
 
 # ───────────────────────── API: ریسک ─────────────────────────
@@ -363,3 +363,70 @@ async def remove_asset(request: Request, asset_id: int):
     if uid is None:
         return _401()
     return JSONResponse({"ok": db.delete_asset(uid, asset_id)})
+
+
+# ───────────────────────── API: سبدچینی با هوش مصنوعی ─────────────────────────
+@router.get("/api/portfolio/ai-allocation/access")
+async def ai_allocation_access(request: Request):
+    """آیا کاربر به سبدچینی هوش مصنوعی دسترسی دارد (اشتراک فعال)؟"""
+    user = current_user(request)
+    if not user:
+        return _401()
+    return JSONResponse({"allowed": has_active_subscription(user)})
+
+
+@router.post("/api/portfolio/ai-allocation")
+async def ai_allocation(request: Request):
+    """ساخت سبد پیشنهادی با هوش مصنوعی الگو اسمارت.
+
+    نیازمند ورود + اشتراک فعال است. موجودی تتر و ریسک‌پذیری کاربر را به ورک‌فلوِ
+    Dify می‌دهد و متن سبد پیشنهادی + چنل پیشنهادی را برمی‌گرداند.
+    """
+    user = current_user(request)
+    if not user:
+        return _401()
+    if not has_active_subscription(user):
+        return JSONResponse(
+            {"error": "این قابلیت ویژهٔ کاربران دارای اشتراک فعال است.",
+             "sub_required": True},
+            status_code=403,
+        )
+
+    uid = user.get("uid") or f"u{user['id']}"
+    valued = await portfolio_valuation.value_portfolio(db.list_assets(uid))
+    profile = db.get_risk(uid)
+    risk_pct = float((profile or {}).get("percent") or 50.0)
+    cat = risk._category(risk_pct)
+    risk_label = (profile or {}).get("label") or cat["label"]
+
+    tether = algo_allocation.tether_usd(valued)
+    channel = algo_allocation.recommend_channel(tether)
+    universe = algo_allocation.allowed_universe(risk_pct)
+
+    # زمینهٔ ارسالی به ورک‌فلو Dify (ورودی‌های متنی برای سازگاری حداکثری).
+    holdings = "، ".join(
+        f"{it.get('name') or it.get('symbol')}: {it.get('amount')}"
+        for it in valued.get("items", [])
+    ) or "بدون دارایی"
+    inputs = {
+        "uid": uid,
+        "risk_percent": str(round(risk_pct)),
+        "risk_label": risk_label,
+        "risk_level": universe["level"],
+        "allowed_assets": "، ".join(universe["assets"]),
+        "tether_usd": str(tether),
+        "total_usd": str(valued.get("total_usd") or 0),
+        "total_toman": str(valued.get("total_toman") or 0),
+        "holdings": holdings,
+        "channel": channel["name"],
+    }
+
+    result = await algo_allocation.run_workflow(inputs, uid)
+    return JSONResponse({
+        "ok": result["ok"],
+        "text": result["text"],
+        "error": result["error"],
+        "risk": {"percent": round(risk_pct), "label": risk_label, "level": universe["level"]},
+        "universe": universe,
+        "channel": channel,
+    })

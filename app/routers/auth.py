@@ -51,6 +51,31 @@ def current_user(request: Request) -> dict[str, Any] | None:
     return db.get_session_user(token)
 
 
+def has_active_subscription(user: dict[str, Any] | None) -> bool:
+    """آیا کاربر اشتراک فعال (pro/vip و منقضی‌نشده) دارد؟
+
+    کارکنان (ادمین/پشتیبان) همیشه دسترسی کامل دارند. اشتراک رایگان دسترسی ندارد.
+    انقضای NULL به‌معنای نامحدود است (ادمین بدون تعیین تاریخ، فعال کرده)."""
+    if not user:
+        return False
+    if (user.get("role") or "member") in ("admin", "support"):
+        return True
+    tier = (user.get("subscription") or "free").lower()
+    if tier in ("", "free"):
+        return False
+    exp = user.get("sub_expires_at")
+    if not exp:
+        return True
+    try:
+        from datetime import datetime, timezone
+        dt = datetime.fromisoformat(str(exp).replace(" ", "T"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt > datetime.now(timezone.utc)
+    except (ValueError, TypeError):
+        return True
+
+
 def account_display_name(request: Request) -> str | None:
     """نام نمایشیِ کاربرِ نشستِ فعلی برای دکمهٔ حساب در هدر (یا None اگر مهمان است).
     سمت سرور رندر می‌شود تا نام بلافاصله و در همهٔ صفحات نمایش داده شود."""

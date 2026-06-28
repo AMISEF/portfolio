@@ -106,6 +106,22 @@ class Settings(BaseSettings):
     # می‌کند تا فقط ورک‌فلو Dify (با همین کلید) بتواند دادهٔ مالی کاربران را بخواند.
     advisor_api_key: str = ""
 
+    # ---- سبدچینی با هوش مصنوعی (ALGO SMART) ----
+    # ورک‌فلوِ Dify که با توجه به ریسک‌پذیری و موجودی کاربر، سبد پیشنهادی می‌سازد.
+    # کلید API این ورک‌فلو در .env سرور قرار می‌گیرد (DIFY_ALLOCATION_KEY).
+    # وب‌اپ Dify روی /app است؛ API سرویس روی /v1.
+    dify_allocation_base: str = "http://38.252.8.181/v1"
+    dify_allocation_key: str = ""
+    # نام فیلد خروجی ورک‌فلو که متن سبد پیشنهادی را برمی‌گرداند (در صورت نیاز قابل تغییر).
+    dify_allocation_output: str = "result"
+    # ربات «الگو آنالایزر» که عضو کانال است؛ با توکن آن می‌توان پیام‌های کانال
+    # (تحلیل‌های #طلا #تتر #btc #eth و …) را خواند و به ورک‌فلو داد.
+    algo_analyzer_bot_token: str = ""
+    # شناسهٔ کانال سیگنال‌ها و نشانی‌های عضویت/ثبت‌نام.
+    algo_channel_id: str = "-1002341340633"
+    algo_channel_url: str = "https://t.me/CRYPTOSMART_ORG"
+    algo_signup_bot_url: str = "https://t.me/cryptosmart_futures_bot"
+
     # ---- ایمیل (ارسال کد تأیید و بازیابی رمز از طریق Resend) ----
     # ارسال از طریق REST API سرویس Resend انجام می‌شود (با httpx، بدون وابستگی
     # اضافه). کلید فقط در .env سرور قرار می‌گیرد و هرگز در کد/مخزن نیست.
