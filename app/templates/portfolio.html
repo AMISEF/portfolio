@@ -2,6 +2,30 @@
 {% block title %}{{ brand_fa }} — مدیریت سرمایه{% endblock %}
 {% block content %}
 
+{% if not is_authed %}
+<!-- گیت احراز هویت: تمام‌صفحه، هنگامی که کاربر وارد نشده -->
+<div class="pf-gate" id="pfGate">
+  <div class="pf-gate__inner">
+    <div class="pf-gate__icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </div>
+    <h2 class="pf-gate__title">برای استفاده از آزمون ریسک‌پذیری وارد شوید</h2>
+    <p class="pf-gate__desc">
+      آزمون ریسک‌پذیری و مدیریت سرمایه نیاز به حساب کاربری دارد.<br>
+      داده‌های سبد شما به حساب‌تان متصل می‌شود و از هر دستگاهی قابل دسترسی است.
+    </p>
+    <div class="pf-gate__privacy">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      تمام داده‌های شما در کریپتو اسمارت محرمانه می‌مانند و با هیچ شخص ثالثی به اشتراک گذاشته نمی‌شوند.
+    </div>
+    <div class="pf-gate__btns">
+      <button class="btn btn--brand" onclick="document.getElementById('accountBtn').click()">ثبت‌نام رایگان</button>
+      <button class="btn btn--ghost" onclick="document.getElementById('accountBtn').click()">ورود به حساب</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <section class="pf-head rise">
   <div class="pf-head__title">مدیریت <span class="accent">سرمایه</span></div>
   <p class="pf-head__sub">برای ارائهٔ بهترین پیشنهاد سبد، ابتدا میزان ریسک‌پذیری شما را می‌سنجیم.</p>
@@ -56,10 +80,21 @@
       <a class="btn btn--brand btn--lg" href="/portfolio/assistant" id="startMgmtBtn">شروع مدیریت سرمایه</a>
       <button class="btn btn--ghost" id="retakeBtn">آزمون مجدد</button>
     </div>
+    <!-- اطلاعیهٔ محرمانگی پس از تکمیل آزمون -->
+    <div class="pf-privacy" id="pfPrivacy" hidden>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <p>
+        نتایج آزمون شما با موفقیت ذخیره شد.
+        <b>تمام داده‌های شما در کریپتو اسمارت کاملاً محرمانه می‌مانند.</b>
+        اطلاعات سبد دارایی و پروفایل ریسک‌پذیری شما تنها برای ارائهٔ پیشنهادهای شخصی‌سازی‌شده استفاده
+        می‌شود، رمزگذاری‌شده نگهداری می‌گردد و با هیچ شخص یا سرویس ثالثی به اشتراک گذاشته نمی‌شود.
+      </p>
+    </div>
   </div>
 </div>
 
 {% endblock %}
 {% block scripts %}
+<script>window.IS_AUTHED = {{ 'true' if is_authed else 'false' }};</script>
 <script src="/static/js/portfolio.js?v={{ static_v }}"></script>
 {% endblock %}
