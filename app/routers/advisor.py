@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from typing import Any
 
 import httpx
@@ -175,6 +176,80 @@ async def context(request: Request, payload: dict[str, Any] = Body(default={}),
             "پیشنهادی برای برداشت سود. dist_pct = فاصلهٔ ٪ ناحیه تا قیمت فعلی. "
             "تحلیل سه افق: weekly(4h) / monthly(1d) / yearly(1w)."
         ),
+    })
+
+
+# ───────────────────────── سیگنال‌های کانال تلگرام ─────────────────────────
+_HASHTAG_RE = re.compile(r"#(\w+)", re.UNICODE)
+
+
+@router.get("/signals")
+async def channel_signals(x_advisor_key: str | None = Header(default=None),
+                          limit: int = 50, tag: str | None = None):
+    """آخرین تحلیل‌های کانال کریپتو اسمارت که ربات «الگو آنالایزر» دیده است.
+
+    با توکن ربات (ALGO_ANALYZER_BOT_TOKEN) از getUpdates پیام‌های کانال خوانده،
+    هشتگ‌ها (#طلا #تتر #btc #eth …) و کپشن تصاویر استخراج می‌شوند تا ورک‌فلو Dify
+    بتواند نقاط خرید روز را در سبد لحاظ کند.
+
+    نکته: ربات باید ادمین کانال باشد و وب‌هوک فعال نباشد تا getUpdates کار کند.
+    فیلتر اختیاری: ?tag=btc تنها پست‌های دارای آن هشتگ را برمی‌گرداند.
+    """
+    if settings.advisor_api_key and x_advisor_key != settings.advisor_api_key:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    token = settings.algo_analyzer_bot_token
+    if not token:
+        return JSONResponse({"posts": [], "error": "no_bot_token"})
+
+    try:
+        chan_id = int(settings.algo_channel_id)
+    except (TypeError, ValueError):
+        chan_id = None
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0)) as client:
+            r = await client.get(
+                f"https://api.telegram.org/bot{token}/getUpdates",
+                params={"allowed_updates": '["channel_post","edited_channel_post"]',
+                        "limit": 100, "timeout": 0},
+            )
+            r.raise_for_status()
+            data = r.json()
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"posts": [], "error": f"{type(exc).__name__}: {exc}"})
+
+    posts: list[dict[str, Any]] = []
+    for upd in (data.get("result") or []):
+        post = upd.get("channel_post") or upd.get("edited_channel_post")
+        if not post:
+            continue
+        chat = post.get("chat") or {}
+        if chan_id is not None and chat.get("id") != chan_id:
+            continue
+        text = post.get("text") or post.get("caption") or ""
+        if not text:
+            continue
+        tags = [t.lower() for t in _HASHTAG_RE.findall(text)]
+        photos = post.get("photo") or []
+        file_id = photos[-1].get("file_id") if photos else None
+        posts.append({
+            "message_id": post.get("message_id"),
+            "date": post.get("date"),
+            "text": text,
+            "hashtags": tags,
+            "has_image": bool(file_id),
+            "image_file_id": file_id,
+        })
+
+    if tag:
+        t = tag.lstrip("#").lower()
+        posts = [p for p in posts if t in p["hashtags"]]
+    posts.sort(key=lambda p: p.get("date") or 0, reverse=True)
+    return JSONResponse({
+        "channel": settings.algo_channel_url,
+        "count": len(posts[:limit]),
+        "posts": posts[:limit],
+        "note": "هشتگ‌ها: #طلا #تتر #btc #eth و سایر آلت‌کوین‌ها (مثل #stg).",
     })
 
 

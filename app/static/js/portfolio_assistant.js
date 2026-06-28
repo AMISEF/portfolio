@@ -755,6 +755,75 @@
     buyCurMode = "usd"; buyCurUsdBtn.classList.add("is-active"); buyCurTomanBtn.classList.remove("is-active");
   });
 
+  // ───────────────────────── سبدچینی با هوش مصنوعی ─────────────────────────
+  (function algoFeature() {
+    const btn = $("algoBtn"), modal = $("algoModal");
+    if (!btn || !modal) return;
+    if (ADMIN_UID) { btn.hidden = true; return; }
+
+    const elIntro = $("algoIntro"), elLocked = $("algoLocked"),
+          elLoading = $("algoLoading"), elResult = $("algoResult");
+    const LEVEL_FA = { low: "کم‌ریسک", medium: "ریسک متوسط", high: "پرریسک" };
+
+    function show(el) {
+      [elIntro, elLocked, elLoading, elResult].forEach(x => { if (x) x.hidden = (x !== el); });
+    }
+    function openModal() {
+      modal.hidden = false;
+      show(window.HAS_SUB ? elIntro : elLocked);
+    }
+    function closeModal() { modal.hidden = true; }
+
+    btn.addEventListener("click", openModal);
+    $("algoClose").addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+    function renderChips(d) {
+      const r = d.risk || {}, chips = [];
+      chips.push('<span class="algo-chip">ریسک‌پذیری: <b>' + esc(r.label || "—") + " (" + CS.toFa(r.percent || 0) + "٪)</b></span>");
+      if (d.universe) chips.push('<span class="algo-chip">سطح: <b>' + esc(LEVEL_FA[d.universe.level] || d.universe.level) + "</b></span>");
+      if (d.channel) chips.push('<span class="algo-chip">موجودی تتر: <b>' + CS.faPriceUsd(d.channel.tether_usd || 0) + "</b></span>");
+      $("algoChips").innerHTML = chips.join("");
+    }
+
+    function renderChannel(ch) {
+      if (!ch) { $("algoChannel").innerHTML = ""; return; }
+      const perks = (ch.perks || []).map(p => "<li>" + esc(p) + "</li>").join("");
+      $("algoChannel").innerHTML =
+        '<div class="algo-channel__head"><span>' + (ch.emoji || "🏆") + "</span> چنل پیشنهادی شما: <b>" + esc(ch.name) + "</b></div>" +
+        '<ul class="algo-channel__perks">' + perks + "</ul>" +
+        '<div class="algo-channel__btns">' +
+        '<a class="btn btn--brand" href="' + esc(ch.signup_url || "#") + '" target="_blank" rel="noopener">ثبت‌نام (ربات الگو اسمارت)</a>' +
+        '<a class="btn btn--ghost" href="' + esc(ch.channel_url || "#") + '" target="_blank" rel="noopener">کانال کریپتو اسمارت</a>' +
+        "</div>";
+    }
+
+    function renderText(t) {
+      if (!t) {
+        $("algoText").innerHTML = '<p class="algo-empty">در حال حاضر امکان دریافت پیشنهاد نیست. لطفاً کمی بعد دوباره تلاش کنید.</p>';
+        return;
+      }
+      const html = esc(t).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br>");
+      $("algoText").innerHTML = "<p>" + html + "</p>";
+    }
+
+    async function run() {
+      show(elLoading);
+      try {
+        const r = await fetch("/api/portfolio/ai-allocation", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.status === 403 && d.sub_required) { show(elLocked); return; }
+        renderChips(d); renderText(r.ok ? d.text : ""); renderChannel(d.channel);
+        show(elResult);
+      } catch (e) { renderText(""); renderChannel(null); show(elResult); }
+    }
+
+    $("algoRun").addEventListener("click", run);
+    $("algoAgain").addEventListener("click", () => show(elIntro));
+  })();
+
   // ───────────────────────── راه‌اندازی ─────────────────────────
   if (ADMIN_UID) {
     if ($("addAssetBtn")) $("addAssetBtn").hidden = true;
