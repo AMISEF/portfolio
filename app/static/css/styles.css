@@ -439,6 +439,26 @@ a { color: inherit; text-decoration: none; }
 .disclaimer { margin: 26px 0 10px; text-align: center; font-size: .72rem; color: var(--text-dim); line-height: 1.9; }
 .adm-pf-banner { display:flex;align-items:center;gap:8px;padding:10px 20px;background:var(--brand);color:#fff;font-size:.82rem;border-radius:10px 10px 0 0; }
 
+/* ───── گیت احراز هویت ───── */
+.pf-gate { position:fixed;inset:0;z-index:400;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px; }
+.pf-gate__inner { max-width:400px;width:100%;text-align:center; }
+.pf-gate__icon { width:68px;height:68px;background:linear-gradient(135deg,var(--brand),#1a4fa0);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;color:#fff; }
+.pf-gate__title { font-size:1.2rem;font-weight:800;color:var(--heading);margin-bottom:10px; }
+.pf-gate__desc { color:var(--text-soft);line-height:1.75;margin-bottom:18px;font-size:.88rem; }
+.pf-gate__privacy { display:flex;align-items:center;gap:8px;background:color-mix(in srgb,var(--brand) 8%,transparent);border:1px solid color-mix(in srgb,var(--brand) 22%,transparent);border-radius:10px;padding:11px 14px;margin-bottom:22px;font-size:.8rem;color:var(--text-soft);text-align:right; }
+.pf-gate__btns { display:flex;gap:10px;justify-content:center;flex-wrap:wrap; }
+
+/* ───── بنر محرمانگی (قابل بستن) ───── */
+.pf-priv-banner { display:flex;align-items:center;gap:10px;background:color-mix(in srgb,var(--brand) 7%,transparent);border:1px solid color-mix(in srgb,var(--brand) 18%,transparent);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:var(--text-soft); }
+.pf-priv-banner svg { flex-shrink:0;color:var(--brand); }
+.pf-priv-banner span { flex:1; }
+.pf-priv-banner__close { background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:18px;line-height:1;padding:0 4px;flex-shrink:0; }
+
+/* ───── اطلاعیهٔ محرمانگی پس از آزمون ───── */
+.pf-privacy { display:flex;align-items:flex-start;gap:12px;background:color-mix(in srgb,var(--brand) 7%,transparent);border:1px solid color-mix(in srgb,var(--brand) 22%,transparent);border-radius:10px;padding:14px 16px;margin-top:18px;font-size:.83rem;color:var(--text-soft);text-align:right;line-height:1.72; }
+.pf-privacy svg { flex-shrink:0;color:var(--brand);margin-top:2px; }
+.pf-privacy p { margin:0; }
+
 /* ورود نرم کارت‌ها — فقط transform (نه opacity) تا محتوا هرگز مخفی نشود */
 @keyframes riseIn { from { transform: translateY(14px); } to { transform: none; } }
 .rise { animation: riseIn .5s both; }

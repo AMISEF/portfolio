@@ -2,67 +2,63 @@
 روتر پورتفولیو / مدیریت سرمایه.
 
 صفحات:
-  GET /portfolio            ← آزمون ریسک‌پذیری (اگر انجام نشده) یا نتیجه + شروع
-  GET /portfolio/assistant  ← چت‌بات مدیریت سرمایه + ورود دارایی‌ها + نمودار
+  GET /portfolio            ← آزمون ریسک‌پذیری (نیاز به ورود)
+  GET /portfolio/assistant  ← مدیریت سرمایه + ورود دارایی + نمودار (نیاز به ورود)
 
-API (فرانت‌اند فقط با این‌ها صحبت می‌کند):
-  GET    /api/portfolio/risk/questions  ← پرسش‌نامه
-  POST   /api/portfolio/risk            ← ثبت پاسخ‌ها + محاسبهٔ درصد و طبقه
+API (نیاز به ورود — به‌جز instruments و risk/questions):
+  GET    /api/portfolio/risk/questions  ← پرسش‌نامه (عمومی)
+  POST   /api/portfolio/risk            ← ثبت پاسخ‌ها
   GET    /api/portfolio/risk            ← پروفایل ریسک ذخیره‌شده
+  GET    /api/portfolio/instruments     ← کاتالوگ ابزارها (عمومی)
+  GET    /api/portfolio/history         ← سری زمانی ارزش سبد
   GET    /api/portfolio/assets          ← فهرست دارایی‌ها + ارزش‌گذاری زنده
   POST   /api/portfolio/assets          ← افزودن دارایی
+  PATCH  /api/portfolio/assets/{id}     ← ویرایش مقدار یا قیمت خرید
   DELETE /api/portfolio/assets/{id}     ← حذف دارایی
-
-هویت کاربر: تا فعال‌شدن احراز هویت واقعی، هر کاربر با شناسهٔ ناشناسِ کوکی‌محور
-(cs_uid) شناخته می‌شود.
+  POST   /api/portfolio/chat            ← چت‌بات Dify
 """
 from __future__ import annotations
 
 import json
 import re
-import uuid
 from typing import Any
 
 import httpx
 from fastapi import APIRouter, Body, Request
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from app import db
 from app.config import settings
+from app.routers.auth import account_display_name, current_user
 from app.services import instruments, portfolio_valuation, risk
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
-# نسخهٔ استاتیک مشترک تا کش CSS/JS با هر استقرار باطل شود
 from app.routers.pages import STATIC_V  # noqa: E402
 templates.env.globals["static_v"] = STATIC_V
 
-_COOKIE = "cs_uid"
-_COOKIE_MAX_AGE = 60 * 60 * 24 * 365 * 2   # دو سال
+
+def _auth_uid(request: Request) -> str | None:
+    """شناسهٔ پایدار کاربرِ احراز هویت‌شده، یا None اگر وارد نشده باشد.
+
+    از همان منطق auth.py/_login_response استفاده می‌شود تا با داده‌های مهاجرت‌شده
+    سازگار باشد: uid ذخیره‌شده در جدول users اولویت دارد؛ در غیر این صورت u{id}.
+    """
+    user = current_user(request)
+    if not user:
+        return None
+    return user.get("uid") or f"u{user['id']}"
 
 
-def _uid(request: Request) -> tuple[str, bool]:
-    """(شناسهٔ کاربر، آیا تازه ساخته شد). شناسه از کوکی cs_uid خوانده می‌شود."""
-    uid = request.cookies.get(_COOKIE)
-    if uid:
-        return uid, False
-    return uuid.uuid4().hex, True
+def _401() -> JSONResponse:
+    return JSONResponse(
+        {"error": "برای ادامه باید وارد حساب کاربری خود شوید.", "auth_required": True},
+        status_code=401,
+    )
 
 
-def _attach_uid(resp: Response, uid: str, is_new: bool) -> Response:
-    if is_new:
-        resp.set_cookie(_COOKIE, uid, max_age=_COOKIE_MAX_AGE,
-                        httponly=True, samesite="lax")
-    return resp
-
-
-def _json(data: Any, uid: str, is_new: bool, status: int = 200) -> JSONResponse:
-    return _attach_uid(JSONResponse(data, status_code=status), uid, is_new)
-
-
-def _ctx(request: Request, active: str) -> dict:
-    from app.routers.auth import account_display_name
+def _ctx(request: Request, active: str, is_authed: bool = False) -> dict:
     return {
         "request": request,
         "brand_fa": settings.app_brand_fa,
@@ -70,53 +66,58 @@ def _ctx(request: Request, active: str) -> dict:
         "subtitle_fa": settings.app_subtitle_fa,
         "active": active,
         "account_name": account_display_name(request),
+        "is_authed": is_authed,
     }
 
 
 # ───────────────────────── صفحات ─────────────────────────
 @router.get("/portfolio", response_class=HTMLResponse)
 async def portfolio_page(request: Request):
-    uid, is_new = _uid(request)
-    resp = templates.TemplateResponse("portfolio.html", _ctx(request, "portfolio"))
-    return _attach_uid(resp, uid, is_new)
+    user = current_user(request)
+    return templates.TemplateResponse("portfolio.html", _ctx(request, "portfolio", bool(user)))
 
 
 @router.get("/portfolio/assistant", response_class=HTMLResponse)
 async def assistant_page(request: Request):
-    uid, is_new = _uid(request)
-    resp = templates.TemplateResponse("portfolio_assistant.html", _ctx(request, "portfolio"))
-    return _attach_uid(resp, uid, is_new)
+    user = current_user(request)
+    return templates.TemplateResponse(
+        "portfolio_assistant.html", _ctx(request, "portfolio", bool(user))
+    )
 
 
 # ───────────────────────── API: ریسک ─────────────────────────
 @router.get("/api/portfolio/risk/questions")
 async def risk_questions():
+    """پرسش‌نامه — عمومی، احراز هویت لازم نیست."""
     return {"questions": risk.questions_payload(), "count": len(risk.QUESTIONS)}
 
 
 @router.post("/api/portfolio/risk")
 async def submit_risk(request: Request, payload: dict[str, Any] = Body(...)):
-    uid, is_new = _uid(request)
+    uid = _auth_uid(request)
+    if uid is None:
+        return _401()
     answers = payload.get("answers")
     if not isinstance(answers, list):
-        return _json({"error": "پاسخ‌ها نامعتبر است"}, uid, is_new, 400)
+        return JSONResponse({"error": "پاسخ‌ها نامعتبر است"}, status_code=400)
     try:
         result = risk.score_answers([int(x) for x in answers])
     except (ValueError, TypeError) as e:
-        return _json({"error": str(e)}, uid, is_new, 400)
+        return JSONResponse({"error": str(e)}, status_code=400)
     db.save_risk(uid, result, json.dumps(answers, ensure_ascii=False))
-    return _json(result, uid, is_new)
+    return JSONResponse(result)
 
 
 @router.get("/api/portfolio/risk")
 async def get_risk(request: Request):
-    uid, is_new = _uid(request)
-    return _json({"profile": db.get_risk(uid)}, uid, is_new)
+    uid = _auth_uid(request)
+    if uid is None:
+        return _401()
+    return JSONResponse({"profile": db.get_risk(uid)})
 
 
 # ───────────────────────── API: چت Dify ─────────────────────────
 
-# نگاشت نوع دارایی Dify → نوع داخلی + عیار طلا
 _DIFY_KIND: dict[str, str] = {
     "tether": "usdt",
     "paper_dollar": "toman",
@@ -174,7 +175,6 @@ def _parse_dify_assets(uid: str, raw_json: str) -> bool:
                 pass
         if buy_price and buy_basis == "total" and amount > 0:
             buy_price = buy_price / amount
-        # قیمت دلاری → تومان با نرخ کَش‌شده (تقریبی زمان ثبت)
         if buy_price and buy_currency == "usd":
             from app.cache import cache as _cache
             usdt_data = _cache.get_stale("tabdeal:usdt")
@@ -199,14 +199,16 @@ def _parse_dify_assets(uid: str, raw_json: str) -> bool:
 @router.post("/api/portfolio/chat")
 async def portfolio_chat(request: Request, payload: dict[str, Any] = Body(...)):
     """پروکسی چت Dify: پیام → Dify → پارس assets → ذخیره (اگر آماده)."""
-    uid, is_new = _uid(request)
+    uid = _auth_uid(request)
+    if uid is None:
+        return _401()
     message = (payload.get("message") or "").strip()
     conversation_id = (payload.get("conversation_id") or "").strip() or None
 
     if not message:
-        return _json({"error": "پیام خالی است"}, uid, is_new, 400)
+        return JSONResponse({"error": "پیام خالی است"}, status_code=400)
     if not settings.dify_api_key:
-        return _json({"error": "کلید Dify تنظیم نشده است"}, uid, is_new, 503)
+        return JSONResponse({"error": "کلید Dify تنظیم نشده است"}, status_code=503)
 
     body: dict[str, Any] = {
         "inputs": {},
@@ -229,41 +231,42 @@ async def portfolio_chat(request: Request, payload: dict[str, Any] = Body(...)):
             )
             r.raise_for_status()
     except httpx.HTTPStatusError as exc:
-        return _json({"error": f"خطای Dify: {exc.response.status_code}"}, uid, is_new, 502)
+        return JSONResponse({"error": f"خطای Dify: {exc.response.status_code}"}, status_code=502)
     except Exception as exc:
-        return _json({"error": str(exc)}, uid, is_new, 502)
+        return JSONResponse({"error": str(exc)}, status_code=502)
 
     data = r.json()
     answer: str = data.get("answer") or ""
     conv_id: str = data.get("conversation_id") or ""
 
-    # استخراج و ذخیرهٔ دارایی‌ها از کامنت مخفی <!-- ASSETS:{json} -->
     assets_saved = False
     m = _ASSETS_RE.search(answer)
     if m:
         answer = _ASSETS_RE.sub("", answer).strip()
         assets_saved = _parse_dify_assets(uid, m.group(1).strip())
 
-    return _json({
+    return JSONResponse({
         "answer": answer,
         "conversation_id": conv_id,
         "assets_saved": assets_saved,
-    }, uid, is_new)
+    })
 
 
 # ───────────────────────── API: کاتالوگ ابزارها ─────────────────────────
 @router.get("/api/portfolio/instruments")
-async def list_instruments(request: Request):
-    """کاتالوگ کامل برای انتخابگرِ افزودن دارایی (همهٔ ارزها + طلا/سکه/نقره/نفت)."""
-    uid, is_new = _uid(request)
-    return _json(await instruments.catalog(), uid, is_new)
+async def list_instruments():
+    """کاتالوگ کامل ابزارها — عمومی، احراز هویت لازم نیست."""
+    return JSONResponse(await instruments.catalog())
 
 
+# ───────────────────────── API: تاریخچه ─────────────────────────
 @router.get("/api/portfolio/history")
 async def portfolio_history(request: Request, days: int = 365):
-    """سری زمانی ارزش کل سبد (برای نمودار پورتفولیو)."""
-    uid, is_new = _uid(request)
-    return _json({"history": db.get_portfolio_history(uid, days)}, uid, is_new)
+    """سری زمانی ارزش کل سبد (برای نمودار روند)."""
+    uid = _auth_uid(request)
+    if uid is None:
+        return _401()
+    return JSONResponse({"history": db.get_portfolio_history(uid, days)})
 
 
 # ───────────────────────── API: دارایی‌ها ─────────────────────────
@@ -272,16 +275,18 @@ _KINDS = {"crypto", "gold", "coin", "silver", "oil", "usdt", "toman", "usd_cash"
 
 @router.post("/api/portfolio/assets")
 async def add_asset(request: Request, payload: dict[str, Any] = Body(...)):
-    uid, is_new = _uid(request)
+    uid = _auth_uid(request)
+    if uid is None:
+        return _401()
     kind = (payload.get("kind") or "").strip()
     if kind not in _KINDS:
-        return _json({"error": "نوع دارایی نامعتبر است"}, uid, is_new, 400)
+        return JSONResponse({"error": "نوع دارایی نامعتبر است"}, status_code=400)
     try:
         amount = float(payload.get("amount") or 0)
     except (TypeError, ValueError):
-        return _json({"error": "مقدار نامعتبر است"}, uid, is_new, 400)
+        return JSONResponse({"error": "مقدار نامعتبر است"}, status_code=400)
     if amount <= 0:
-        return _json({"error": "مقدار باید بزرگ‌تر از صفر باشد"}, uid, is_new, 400)
+        return JSONResponse({"error": "مقدار باید بزرگ‌تر از صفر باشد"}, status_code=400)
 
     buy_price = payload.get("buy_price")
     try:
@@ -299,39 +304,42 @@ async def add_asset(request: Request, payload: dict[str, Any] = Body(...)):
         "horizon": payload.get("horizon"),
     }
     asset_id = db.add_asset(uid, asset)
-    return _json({"id": asset_id, "ok": True}, uid, is_new)
+    return JSONResponse({"id": asset_id, "ok": True})
 
 
 @router.get("/api/portfolio/assets")
 async def get_assets(request: Request):
-    uid, is_new = _uid(request)
+    uid = _auth_uid(request)
+    if uid is None:
+        return _401()
     valued = await portfolio_valuation.value_portfolio(db.list_assets(uid))
-    # ثبت لحظه‌ای ارزش کل برای نمودار تاریخچه (با گلوگاه داخلی: حداکثر هر ساعت)
     if valued.get("total_toman"):
         try:
             db.record_portfolio_value(uid, valued["total_toman"], valued.get("total_usd") or 0)
         except Exception:  # noqa: BLE001
             pass
-    return _json(valued, uid, is_new)
+    return JSONResponse(valued)
 
 
 @router.patch("/api/portfolio/assets/{asset_id}")
 async def update_asset(request: Request, asset_id: int, payload: dict[str, Any] = Body(...)):
     """به‌روزرسانی مقدار و/یا میانگین قیمت خرید دارایی؛ مقدار ≤ ۰ ⇒ حذف کامل."""
-    uid, is_new = _uid(request)
+    uid = _auth_uid(request)
+    if uid is None:
+        return _401()
     has_amount = "amount" in payload
     has_buy = "buy_price" in payload
     if not has_amount and not has_buy:
-        return _json({"error": "موردی برای تغییر داده نشد"}, uid, is_new, 400)
+        return JSONResponse({"error": "موردی برای تغییر داده نشد"}, status_code=400)
 
     amount: float | None = None
     if has_amount:
         try:
             amount = float(payload.get("amount"))
         except (TypeError, ValueError):
-            return _json({"error": "مقدار نامعتبر است"}, uid, is_new, 400)
+            return JSONResponse({"error": "مقدار نامعتبر است"}, status_code=400)
         if amount <= 0:
-            return _json({"ok": db.delete_asset(uid, asset_id), "deleted": True}, uid, is_new)
+            return JSONResponse({"ok": db.delete_asset(uid, asset_id), "deleted": True})
 
     buy_price: Any = "__keep__"
     if has_buy:
@@ -342,13 +350,16 @@ async def update_asset(request: Request, asset_id: int, payload: dict[str, Any] 
             try:
                 buy_price = float(bp)
             except (TypeError, ValueError):
-                return _json({"error": "قیمت خرید نامعتبر است"}, uid, is_new, 400)
+                return JSONResponse({"error": "قیمت خرید نامعتبر است"}, status_code=400)
 
-    return _json({"ok": db.update_asset(uid, asset_id, amount=amount, buy_price=buy_price)},
-                 uid, is_new)
+    return JSONResponse(
+        {"ok": db.update_asset(uid, asset_id, amount=amount, buy_price=buy_price)}
+    )
 
 
 @router.delete("/api/portfolio/assets/{asset_id}")
 async def remove_asset(request: Request, asset_id: int):
-    uid, is_new = _uid(request)
-    return _json({"ok": db.delete_asset(uid, asset_id)}, uid, is_new)
+    uid = _auth_uid(request)
+    if uid is None:
+        return _401()
+    return JSONResponse({"ok": db.delete_asset(uid, asset_id)})

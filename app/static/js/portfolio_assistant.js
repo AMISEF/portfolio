@@ -760,8 +760,17 @@
     if ($("addAssetBtn")) $("addAssetBtn").hidden = true;
     if ($("aiToggle")) $("aiToggle").hidden = true;
   }
-  loadPortfolio();
-  loadHistory(30);
-  if (!ADMIN_UID) loadCatalog();
-  setInterval(loadPortfolio, 20000);
+  if (!window.IS_AUTHED && !ADMIN_UID) {
+    // گیت احراز هویت نمایش داده شده — نیازی به فراخوانی API نیست
+  } else {
+    // نمایش بنر محرمانگی در اولین بازدید (کاربر واقعی، نه ادمین)
+    if (!ADMIN_UID && !sessionStorage.getItem("pf_pb")) {
+      const b = $("pfPrivBanner");
+      if (b) b.hidden = false;
+    }
+    loadPortfolio();
+    loadHistory(30);
+    if (!ADMIN_UID) loadCatalog();
+    setInterval(loadPortfolio, 20000);
+  }
 })(window);

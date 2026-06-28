@@ -2,12 +2,43 @@
 {% block title %}{{ brand_fa }} — مدیریت سرمایه{% endblock %}
 {% block content %}
 
+{% if not is_authed %}
+<!-- گیت احراز هویت: تمام‌صفحه، هنگامی که کاربر وارد نشده -->
+<div class="pf-gate" id="pfGate">
+  <div class="pf-gate__inner">
+    <div class="pf-gate__icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg>
+    </div>
+    <h2 class="pf-gate__title">برای مدیریت سرمایه، ابتدا وارد شوید</h2>
+    <p class="pf-gate__desc">
+      سبد دارایی، نمودارها و تمام تحلیل‌های شما به حساب کاربری‌تان متصل می‌شوند
+      و از هر دستگاهی قابل دسترسی هستند.
+    </p>
+    <div class="pf-gate__privacy">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      تمام داده‌های شما در کریپتو اسمارت محرمانه می‌مانند و با هیچ شخص ثالثی به اشتراک گذاشته نمی‌شوند.
+    </div>
+    <div class="pf-gate__btns">
+      <button class="btn btn--brand" onclick="document.getElementById('accountBtn').click()">ثبت‌نام رایگان</button>
+      <button class="btn btn--ghost" onclick="document.getElementById('accountBtn').click()">ورود به حساب</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
 {% if admin_user_id %}
 <div class="adm-pf-banner">
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
   نمای ادمین — سبد کاربر: <b>{{ admin_user_name }}</b>
 </div>
 {% endif %}
+
+<!-- بنر محرمانگی (اولین بازدید) -->
+<div class="pf-priv-banner" id="pfPrivBanner" hidden>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+  <span>تمام داده‌های سبد شما در کریپتو اسمارت <b>کاملاً محرمانه</b> می‌مانند، رمزگذاری‌شده نگهداری می‌شوند و با هیچ شخص یا سرویس ثالثی به اشتراک گذاشته نمی‌شوند.</span>
+  <button class="pf-priv-banner__close" onclick="this.parentElement.hidden=true;sessionStorage.setItem('pf_pb','1')" aria-label="بستن">×</button>
+</div>
 
 <section class="pf-head rise" id="pfRoot" data-admin-uid="{{ admin_user_id | default('') }}">
   <div class="pf-head__title">مدیریت <span class="accent">سرمایه</span></div>
@@ -225,5 +256,6 @@
 
 {% endblock %}
 {% block scripts %}
+<script>window.IS_AUTHED = {{ 'true' if is_authed else 'false' }};</script>
 <script src="/static/js/portfolio_assistant.js?v={{ static_v }}"></script>
 {% endblock %}

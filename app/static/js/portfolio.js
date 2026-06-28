@@ -10,6 +10,8 @@
   function show(el) { [introCard, quizCard, resultCard].forEach(c => c.hidden = (c !== el)); }
 
   async function init() {
+    // اگر کاربر وارد نشده، گیت سرور‌سایدی نمایش داده شده — API نیازی نیست
+    if (!window.IS_AUTHED) return;
     // اگر کاربر قبلاً آزمون داده، مستقیم به مدیریت سرمایه برو
     try {
       const r = await CS.fetchJSON("/api/portfolio/risk");
@@ -86,6 +88,8 @@
 
   function renderResult(d) {
     show(resultCard);
+    const priv = $("pfPrivacy");
+    if (priv) priv.hidden = false;
     const pct = d.percent || 0;
     $("riskLabel").textContent = d.label || "—";
     $("riskDesc").textContent = d.desc || descFor(pct);
