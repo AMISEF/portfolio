@@ -116,12 +116,23 @@ async def run_workflow(inputs: dict[str, Any], user: str) -> dict[str, Any]:
             r.raise_for_status()
             data = r.json()
     except httpx.HTTPStatusError as exc:
-        return {"ok": False, "text": "", "error": f"http_{exc.response.status_code}",
-                "raw": {}}
+        # بدنهٔ پاسخ خطا را برای تشخیص (کلید نامعتبر، ورک‌فلو منتشرنشده، …) برمی‌گردانیم.
+        detail = (exc.response.text or "")[:300]
+        return {"ok": False, "text": "",
+                "error": f"http_{exc.response.status_code}: {detail}", "raw": {}}
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "text": "", "error": str(exc), "raw": {}}
 
-    outputs = ((data.get("data") or {}).get("outputs")) or {}
+    inner = data.get("data") or {}
+    # اگر ورک‌فلو داخلی شکست خورده باشد (مثلاً نود HTTP یا LLM)، Dify status=failed
+    # و یک پیام error می‌دهد؛ آن را سطحی می‌کنیم تا علت معلوم شود.
+    status = inner.get("status")
+    if status and status != "succeeded":
+        return {"ok": False, "text": "",
+                "error": f"workflow_{status}: {inner.get('error') or ''}".strip(),
+                "raw": inner.get("outputs") or {}}
+
+    outputs = inner.get("outputs") or {}
     field = settings.dify_allocation_output
     text = outputs.get(field)
     if text is None:
@@ -130,5 +141,10 @@ async def run_workflow(inputs: dict[str, Any], user: str) -> dict[str, Any]:
             if isinstance(v, str) and v.strip():
                 text = v
                 break
-    return {"ok": bool(text), "text": text or "", "error": None if text else "empty",
-            "raw": outputs}
+    if not text:
+        # خروجی خالی: احتمالاً نام فیلد End node با DIFY_ALLOCATION_OUTPUT یکی نیست.
+        keys = ", ".join(outputs.keys()) or "—"
+        return {"ok": False, "text": "",
+                "error": f"empty (فیلدِ '{field}' یافت نشد؛ فیلدهای موجود: {keys})",
+                "raw": outputs}
+    return {"ok": True, "text": text, "error": None, "raw": outputs}
