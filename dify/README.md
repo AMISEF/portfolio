@@ -5,7 +5,7 @@
 | فایل | اپ | متغیر `.env` | کاربرد |
 |------|-----|-------------|--------|
 | `asset_registration.yml` | کریپتو اسمارت \| ثبت سبد دارایی | `DIFY_API_KEY` | چت‌بات ثبت دارایی — کاربر دارایی‌هایش را به فارسی می‌نویسد، ربات JSON استخراج می‌کند |
-| `portfolio_advisor.yml` | CryptoSmart Portfolio Advisor | — | سه سبد هفتگی/ماهانه/سالانه با نواحی خرید و فروش (دستیار چت) |
+| `portfolio_advisor.yml` | CryptoSmart Portfolio Advisor | `DIFY_ADVISOR_KEY` | سه سبد هفتگی/ماهانه/سالانه با نواحی خرید و فروش (endpoint: `/api/portfolio/advisor`) |
 | `algo_allocation.yml` | CryptoSmart ALGO Allocation | `DIFY_ALLOCATION_KEY` | **سبدچینی با هوش مصنوعی** — دکمهٔ صفحهٔ مدیریت سرمایه (ویژهٔ مشترکین) |
 
 ## ترتیب ایمپورت و راه‌اندازی
