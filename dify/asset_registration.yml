@@ -1,0 +1,378 @@
+app:
+  description: 'دستیار رسمی «کریپتو اسمارت»: کاربر دارایی‌هایش را می‌نویسد، ربات با
+    او گفتگوی رسمی می‌کند، در صورت نبود قیمت خرید می‌پرسد و دارایی‌ها را به‌صورت لیست
+    مرتب ارائه می‌دهد (محاسبه‌ی قیمت بر عهده‌ی سامانه است).'
+  icon: 💰
+  icon_background: '#1E293B'
+  icon_type: emoji
+  mode: advanced-chat
+  name: کریپتو اسمارت | ثبت سبد دارایی
+  use_icon_as_answer_icon: true
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/openrouter:0.0.54@fea0bb6f5208e9c654bd8114c93582760994a7406355512c3381bd8b723498b7
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: 'سلام و وقت بخیر 👋
+
+      من دستیار هوشمند «کریپتو اسمارت» هستم. کافیست دارایی‌هایتان را همراه با قیمت
+      خرید بنویسید تا آن‌ها را برایتان به‌صورت یک لیست مرتب ثبت و ارائه کنم.
+
+
+      مثال:
+
+      «۱۰۰۰ تتر روی ۸۰ هزار تومان خریدم، ۱۰۰ گرم طلای ۱۸ عیار روی ۴۰ میلیون، ۰.۰۸
+      بیت‌کوین روی ۸۰ هزار دلار.»'
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions:
+    - ۵۰۰ تتر روی ۷۵ هزار تومان و ۲۰ گرم طلای ۱۸ عیار روی ۳ میلیون و ۸۰۰ هزار هر گرم
+      خریدم
+    - ۰.۵ اتریوم روی ۲۵۰۰ دلار دارم
+    suggested_questions_after_answer:
+      enabled: true
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInLoop: false
+        sourceType: start
+        targetType: llm
+      id: start-extract
+      source: start
+      sourceHandle: source
+      target: extract
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: extract-route
+      source: extract
+      sourceHandle: source
+      target: route
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: route-branch
+      source: route
+      sourceHandle: source
+      target: branch
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: answer
+      id: branch-answer_list
+      source: branch
+      sourceHandle: 'true'
+      target: answer_list
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: answer
+      id: branch-answer_ask
+      source: branch
+      sourceHandle: 'false'
+      target: answer_ask
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: شروع
+        type: start
+        variables: []
+      height: 73
+      id: start
+      position:
+        x: 20
+        y: 300
+      positionAbsolute:
+        x: 20
+        y: 300
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        memory:
+          role_prefix:
+            assistant: ''
+            user: ''
+          window:
+            enabled: true
+            size: 20
+        model:
+          completion_params:
+            temperature: 0
+          mode: chat
+          name: google/gemini-2.5-flash-lite
+          provider: langgenius/openrouter/openrouter
+        prompt_template:
+        - id: 64c70eed-22ee-4a16-91a2-a0f884205213
+          role: system
+          text: "نقش: «دستیار ثبت داراییِ کریپتو اسمارت» هستی. وظیفه‌ات استخراج دارایی‌های\
+            \ کاربر و ثبت آن‌هاست.\n\nقواعد:\n۱) فقط یک‌بار در ابتدای گفتگو سلام/معرفی\
+            \ کن؛ در پیام‌های بعدی هرگز تکرار نکن.\n۲) از هر پیام، دارایی‌ها را با\
+            \ «مقدار» و «قیمت خرید» استخراج کن.\n۳) بعد از یک پاسخ کوتاه و دوستانهٔ\
+            \ فارسی (تأییدِ ثبت)، در انتهای پیام دقیقاً این بلوک مخفی را بیاور (کاربر\
+            \ آن را نمی‌بیند):\n   <!-- ASSETS:[ ...آرایهٔ JSON... ] -->\n۴) اگر اطلاعات\
+            \ ناقص بود (مقدار یا قیمت نبود)، فقط همان را بپرس و بلوک ASSETS را نگذار.\n\
+            \nساختار هر دارایی:\n{\n  \"kind\": \"crypto\" | \"gold18\" | \"gold24\"\
+            \ | \"gold_coin\" | \"tether\" | \"paper_dollar\" | \"other\",\n  \"symbol\"\
+            : \"نماد ارز مثل BTC یا STG (فقط برای crypto)\",\n  \"name\": \"نام نمایشی\"\
+            ,\n  \"amount\": عددِ مقدار,\n  \"buy_value\": عددِ قیمت خرید,\n  \"buy_currency\"\
+            : \"toman\" | \"usd\",\n  \"buy_basis\": \"per_unit\" | \"total\"\n}\n\
+            \nنکتهٔ محاسبه: اگر کاربر «مبلغ کل خرید» را گفت (مثلاً «۱۰ دلار STG خریدم»)،\
+            \ amount را از روی مبلغ کل ÷ قیمت واحد حساب کن و buy_basis را \"per_unit\"\
+            \ بگذار.\n\nمثال ۱ — کاربر: «۱۰ دلار هم‌ارز STG روی قیمت ۰٫۱۶۲۲ خریدم»\n\
+            پاسخ: «ثبت شد ✅ حدود ۶۱٫۶۵ واحد STG با قیمت خرید ۰٫۱۶۲۲ دلار.»\n<!-- ASSETS:[{\"\
+            kind\":\"crypto\",\"symbol\":\"STG\",\"name\":\"Stargate\",\"amount\"\
+            :61.65,\"buy_value\":0.1622,\"buy_currency\":\"usd\",\"buy_basis\":\"\
+            per_unit\"}] -->\n\nمثال ۲ — کاربر: «۱۰ گرم طلای ۱۸ عیار رو قیمت ۱۶ میلیون\
+            \ تومان خریدم»\nپاسخ: «ثبت شد ✅ ۱۰ گرم طلای ۱۸ عیار با قیمت ۱۶٬۰۰۰٬۰۰۰\
+            \ تومان در هر گرم.»\n<!-- ASSETS:[{\"kind\":\"gold18\",\"name\":\"طلای\
+            \ ۱۸ عیار\",\"amount\":10,\"buy_value\":16000000,\"buy_currency\":\"toman\"\
+            ,\"buy_basis\":\"per_unit\"}] -->"
+        - id: 43352307-7ea5-4fda-af7b-643d9311c125
+          role: user
+          text: '{{#sys.query#}}'
+        selected: true
+        title: تحلیل پیام و استخراج دارایی
+        type: llm
+        vision:
+          configs:
+            detail: high
+            variable_selector:
+            - sys
+            - files
+          enabled: true
+      height: 88
+      id: extract
+      position:
+        x: 321.42857142857144
+        y: 280
+      positionAbsolute:
+        x: 321.42857142857144
+        y: 280
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "\nimport json\n\ndef to_num(x):\n    if x is None: return None\n  \
+          \  s = str(x).replace(',', '').replace(' ', '').replace('\\u066c', '').strip()\n\
+          \    trans = str.maketrans('\\u06f0\\u06f1\\u06f2\\u06f3\\u06f4\\u06f5\\\
+          u06f6\\u06f7\\u06f8\\u06f9\\u0660\\u0661\\u0662\\u0663\\u0664\\u0665\\u0666\\\
+          u0667\\u0668\\u0669', '01234567890123456789')\n    s = s.translate(trans)\n\
+          \    try: return float(s)\n    except: return None\n\ndef main(llm_text:\
+          \ str) -> dict:\n    raw = (llm_text or '').strip()\n    if raw.startswith('```'):\n\
+          \        raw = raw.strip('`')\n        if raw[:4].lower() == 'json':\n \
+          \           raw = raw[4:]\n    obj = {}\n    try:\n        obj = json.loads(raw)\n\
+          \    except Exception:\n        a, b = raw.find('{'), raw.rfind('}')\n \
+          \       if a != -1 and b != -1:\n            try: obj = json.loads(raw[a:b+1])\n\
+          \            except Exception: obj = {}\n    status = (obj.get('status')\
+          \ or 'ask').lower()\n    if status not in ('ready', 'ask'): status = 'ask'\n\
+          \    assets = obj.get('assets') or []\n    if isinstance(assets, dict):\
+          \ assets = assets.get('assets', [])\n    reply = obj.get('reply') or 'سلام\
+          \ و وقت بخیر. من دستیار هوشمند «کریپتو اسمارت» هستم؛ لطفاً دارایی‌های خود\
+          \ را همراه با قیمت خرید بنویسید.'\n    if not assets: status = 'ask'\n\n\
+          \    # build a clean ordered list (markdown table) of the user's assets\n\
+          \    ccy_map = {'toman': 'تومان', 'usd': 'دلار', 'dollar': 'دلار'}\n   \
+          \ basis_map = {'per_unit': 'هر واحد', 'total': 'کل'}\n    md = \"| # | دارایی\
+          \ | مقدار | قیمت خرید | واحد قیمت | مبنا |\\n\"\n    md += \"|---|---|---|---|---|---|\\\
+          n\"\n    for i, a in enumerate(assets, 1):\n        name = a.get('name')\
+          \ or 'دارایی'\n        amount = to_num(a.get('amount'))\n        amount_s\
+          \ = f\"{amount:g}\" if amount is not None else \"—\"\n        bv = to_num(a.get('buy_value'))\n\
+          \        bv_s = f\"{bv:,.0f}\" if bv is not None else \"—\"\n        ccy\
+          \ = ccy_map.get((a.get('buy_currency') or '').lower(), '—')\n        basis\
+          \ = basis_map.get((a.get('buy_basis') or '').lower(), '—')\n        md +=\
+          \ f\"| {i} | {name} | {amount_s} | {bv_s} | {ccy} | {basis} |\\n\"\n\n \
+          \   return {\"status\": status,\n            \"assets_json\": json.dumps(assets,\
+          \ ensure_ascii=False),\n            \"reply\": reply,\n            \"list_md\"\
+          : md}\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          assets_json:
+            type: string
+          list_md:
+            type: string
+          reply:
+            type: string
+          status:
+            type: string
+        selected: false
+        title: استخراج و ساخت لیست مرتب
+        type: code
+        variables:
+        - value_selector:
+          - extract
+          - text
+          variable: llm_text
+      height: 52
+      id: route
+      position:
+        x: 640
+        y: 280
+      positionAbsolute:
+        x: 640
+        y: 280
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: cond_ready
+            value: ready
+            variable_selector:
+            - route
+            - status
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 'مسیر: آماده یا نیازمند اطلاعات؟'
+        type: if-else
+      height: 124
+      id: branch
+      position:
+        x: 967.2900468940829
+        y: 296.66296432933234
+      positionAbsolute:
+        x: 967.2900468940829
+        y: 296.66296432933234
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        answer: '### 🤖 دستیار «کریپتو اسمارت»
+
+          لیست مرتب‌شده‌ی دارایی‌های شما به‌شرح زیر است:
+
+
+          {{#route.list_md#}}
+
+
+          دارایی‌های شما با موفقیت ثبت شد. محاسبه‌ی ارزش لحظه‌ای توسط سامانه انجام
+          می‌شود.
+
+          > با تشکر از اعتماد شما — تیم کریپتو اسمارت.
+
+          <!-- ASSETS:{{#route.assets_json#}} -->'
+        desc: ''
+        selected: false
+        title: نمایش لیست مرتب
+        type: answer
+        variables: []
+      height: 216
+      id: answer_list
+      position:
+        x: 1280
+        y: 180
+      positionAbsolute:
+        x: 1280
+        y: 180
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        answer: '{{#route.reply#}}'
+        desc: ''
+        selected: false
+        title: درخواست رسمی اطلاعات
+        type: answer
+        variables: []
+      height: 102
+      id: answer_ask
+      position:
+        x: 1280
+        y: 420
+      positionAbsolute:
+        x: 1280
+        y: 420
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    viewport:
+      x: 92.22127053020927
+      y: 62.91878232214924
+      zoom: 0.9602133020134171
+  rag_pipeline_variables: []
