@@ -16,11 +16,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Body, Header, Request
+from fastapi import APIRouter, Header, Request
 from fastapi.responses import JSONResponse, Response
 
 from app import db
@@ -99,7 +100,7 @@ async def chart(symbol: str, interval: str = "1d", limit: int = 160):
 
 # ───────────────────────── بستهٔ زمینه برای Dify ─────────────────────────
 @router.post("/context")
-async def context(request: Request, payload: dict[str, Any] = Body(default={}),
+async def context(request: Request,
                   x_advisor_key: str | None = Header(default=None)):
     """زمینهٔ کامل برای مدل: دارایی‌ها + ریسک + رژیم بازار + تحلیل تکنیکال نمادها.
 
@@ -110,6 +111,18 @@ async def context(request: Request, payload: dict[str, Any] = Body(default={}),
       risk_label, risk_desc   برچسب و توضیح ریسک
       extra_symbols فهرست نمادهای کریپتوی اضافه برای تحلیل
     """
+    # ۰) بدنه را مستقل از Content-Type پارس می‌کنیم؛ برخی کلاینت‌ها (مثل نود HTTP
+    #    دیفای) هدر application/json را درست نمی‌فرستند و Body() آنگاه 422 می‌دهد.
+    try:
+        payload = await request.json()
+    except Exception:  # noqa: BLE001
+        try:
+            payload = json.loads((await request.body()) or b"{}")
+        except Exception:  # noqa: BLE001
+            payload = {}
+    if not isinstance(payload, dict):
+        payload = {}
+
     # ۱) احراز کلید مشاور (در صورت تنظیم)
     if settings.advisor_api_key and x_advisor_key != settings.advisor_api_key:
         return JSONResponse({"error": "unauthorized"}, status_code=401)

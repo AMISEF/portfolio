@@ -132,7 +132,7 @@ workflow:
           authorization:
             type: no-auth
             config: null
-          headers: 'Content-Type:application/json\nX-Advisor-Key:{{#env.ADVISOR_API_KEY#}}'
+          headers: "Content-Type:application/json\nX-Advisor-Key:{{#env.ADVISOR_API_KEY#}}"
           params: ''
           body:
             type: json
