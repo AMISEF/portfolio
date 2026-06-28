@@ -1,9 +1,22 @@
-# مشاور سبد کریپتو — ورک‌فلو Dify
+# مشاور سبد کریپتو — ورک‌فلوهای Dify
 
-این پوشه ورک‌فلو **CryptoSmart Portfolio Advisor** را برای پلتفرم Dify فراهم
-می‌کند. ورک‌فلو بر اساس دارایی‌های فعلی کاربر، درصد و توضیح ریسک‌پذیری، و تحلیل
-تکنیکال زندهٔ صرافی Toobit، سه **سبد پیشنهادی هفتگی، ماهانه و سالانه** با
-**نواحی دقیق خرید و فروش** می‌سازد.
+این پوشه دو ورک‌فلو برای پلتفرم Dify دارد:
+
+| فایل | اپ | کاربرد |
+|------|-----|--------|
+| `portfolio_advisor.yml` | CryptoSmart Portfolio Advisor | سه سبد هفتگی/ماهانه/سالانه با نواحی خرید و فروش (دستیار چت) |
+| `algo_allocation.yml` | CryptoSmart ALGO Allocation | **سبدچینی با هوش مصنوعی** — دکمهٔ صفحهٔ مدیریت سرمایه (ویژهٔ مشترکین) |
+
+برای استفاده از دکمهٔ «سبدچینی با هوش مصنوعی» در سایت، **`algo_allocation.yml`** را
+ایمپورت کن (بخش پایین همین فایل). بخش زیر مربوط به ورک‌فلوِ اولِ مشاور است.
+
+---
+
+## ورک‌فلو ۱: Portfolio Advisor
+
+ورک‌فلو **CryptoSmart Portfolio Advisor** بر اساس دارایی‌های فعلی کاربر، درصد و
+توضیح ریسک‌پذیری، و تحلیل تکنیکال زندهٔ صرافی Toobit، سه **سبد پیشنهادی هفتگی،
+ماهانه و سالانه** با **نواحی دقیق خرید و فروش** می‌سازد.
 
 ```
 کاربر (چت قبلی → دارایی‌ها) ─┐
@@ -130,3 +143,44 @@ curl -s -X POST https://portfolio.cryptosmart.site/api/advisor/context \
   ریسک‌پذیر → آلت بیشتر).
 - طلا با نماد `PAXG` (طلای توکنایزشده) روی Toobit برای نواحی کندلی تحلیل می‌شود؛
   قیمت طلای ۱۸ عیار و انس از SourceArena، و تتر تومانی از Tabdeal می‌آید.
+
+---
+
+## ورک‌فلو ۲: ALGO Allocation (سبدچینی با هوش مصنوعی)
+
+این ورک‌فلو پشتِ دکمهٔ **«سبدچینی با هوش مصنوعی»** در صفحهٔ مدیریت سرمایه است
+(`algo_allocation.yml`). اپ، ریسک‌پذیری و موجودی کاربر را به آن می‌دهد و متن سبد
+پیشنهادی را می‌گیرد. این قابلیت فقط برای کاربران **دارای اشتراک فعال** باز می‌شود.
+
+```
+اپ CryptoSmart ─► POST /v1/workflows/run (با DIFY_ALLOCATION_KEY)
+        │  inputs: risk_percent, risk_level, allowed_assets, tether_usd, holdings, …
+        ▼
+   Start ─► HTTP: /api/advisor/context ─► HTTP: /api/advisor/signals ─► Gemini ─► End(result)
+```
+
+- **قاعدهٔ دارایی مجاز:** کم‌ریسک = طلا/دلار/تتر | متوسط = +BTC/ETH | پرریسک = +آلت‌کوین.
+- **ابزار context:** نواحی خرید/فروش و رژیم بازار (همان اندپوینت ورک‌فلو ۱).
+- **ابزار signals:** آخرین تحلیل‌های کانال با هشتگ‌ها (`/api/advisor/signals`).
+- **چنل پیشنهادی** را خودِ اپ بر اساس موجودی تتر می‌سازد (برنزی/نقره‌ای/طلایی) و
+  زیر متن نمایش می‌دهد؛ مدل لازم نیست آن را بسازد.
+
+### ایمپورت و راه‌اندازی
+
+1. در Dify → **Studio → Import DSL → Local File** → `dify/algo_allocation.yml`.
+2. در **Environment Variables** اپ:
+   - `ADVISOR_BASE_URL` = آدرس بک‌اند (پیش‌فرض `https://portfolio.cryptosmart.site`)
+   - `ADVISOR_API_KEY` = همان کلید `.env` سرور.
+3. مدل OpenRouter (Gemini 2.5 Flash) را مثل ورک‌فلو ۱ تنظیم کن.
+4. اپ را **Publish** کن، سپس از **API Access** کلید را بردار و در `.env` سرور بگذار:
+   ```bash
+   DIFY_ALLOCATION_KEY=<کلید API ورک‌فلو>
+   # برای خواندن تحلیل‌های کانال (ربات الگو آنالایزر باید ادمین کانال باشد):
+   ALGO_ANALYZER_BOT_TOKEN=<توکن ربات از BotFather>
+   pm2 restart cryptosmart-portfolio
+   ```
+
+> نام فیلد خروجی End node باید `result` باشد (یا اگر تغییرش دادی، همان را در
+> `DIFY_ALLOCATION_OUTPUT` بگذار). اپ متنِ همین فیلد را به کاربر نشان می‌دهد.
+
+> راهنمای کامل اسکیمای ورودی/خروجی: `docs/algo_allocation_workflow.md`.

@@ -1,0 +1,267 @@
+app:
+  description: >-
+    سبدچینی با هوش مصنوعی الگو اسمارت — بر اساس ریسک‌پذیری و موجودی تتر کاربر،
+    یک سبد سرمایه‌گذاری شخصی‌سازی‌شده می‌سازد. دارایی‌های مجاز با سطح ریسک
+    محدود می‌شوند (کم‌ریسک: طلا/دلار/تتر | متوسط: +BTC/ETH | پرریسک: +آلت‌کوین).
+    از تحلیل تکنیکال بک‌اند (/api/advisor/context) و تحلیل‌های کانال
+    (/api/advisor/signals) استفاده می‌کند. مدل: Gemini 2.5 Flash از OpenRouter.
+  icon: dollar
+  icon_background: '#7C3AED'
+  mode: workflow
+  name: CryptoSmart ALGO Allocation
+kind: app
+version: 0.1.5
+workflow:
+  environment_variables:
+    # آدرس پایهٔ بک‌اند CryptoSmart (اندپوینت‌های ابزار تحلیل بازار و سیگنال).
+    - name: ADVISOR_BASE_URL
+      value: https://portfolio.cryptosmart.site
+      value_type: string
+    # کلید مشاور؛ باید با ADVISOR_API_KEY در .env سرور یکی باشد.
+    - name: ADVISOR_API_KEY
+      value: ''
+      value_type: string
+  conversation_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+      - id: e-start-context
+        source: start
+        target: http_context
+        sourceHandle: source
+        targetHandle: target
+      - id: e-context-signals
+        source: http_context
+        target: http_signals
+        sourceHandle: source
+        targetHandle: target
+      - id: e-signals-llm
+        source: http_signals
+        target: llm_alloc
+        sourceHandle: source
+        targetHandle: target
+      - id: e-llm-end
+        source: llm_alloc
+        target: end
+        sourceHandle: source
+        targetHandle: target
+    nodes:
+      # ───── ورودی‌ها (همان فیلدهایی که اپ CryptoSmart می‌فرستد) ─────
+      - id: start
+        type: custom
+        position: {x: 40, y: 240}
+        data:
+          type: start
+          title: ورودی‌ها
+          desc: ریسک‌پذیری + موجودی + دارایی‌های کاربر (از سمت اپ)
+          variables:
+            - variable: uid
+              label: شناسهٔ کاربر
+              type: text-input
+              required: false
+              max_length: 64
+            - variable: risk_percent
+              label: درصد ریسک‌پذیری (۰ تا ۱۰۰)
+              type: text-input
+              required: false
+              max_length: 8
+            - variable: risk_label
+              label: برچسب ریسک
+              type: text-input
+              required: false
+              max_length: 48
+            - variable: risk_level
+              label: سطح ریسک (low/medium/high)
+              type: text-input
+              required: false
+              max_length: 16
+            - variable: allowed_assets
+              label: دارایی‌های مجاز
+              type: text-input
+              required: false
+              max_length: 200
+            - variable: tether_usd
+              label: موجودی تتر (دلار)
+              type: text-input
+              required: false
+              max_length: 24
+            - variable: total_usd
+              label: ارزش کل سبد (دلار)
+              type: text-input
+              required: false
+              max_length: 24
+            - variable: total_toman
+              label: ارزش کل سبد (تومان)
+              type: text-input
+              required: false
+              max_length: 32
+            - variable: holdings
+              label: دارایی‌های فعلی کاربر
+              type: paragraph
+              required: false
+            - variable: channel
+              label: چنل پیشنهادی (محاسبه‌شده توسط اپ)
+              type: text-input
+              required: false
+              max_length: 48
+
+      # ───── ابزار ۱: زمینهٔ تحلیل بازار (HTTP) ─────
+      - id: http_context
+        type: custom
+        position: {x: 360, y: 240}
+        data:
+          type: http-request
+          title: واکشی زمینهٔ تحلیل
+          desc: POST /api/advisor/context — دارایی + ریسک + نواحی خرید/فروش
+          method: post
+          url: '{{#env.ADVISOR_BASE_URL#}}/api/advisor/context'
+          authorization:
+            type: no-auth
+            config: null
+          headers: 'Content-Type:application/json\nX-Advisor-Key:{{#env.ADVISOR_API_KEY#}}'
+          params: ''
+          body:
+            type: json
+            data: >-
+              {
+                "uid": "{{#start.uid#}}",
+                "risk_percent": {{#start.risk_percent#}}
+              }
+          timeout:
+            max_connect_timeout: 10
+            max_read_timeout: 60
+            max_write_timeout: 20
+
+      # ───── ابزار ۲: تحلیل‌های کانال (HTTP) ─────
+      - id: http_signals
+        type: custom
+        position: {x: 680, y: 240}
+        data:
+          type: http-request
+          title: واکشی تحلیل‌های کانال
+          desc: GET /api/advisor/signals — نقاط خرید روز (#طلا #تتر #btc #eth …)
+          method: get
+          url: '{{#env.ADVISOR_BASE_URL#}}/api/advisor/signals'
+          authorization:
+            type: no-auth
+            config: null
+          headers: 'X-Advisor-Key:{{#env.ADVISOR_API_KEY#}}'
+          params: 'limit:30'
+          body:
+            type: none
+            data: ''
+          timeout:
+            max_connect_timeout: 10
+            max_read_timeout: 30
+            max_write_timeout: 10
+
+      # ───── مدل: Gemini 2.5 Flash (OpenRouter) ─────
+      - id: llm_alloc
+        type: custom
+        position: {x: 1000, y: 240}
+        data:
+          type: llm
+          title: ساخت سبد پیشنهادی
+          model:
+            provider: openrouter
+            name: google/gemini-2.5-flash
+            mode: chat
+            completion_params:
+              temperature: 0.4
+              max_tokens: 4096
+          context:
+            enabled: false
+            variable_selector: []
+          vision:
+            enabled: false
+          prompt_template:
+            - role: system
+              text: |
+                تو مشاور سرمایه‌گذاریِ «الگو اسمارت» هستی. بر اساس ریسک‌پذیری و
+                موجودی کاربر، یک سبد سرمایه‌گذاری شفاف، عملی و فارسی پیشنهاد بده.
+
+                ── قاعدهٔ سختگیرانهٔ دارایی مجاز (هرگز نقض نکن) ──
+                • risk_level = low    → فقط «طلا، دلار، تتر». هیچ کریپتوی نوسانی نه.
+                • risk_level = medium → «طلا، دلار، تتر، بیت‌کوین، اتریوم».
+                • risk_level = high   → «طلا، دلار، تتر، بیت‌کوین، اتریوم» + آلت‌کوین‌های منتخب.
+                هرگز خارج از allowed_assets چیزی پیشنهاد نده.
+
+                ── داده‌های ورودی ──
+                • ریسک‌پذیری: {{#start.risk_percent#}}٪ ({{#start.risk_label#}}) — سطح: {{#start.risk_level#}}
+                • دارایی‌های مجاز: {{#start.allowed_assets#}}
+                • موجودی تتر: {{#start.tether_usd#}} دلار | ارزش کل: {{#start.total_usd#}} دلار / {{#start.total_toman#}} تومان
+                • دارایی فعلی کاربر: {{#start.holdings#}}
+                • چنل پیشنهادی (توسط اپ): {{#start.channel#}}
+
+                ── منابع تحلیل ──
+                ۱) زمینهٔ بازار و نواحی خرید/فروش (JSON بک‌اند) شامل market_regime
+                   (روند BTC، RSI، ترس‌وطمع)، macro_assets (تتر/طلا/نقره) و
+                   crypto_analysis[] با buy_zones / sell_zones در سه افق
+                   (weekly=4h / monthly=1d / yearly=1w).
+                ۲) تحلیل‌های کانال کریپتو اسمارت (نقاط خرید روز با هشتگ‌ها:
+                   #طلا #تتر #btc #eth و آلت‌کوین‌ها مثل #stg).
+
+                ── قواعد ساخت سبد ──
+                1) تخصیص درصدیِ هر دارایی را با سطح ریسک هماهنگ کن (جمع = ۱۰۰٪).
+                   کم‌ریسک: وزن بالای تتر/طلا. پرریسک: سهم بیشتر آلت‌کوین.
+                2) برای هر کریپتو، «ناحیهٔ خرید» را از buy_zones و «هدف فروش» را از
+                   sell_zones همان نماد بردار و عدد را دقیق بنویس (مثلاً
+                   «خرید ۵۹٬۸۰۰–۶۱٬۲۰۰ دلار»). هیچ ناحیه‌ای از خودت نساز؛ اگر داده
+                   نبود بنویس «صبر تا تثبیت روند». اگر کانال نقطهٔ خریدی داده، آن را هم لحاظ کن.
+                3) دارایی فعلی کاربر را در نظر بگیر: نگه‌داری (Hold)، افزایش (Buy) یا
+                   سبک‌کردن (Trim) — با دلیل کوتاه.
+                4) رژیم بازار را لحاظ کن: در «طمع شدید» محتاط و پلکانی؛ در «ترس»
+                   نواحی خرید جذاب‌ترند.
+
+                ── قالب خروجی (فارسی، Markdown، مختصر) ──
+                ## خلاصهٔ وضعیت
+                (۲ تا ۳ جمله: رژیم بازار + پروفایل ریسک + جمع‌بندی دارایی فعلی)
+
+                ## سبد پیشنهادی
+                جدول: | دارایی | درصد | ناحیهٔ خرید | هدف فروش | اقدام |
+                (فقط از allowed_assets). زیر جدول یک جملهٔ دلیل.
+
+                ## مدیریت ریسک
+                (تنوع، خرید پله‌ای، برداشت سود، نقدینگی تتر)
+
+                ## سلب مسئولیت
+                این پیشنهاد آموزشی است و توصیهٔ قطعی مالی نیست؛ مسئولیت تصمیم با کاربر است.
+
+                همیشه فارسی پاسخ بده. اعداد دلاری با $ و تومانی با جداکنندهٔ هزارگان.
+            - role: user
+              text: |
+                زمینهٔ تحلیل بازار (JSON):
+                {{#http_context.body#}}
+
+                تحلیل‌های اخیر کانال (JSON):
+                {{#http_signals.body#}}
+
+                لطفاً بر اساس قواعد سطح ریسک و دارایی‌های مجاز، سبد پیشنهادی را با
+                نواحی دقیق خرید/فروش بساز.
+
+      # ───── خروجی ─────
+      - id: end
+        type: custom
+        position: {x: 1320, y: 240}
+        data:
+          type: end
+          title: سبد پیشنهادی
+          outputs:
+            - variable: result
+              value_selector: [llm_alloc, text]
+            - variable: context
+              value_selector: [http_context, body]
