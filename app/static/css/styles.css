@@ -266,29 +266,6 @@ a { color: inherit; text-decoration: none; }
 }
 @media (max-width: 520px) { .coincard { flex-basis: 60%; } }
 
-/* ---------- نوار متحرک ارزهای برتر (به‌سبک ویجت CryptoRank) ---------- */
-.cmar { overflow: hidden; border-radius: var(--radius-md); border: 1px solid var(--border);
-  background: var(--surface); box-shadow: var(--shadow-soft); margin-bottom: 18px; position: relative; }
-.cmar::before, .cmar::after { content: ""; position: absolute; top: 0; bottom: 0; width: 56px; z-index: 2; pointer-events: none; }
-.cmar::before { right: 0; background: linear-gradient(to left, var(--surface-solid), transparent); }
-.cmar::after { left: 0; background: linear-gradient(to right, var(--surface-solid), transparent); }
-.cmar__track { display: inline-flex; align-items: center; padding: 9px 0; white-space: nowrap;
-  animation: tickerMove 46s linear infinite; }
-.cmar:hover .cmar__track { animation-play-state: paused; }
-.cmar__item { display: inline-flex; align-items: center; gap: 8px; padding: 4px 22px;
-  border-left: 1px solid var(--border); }
-.cmar__ic { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center;
-  background: var(--surface-solid); overflow: hidden; box-shadow: 0 2px 6px -3px rgba(0,0,0,.4); }
-.cmar__ic img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-.cmar__ic.badge { color: #fff; font-weight: 900; font-size: .55rem; background: linear-gradient(135deg, var(--blue-500), var(--blue-800)); }
-.cmar__sym { font-weight: 800; font-size: .9rem; color: var(--heading); letter-spacing: .2px; }
-.cmar__price { font-family: var(--font-mono); font-weight: 700; font-size: .88rem; color: var(--text);
-  font-variant-numeric: tabular-nums; padding: 0 3px; border-radius: 5px; }
-.cmar__ch { font-family: var(--font-mono); font-weight: 800; font-size: .82rem; }
-.cmar__ch.up { color: var(--up); }
-.cmar__ch.down { color: var(--down); }
-@media (max-width: 600px) { .cmar__item { padding: 4px 16px; } .cmar__track { animation-duration: 36s; } }
-
 /* ---------- شبکهٔ ۴ کارت شاخص ---------- */
 /* کارت‌های شاخص: flex با رشد تا کل عرض پر شود و فضای خالی نماند */
 .index-grid { display: flex; flex-wrap: wrap; gap: 16px; }

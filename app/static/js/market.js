@@ -128,27 +128,28 @@
     } catch (e) { console.warn("heatmap:", e); }
   }
 
-  /* ---------- نوار متحرک ارزهای برتر (به‌سبک ویجت CryptoRank، زنده هر ۵ ثانیه از توبیت) ---------- */
-  function coinMarItem(g) {
-    const chCls = g.change_24h > 0 ? "up" : (g.change_24h < 0 ? "down" : "");
-    return '<span class="cmar__item" data-sym="' + g.symbol + '">' +
-      coinIcon(g.symbol, "cmar__ic") +
-      '<span class="cmar__sym">' + g.symbol + '</span>' +
-      '<span class="cmar__price" data-price>' + CS.faPriceUsd(g.price) + '</span>' +
-      '<span class="cmar__ch ' + chCls + '">' + CS.faPct(g.change_24h) + '</span>' +
-      '</span>';
-  }
+  /* ---------- ۵ ارز برتر بازار (کارت افقی، زنده هر ۵ ثانیه) ---------- */
   async function loadCoins() {
     try {
       const d = await CS.fetchJSON("/api/market/coins");
-      const coins = d.coins || [];
-      const html = coins.map(coinMarItem).join("");
-      // محتوا را دوبار می‌گذاریم تا حرکت بی‌وقفه (translateX -50%) یکپارچه باشد
-      $("topCoins").innerHTML = html + html;
-      coins.forEach((g) => {
-        const el = document.querySelector('#topCoins .cmar__item[data-sym="' + g.symbol + '"] [data-price]');
+      $("topCoins").innerHTML = d.coins.map((g) =>
+        '<div class="coincard" data-sym="' + g.symbol + '">' +
+        '<div class="coincard__head">' + coinIcon(g.symbol, "coincard__icon") +
+          '<span class="coincard__name">' + g.symbol + '</span></div>' +
+        '<div class="coincard__body">' +
+          '<div class="coincard__left">' +
+            '<div class="coincard__price" data-price>' + CS.faPriceUsd(g.price) + '</div>' +
+            '<span class="chg ' + CS.chgClass(g.change_24h) + '">' + CS.faPct(g.change_24h) + '</span>' +
+          '</div>' +
+          sparkSVG(g.spark, g.change_24h >= 0) +
+        '</div>' +
+        '</div>'
+      ).join("");
+      d.coins.forEach((g) => {
+        const el = document.querySelector('#topCoins .coincard[data-sym="' + g.symbol + '"] [data-price]');
         flash(el, "c_" + g.symbol, g.price);
       });
+      srcTag($("coinsSrc"), d.source);
     } catch (e) { console.warn("coins:", e); }
   }
 
