@@ -142,14 +142,7 @@
     } catch (e) { console.warn("macro:", e); }
   }
 
-  /* ---------- نقشهٔ حرارتی زنده (توبیت) ---------- */
-  async function loadHeatmap() {
-    try {
-      const d = await CS.fetchJSON("/api/market/heatmap");
-      w.CSHeatmap.render($("heatmap"), d.items || d.heatmap);
-      srcTag($("heatmapSrc"), d.source);
-    } catch (e) { console.warn("heatmap:", e); }
-  }
+  /* نقشهٔ حرارتی اکنون از ویجت رسمی CryptoRank در قالب صفحه بارگذاری می‌شود. */
 
   /* ---------- ۵ ارز برتر بازار (کارت افقی، زنده هر ۵ ثانیه) ---------- */
   async function loadCoins() {
@@ -258,7 +251,6 @@
 
   /* ---------- راه‌اندازی + پایش لحظه‌ای ---------- */
   loadMacro();   setInterval(loadMacro, 60 * 1000);               // ۶۰ ثانیه (CoinMarketCap)
-  loadHeatmap(); setInterval(loadHeatmap, 5 * 1000);              // ۵ ثانیه (قیمت زندهٔ توبیت)
   loadCoins();   setInterval(loadCoins, 5 * 1000);                // ۵ ثانیه (زنده — توبیت)
   loadPrices();  setInterval(loadPrices, 15 * 60 * 1000);         // ۱۵ دقیقه (طلای ۱۸ع / SourceArena)
   setTimeout(function() { setInterval(refreshLive, 15 * 1000); }, 3000);         // ۱۵ ثانیه (تتر)
