@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     toobit_sparkline_ttl: int = 60     # شِماتیک قیمت ۵ ارز برتر (هر ۶۰ ثانیه)
     toobit_rsi_ttl: int = 300          # میانگین RSI بازار (هر ۵ دقیقه)
     toobit_gainers_count: int = 5
+    toobit_swap_ttl: int = 5           # قیمت زندهٔ SWAP کالاها (طلا/نقره/نفت) هر ۵ ثانیه
 
     # ---- CoinMarketCap (شاخص‌های کلان + فصل آلت‌کوین) ----
     # کلید از متغیر محیطی CMC_API_KEY خوانده می‌شود.

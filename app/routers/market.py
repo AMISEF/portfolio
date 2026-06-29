@@ -194,6 +194,15 @@ async def prices():
     }
 
 
+@router.get("/live-commodities")
+async def live_commodities():
+    """قیمت و تغییر ۲۴ساعتهٔ انس طلا/نقره/نفت از SWAP توبیت (کش ۵ ثانیه، زنده)."""
+    result = await _safe(toobit.swap_commodities())
+    if isinstance(result, dict) and "error" not in result:
+        return result
+    return {"source": "error", "commodities": {}}
+
+
 @router.get("/credits")
 async def credits():
     return credit_budget.usage()

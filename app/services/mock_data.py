@@ -98,6 +98,15 @@ def toobit_oil() -> dict:
     return {"source": "sample", "oil": {"name": "نفت خام", "sub": "بشکه", "price": 72.94, "change_24h": 1.21}}
 
 
+def toobit_swap_commodities() -> dict:
+    """کالاهای جهانی (SWAP) — طلا/نقره/نفت از توبیت."""
+    return {"source": "sample", "commodities": {
+        "XAU": {"name": "انس طلا", "sub": "اونس", "price": 3326.5, "change_24h": 0.31},
+        "XAG": {"name": "نقره جهانی", "sub": "اونس", "price": 36.4, "change_24h": -0.58},
+        "OIL": {"name": "نفت برنت", "sub": "بشکه", "price": 72.94, "change_24h": 1.21},
+    }}
+
+
 def toobit_top_coins() -> dict:
     """ارزهای اصلی بازار (مارکت‌کپ بالا) — قیمت، تغییر ۲۴ساعته، حجم دلاری."""
     rows = [

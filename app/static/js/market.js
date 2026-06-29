@@ -242,6 +242,13 @@
         const el = document.querySelector('#keyPrices .rowitem[data-kp="usdt"] [data-price]');
         if (el) { el.textContent = CS.faNum(d.usdt_irt.price) + " ت"; flash(el, "usdt", d.usdt_irt.price); }
       }
+    } catch (e) { /* silent */ }
+  }
+
+  // انس طلا / نقره / نفت از SWAP توبیت هر ۵ ثانیه (زنده)
+  async function loadLiveCommodities() {
+    try {
+      const d = await CS.fetchJSON("/api/market/live-commodities");
       const c = d.commodities || {};
       if (c.XAU) _updateRow("xau", CS.faPriceUsd(c.XAU.price), c.XAU.change_24h);
       if (c.XAG) _updateRow("xag", CS.faPriceUsd(c.XAG.price), c.XAG.change_24h);
@@ -250,9 +257,10 @@
   }
 
   /* ---------- راه‌اندازی + پایش لحظه‌ای ---------- */
-  loadMacro();   setInterval(loadMacro, 60 * 1000);         // ۶۰ ثانیه (CoinMarketCap)
-  loadHeatmap(); setInterval(loadHeatmap, 5 * 1000);        // ۵ ثانیه (قیمت زندهٔ توبیت)
-  loadCoins();   setInterval(loadCoins, 5 * 1000);          // ۵ ثانیه (زنده — توبیت)
-  loadPrices();  setInterval(loadPrices, 15 * 60 * 1000);   // ۱۵ دقیقه (طلای ۱۸ع / SourceArena)
-  setTimeout(function() { setInterval(refreshLive, 15 * 1000); }, 3000); // ۱۵ ثانیه (زنده)
+  loadMacro();   setInterval(loadMacro, 60 * 1000);               // ۶۰ ثانیه (CoinMarketCap)
+  loadHeatmap(); setInterval(loadHeatmap, 5 * 1000);              // ۵ ثانیه (قیمت زندهٔ توبیت)
+  loadCoins();   setInterval(loadCoins, 5 * 1000);                // ۵ ثانیه (زنده — توبیت)
+  loadPrices();  setInterval(loadPrices, 15 * 60 * 1000);         // ۱۵ دقیقه (طلای ۱۸ع / SourceArena)
+  setTimeout(function() { setInterval(refreshLive, 15 * 1000); }, 3000);         // ۱۵ ثانیه (تتر)
+  setTimeout(function() { loadLiveCommodities(); setInterval(loadLiveCommodities, 5 * 1000); }, 1500); // ۵ ثانیه (طلا/نقره/نفت)
 })(window);
