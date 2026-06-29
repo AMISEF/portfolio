@@ -262,9 +262,8 @@ async def portfolio_advisor(request: Request):
     if not settings.dify_advisor_key:
         return JSONResponse({"error": "کلید DIFY_ADVISOR_KEY تنظیم نشده است"}, status_code=503)
 
-    db = _db()
-    profile = db.get_risk_profile(uid)
-    valued = await portfolio_valuation.value_portfolio(uid, db)
+    profile = db.get_risk(uid)
+    valued = await portfolio_valuation.value_portfolio(db.list_assets(uid))
     risk_pct = float((profile or {}).get("percent") or 50)
 
     assets_json = json.dumps(
