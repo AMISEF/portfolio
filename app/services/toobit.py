@@ -21,24 +21,25 @@ from app.services import mock_data
 
 # ارزهای اصلی بازار به ترتیب نمایش (نماد بدون USDT) — مطابق CoinMarketCap
 TOP_SYMBOLS = ["BTC", "ETH", "BNB", "SOL", "XRP"]
+# ارزهای تصویرِ روزانهٔ بازار (۶ ارز، شبکهٔ ۳×۲) — شامل ADA
+CARD_SYMBOLS = ["BTC", "ETH", "BNB", "SOL", "XRP", "ADA"]
 
 
-async def get_top_coins() -> dict[str, Any]:
+async def _get_coins(symbols: list[str]) -> dict[str, Any]:
     timeout = httpx.Timeout(settings.http_timeout)
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
         resp.raise_for_status()
         data = resp.json()
 
-    tickers = data if isinstance(data, list) else []
     by_sym: dict[str, dict] = {}
-    for t in tickers:
+    for t in (data if isinstance(data, list) else []):
         s = (t.get("s") or t.get("symbol") or "").upper()
         if s:
             by_sym[s] = t
 
     rows = []
-    for sym in TOP_SYMBOLS:
+    for sym in symbols:
         t = by_sym.get(sym + "USDT")
         if not t:
             continue
@@ -51,13 +52,26 @@ async def get_top_coins() -> dict[str, Any]:
         })
 
     if not rows:
-        raise RuntimeError("Toobit returned no usable tickers for top coins")
+        raise RuntimeError("Toobit returned no usable tickers for coins")
     return {"source": "live", "coins": rows}
+
+
+async def get_top_coins() -> dict[str, Any]:
+    return await _get_coins(TOP_SYMBOLS)
+
+
+async def get_card_coins() -> dict[str, Any]:
+    return await _get_coins(CARD_SYMBOLS)
 
 
 async def top_coins() -> dict[str, Any]:
     from app.cache import cached
     return await cached("toobit:top_coins", settings.toobit_coins_ttl, get_top_coins, mock_data.toobit_top_coins)
+
+
+async def card_coins() -> dict[str, Any]:
+    from app.cache import cached
+    return await cached("toobit:card_coins", settings.toobit_coins_ttl, get_card_coins, mock_data.toobit_card_coins)
 
 
 async def get_price_map() -> dict[str, Any]:

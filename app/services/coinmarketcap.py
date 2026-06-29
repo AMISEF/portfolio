@@ -69,6 +69,7 @@ async def get_macro() -> dict[str, Any]:
             "eth": round(eth_dom, 2),
             "others": others_dom,
             "btc_change_24h": round(_f(d, "btc_dominance_24h_percentage_change"), 2),
+            "eth_change_24h": round(_f(d, "eth_dominance_24h_percentage_change"), 2),
         },
     }
 

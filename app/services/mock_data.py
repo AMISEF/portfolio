@@ -53,7 +53,8 @@ def cmc_macro() -> dict:
         "source": "sample",
         "market_cap": {"value": 2_260_000_000_000, "change_24h": -1.20},
         "volume_24h": {"value": 71_000_000_000, "change_24h": -3.40},
-        "dominance": {"btc": 58.5, "eth": 9.5, "others": 32.0, "usdt": 5.12, "btc_change_24h": 0.18},
+        "dominance": {"btc": 58.5, "eth": 9.5, "others": 32.0, "usdt": 5.12,
+                      "btc_change_24h": 0.18, "eth_change_24h": 0.48},
     }
 
 
@@ -139,6 +140,21 @@ def toobit_top_coins() -> dict:
             for (s, p, pr, ch, v) in rows
         ],
     }
+
+
+def toobit_card_coins() -> dict:
+    """۶ ارز برترِ تصویرِ روزانهٔ بازار (شامل ADA)."""
+    rows = [
+        ("BTC", "BTCUSDT", 65541.0, 2.43, 1_300_000_000),
+        ("ETH", "ETHUSDT", 1788.0, 0.89, 640_000_000),
+        ("BNB", "BNBUSDT", 606.25, -1.51, 90_000_000),
+        ("SOL", "SOLUSDT", 138.0, -1.18, 180_000_000),
+        ("XRP", "XRPUSDT", 2.11, -1.99, 210_000_000),
+        ("ADA", "ADAUSDT", 0.6234, 1.10, 60_000_000),
+    ]
+    return {"source": "sample", "coins": [
+        {"symbol": s, "pair": p, "price": pr, "change_24h": ch, "volume_24h": v}
+        for (s, p, pr, ch, v) in rows]}
 
 
 def toobit_sparklines() -> dict:
