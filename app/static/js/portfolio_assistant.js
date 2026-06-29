@@ -798,6 +798,59 @@
         "</div>";
     }
 
+    // markdown سبک: **bold**، `code` (هم‌زمان escape می‌کند)
+    function mdInline(s) {
+      return esc(s)
+        .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+        .replace(/`([^`]+)`/g, "<code>$1</code>");
+    }
+
+    // رندر یک جدول Markdown (آرایه‌ای از خطوط که با | شروع می‌شوند)
+    function mdTable(rows) {
+      const cells = (line) => line.replace(/^\s*\|/, "").replace(/\|\s*$/, "")
+        .split("|").map((c) => c.trim());
+      const head = cells(rows[0]);
+      let body = rows.slice(1);
+      // خط جداکنندهٔ ---|--- را رد کن
+      if (body[0] && /^\s*\|?[\s:|-]+\|?\s*$/.test(body[0])) body = body.slice(1);
+      let html = '<table class="algo-md-table"><thead><tr>';
+      head.forEach((h) => { html += "<th>" + mdInline(h) + "</th>"; });
+      html += "</tr></thead><tbody>";
+      body.forEach((r) => {
+        const c = cells(r);
+        html += "<tr>";
+        c.forEach((x) => { html += "<td>" + mdInline(x) + "</td>"; });
+        html += "</tr>";
+      });
+      return html + "</tbody></table>";
+    }
+
+    // تبدیل کل متن Markdown به HTML (عنوان، جدول، لیست، خط، پاراگراف)
+    function mdToHtml(text) {
+      const lines = String(text).replace(/\r/g, "").split("\n");
+      let out = "", i = 0, para = [], list = [];
+      const flushPara = () => { if (para.length) { out += "<p>" + para.map(mdInline).join("<br>") + "</p>"; para = []; } };
+      const flushList = () => { if (list.length) { out += "<ul>" + list.map((x) => "<li>" + mdInline(x) + "</li>").join("") + "</ul>"; list = []; } };
+      while (i < lines.length) {
+        const ln = lines[i];
+        if (/^\s*\|.*\|\s*$/.test(ln)) {            // جدول
+          flushPara(); flushList();
+          const rows = [];
+          while (i < lines.length && /^\s*\|.*\|\s*$/.test(lines[i])) { rows.push(lines[i]); i++; }
+          out += mdTable(rows); continue;
+        }
+        const h = ln.match(/^(#{1,4})\s+(.*)$/);
+        if (h) { flushPara(); flushList(); const lvl = Math.min(h[1].length + 2, 5); out += "<h" + lvl + ">" + mdInline(h[2]) + "</h" + lvl + ">"; i++; continue; }
+        if (/^\s*(-{3,}|_{3,}|\*{3,})\s*$/.test(ln)) { flushPara(); flushList(); out += "<hr>"; i++; continue; }
+        const li = ln.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+        if (li) { flushPara(); list.push(li[1]); i++; continue; }
+        if (/^\s*$/.test(ln)) { flushPara(); flushList(); i++; continue; }
+        para.push(ln.trim()); i++;
+      }
+      flushPara(); flushList();
+      return out;
+    }
+
     function renderText(t, err) {
       if (!t) {
         let msg = '<p class="algo-empty">در حال حاضر امکان دریافت پیشنهاد نیست. لطفاً کمی بعد دوباره تلاش کنید.</p>';
@@ -805,8 +858,7 @@
         $("algoText").innerHTML = msg;
         return;
       }
-      const html = esc(t).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br>");
-      $("algoText").innerHTML = "<p>" + html + "</p>";
+      $("algoText").innerHTML = mdToHtml(t);
     }
 
     async function run() {
