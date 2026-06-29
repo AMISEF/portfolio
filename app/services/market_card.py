@@ -460,7 +460,7 @@ def build_html(data: dict[str, Any]) -> str:
         + stat("دامیننس ETH", _fa(f"{dom.get('eth', 0):.1f}") + "٪", dom.get("eth_change_24h"))
     )
 
-    logo = _file_url(_IMG / "logo-light.png")
+    logo = _file_url(_IMG / "logo-lockup.png")
     B = BRAND
 
     return f"""<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
@@ -478,11 +478,11 @@ html,body{{width:720px;height:1280px;font-family:Vaz,sans-serif;
 .bg{{position:absolute;inset:0;z-index:0;pointer-events:none}}
 .bg svg{{width:100%;height:100%;display:block}}
 .hd,.stats,.body,.ft{{z-index:2}}
-/* جلوهٔ شیشه‌ای (Glassmorphism) — شفافیت کم تا پس‌زمینه از پشتِ شیشه دیده شود */
-.glass{{background:rgba(255,255,255,.035);
-  backdrop-filter:blur(8px) saturate(135%);-webkit-backdrop-filter:blur(8px) saturate(135%);
-  border:1px solid rgba(255,255,255,.16);
-  box-shadow:0 10px 30px -18px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.12)}}
+/* جلوهٔ شیشه‌ای (Glassmorphism) — شفاف‌تر تا پس‌زمینه کاملاً از پشتِ شیشه دیده شود */
+.glass{{background:rgba(255,255,255,.022);
+  backdrop-filter:blur(9px) saturate(140%);-webkit-backdrop-filter:blur(9px) saturate(140%);
+  border:1px solid rgba(255,255,255,.20);
+  box-shadow:0 10px 30px -20px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.15)}}
 /* هدر: عنوان راست، تاریخ چپ */
 .hd{{position:absolute;top:20px;left:24px;right:24px;
   display:flex;justify-content:space-between;align-items:flex-start;direction:rtl}}
@@ -529,7 +529,7 @@ html,body{{width:720px;height:1280px;font-family:Vaz,sans-serif;
 .row__ic img{{width:100%;height:100%;object-fit:cover}}
 .row__nm{{font-weight:800;font-size:17px;color:#fff;line-height:1.2}}
 .row__nm small{{display:block;font-weight:600;font-size:11.5px;color:{B['muted']}}}
-.row__l{{display:flex;flex-direction:column;align-items:flex-start;gap:5px;direction:ltr}}
+.row__l{{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;direction:ltr}}
 .row__price{{font-weight:900;font-size:19px;color:#fff;letter-spacing:-.2px}}
 .row__price--rtl{{direction:rtl}}
 .chip{{font-weight:800;font-size:12.5px;padding:3px 9px;border-radius:8px}}
@@ -566,7 +566,8 @@ html,body{{width:720px;height:1280px;font-family:Vaz,sans-serif;
 .ft__id{{color:{B['teal2']};font-family:Quick,Vaz,sans-serif;font-weight:700;font-size:23px;
   margin-left:6px;letter-spacing:.3px}}
 .brand{{background:transparent;padding:0;display:flex;align-items:center}}
-.brand img{{height:50px;display:block;filter:drop-shadow(0 2px 10px rgba(0,0,0,.5))}}
+.brand img{{height:50px;display:block;
+  filter:drop-shadow(0 0 7px rgba(255,255,255,.55)) drop-shadow(0 2px 8px rgba(0,0,0,.45))}}
 </style></head>
 <body><div class="card">
   <div class="bg">{_BG_SVG}</div>
