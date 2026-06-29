@@ -161,6 +161,12 @@ def _font_css() -> str:
         if uri:
             out.append(f"@font-face{{font-family:Vaz;src:url({uri}) format('woff2');"
                        f"font-weight:{w};font-style:normal;font-display:block}}")
+    # Quicksand — فونت لاتینِ نرم و گرد برای آیدی برند
+    for w in (600, 700):
+        uri = _data_uri(_FONTS / f"Quicksand-{w}.woff2", "font/woff2")
+        if uri:
+            out.append(f"@font-face{{font-family:Quick;src:url({uri}) format('woff2');"
+                       f"font-weight:{w};font-style:normal;font-display:block}}")
     return "\n".join(out)
 
 
@@ -311,37 +317,55 @@ _SOC_YT = ('<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23 7.6c-.3-1.
            '2.1 2.1C5 19 12 19 12 19s7 0 8.9-.5c1.1-.2 1.8-1 2.1-2.1.5-1.9.5-4.4.5-4.4s0-2.5-.5-4.4z'
            'M9.8 15.3V8.7l5.7 3.3-5.7 3.3z"/></svg>')
 
-# لایهٔ تزئینیِ پس‌زمینه: کرهٔ زمین + کندل‌ها + نمودار صعودی + گره‌های هوش مصنوعی + ربات
+# لایهٔ تزئینیِ پس‌زمینه: کرهٔ زمین + کندل‌ها + نمودار صعودیِ پُرشده + گره‌های هوش
+# مصنوعی + مدارها + ربات + نمادهای ارز شناور. شفافیتِ متعادل تا از پشت شیشه دیده شود.
 _BG_SVG = """<svg viewBox="0 0 720 1280" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
- <g stroke="#19C3B3" fill="none" stroke-width="1.4" opacity="0.13">
-  <circle cx="560" cy="230" r="95"/>
-  <ellipse cx="560" cy="230" rx="95" ry="36"/>
-  <ellipse cx="560" cy="230" rx="60" ry="95"/>
-  <ellipse cx="560" cy="230" rx="95" ry="70"/>
-  <line x1="465" y1="230" x2="655" y2="230"/>
+ <defs>
+  <linearGradient id="ar" x1="0" y1="0" x2="0" y2="1">
+   <stop offset="0" stop-color="#19C3B3" stop-opacity="0.22"/>
+   <stop offset="1" stop-color="#19C3B3" stop-opacity="0"/>
+  </linearGradient>
+ </defs>
+ <!-- نمودار سطحیِ پُرشده در میانه -->
+ <path d="M0,470 L70,440 L140,460 L210,400 L300,430 L380,350 L460,385 L540,320 L640,360 L720,310 L720,640 L0,640 Z" fill="url(#ar)"/>
+ <polyline points="0,470 70,440 140,460 210,400 300,430 380,350 460,385 540,320 640,360 720,310"
+   stroke="#4ED9CC" fill="none" stroke-width="2" opacity="0.30"/>
+ <!-- کرهٔ زمین -->
+ <g stroke="#4ED9CC" fill="none" stroke-width="1.5" opacity="0.22">
+  <circle cx="565" cy="232" r="98"/>
+  <ellipse cx="565" cy="232" rx="98" ry="34"/><ellipse cx="565" cy="232" rx="98" ry="66"/>
+  <ellipse cx="565" cy="232" rx="58" ry="98"/><ellipse cx="565" cy="232" rx="92" ry="98"/>
+  <line x1="467" y1="232" x2="663" y2="232"/>
  </g>
- <g stroke="#6F95C8" fill="none" stroke-width="1.4" opacity="0.12">
-  <polyline points="20,470 90,430 150,455 220,380 300,410 370,330 450,360 540,300 640,340 700,290"/>
-  <circle cx="90" cy="430" r="3"/><circle cx="220" cy="380" r="3"/><circle cx="370" cy="330" r="3"/>
-  <circle cx="540" cy="300" r="3"/><circle cx="700" cy="290" r="3"/>
+ <!-- مدارِ نقطه‌چین گردِ کره -->
+ <ellipse cx="565" cy="232" rx="128" ry="48" stroke="#19C3B3" fill="none" stroke-width="1.4"
+   stroke-dasharray="5 9" opacity="0.20" transform="rotate(-22 565 232)"/>
+ <!-- کندل‌استیک‌ها پایین -->
+ <g opacity="0.20">
+  <g stroke="#16C784" stroke-width="2.2"><line x1="60" y1="1000" x2="60" y2="1108"/><line x1="112" y1="985" x2="112" y2="1092"/><line x1="214" y1="1018" x2="214" y2="1124"/><line x1="262" y1="996" x2="262" y2="1100"/></g>
+  <g fill="#16C784"><rect x="48" y="1022" width="24" height="56" rx="3"/><rect x="100" y="1010" width="24" height="50" rx="3"/><rect x="202" y="1044" width="24" height="52" rx="3"/><rect x="250" y="1020" width="24" height="48" rx="3"/></g>
+  <g stroke="#EA3943" stroke-width="2.2"><line x1="160" y1="992" x2="160" y2="1102"/><line x1="320" y1="1000" x2="320" y2="1110"/><line x1="372" y1="1014" x2="372" y2="1120"/></g>
+  <g fill="#EA3943"><rect x="148" y="1028" width="24" height="46" rx="3"/><rect x="308" y="1034" width="24" height="42" rx="3"/><rect x="360" y="1042" width="24" height="48" rx="3"/></g>
  </g>
- <g opacity="0.11">
-  <g stroke="#16C784" stroke-width="2"><line x1="70" y1="1010" x2="70" y2="1110"/><line x1="120" y1="1000" x2="120" y2="1095"/><line x1="220" y1="1030" x2="220" y2="1120"/></g>
-  <g fill="#16C784"><rect x="58" y="1030" width="24" height="50" rx="3"/><rect x="108" y="1020" width="24" height="45" rx="3"/><rect x="208" y="1050" width="24" height="48" rx="3"/></g>
-  <g stroke="#EA3943" stroke-width="2"><line x1="320" y1="1000" x2="320" y2="1105"/><line x1="400" y1="1020" x2="400" y2="1120"/></g>
-  <g fill="#EA3943"><rect x="308" y="1035" width="24" height="40" rx="3"/><rect x="388" y="1045" width="24" height="46" rx="3"/></g>
+ <!-- شبکهٔ گره‌های هوش مصنوعی -->
+ <g stroke="#6F95C8" fill="#6F95C8" stroke-width="1.4" opacity="0.20">
+  <g fill="none"><line x1="115" y1="250" x2="190" y2="198"/><line x1="115" y1="250" x2="165" y2="330"/><line x1="190" y1="198" x2="262" y2="278"/><line x1="165" y1="330" x2="262" y2="278"/><line x1="190" y1="198" x2="250" y2="150"/></g>
+  <circle cx="115" cy="250" r="5"/><circle cx="190" cy="198" r="5"/><circle cx="165" cy="330" r="5"/><circle cx="262" cy="278" r="5"/><circle cx="250" cy="150" r="4"/>
+  <g fill="none"><line x1="610" y1="900" x2="668" y2="852"/><line x1="610" y1="900" x2="648" y2="978"/><line x1="668" y1="852" x2="700" y2="916"/></g>
+  <circle cx="610" cy="900" r="5"/><circle cx="668" cy="852" r="5"/><circle cx="648" cy="978" r="5"/><circle cx="700" cy="916" r="4"/>
  </g>
- <g stroke="#4ED9CC" fill="none" stroke-width="1.4" opacity="0.12">
-  <circle cx="120" cy="250" r="5"/><circle cx="190" cy="200" r="5"/><circle cx="170" cy="320" r="5"/><circle cx="250" cy="280" r="5"/>
-  <line x1="120" y1="250" x2="190" y2="200"/><line x1="120" y1="250" x2="170" y2="320"/><line x1="190" y1="200" x2="250" y2="280"/><line x1="170" y1="320" x2="250" y2="280"/>
-  <circle cx="600" cy="900" r="5"/><circle cx="660" cy="850" r="5"/><circle cx="640" cy="970" r="5"/>
-  <line x1="600" y1="900" x2="660" y2="850"/><line x1="600" y1="900" x2="640" y2="970"/>
+ <!-- ربات -->
+ <g stroke="#4ED9CC" fill="none" stroke-width="1.8" opacity="0.18" stroke-linejoin="round">
+  <rect x="70" y="892" width="92" height="76" rx="18"/>
+  <line x1="116" y1="892" x2="116" y2="868"/><circle cx="116" cy="861" r="6"/>
+  <circle cx="98" cy="924" r="8"/><circle cx="134" cy="924" r="8"/>
+  <line x1="90" y1="948" x2="142" y2="948"/>
+  <line x1="70" y1="918" x2="58" y2="918"/><line x1="162" y1="918" x2="174" y2="918"/>
  </g>
- <g stroke="#6F95C8" fill="none" stroke-width="1.6" opacity="0.1" stroke-linejoin="round">
-  <rect x="78" y="900" width="84" height="70" rx="16"/>
-  <line x1="120" y1="900" x2="120" y2="880"/><circle cx="120" cy="874" r="5"/>
-  <circle cx="103" cy="930" r="7"/><circle cx="137" cy="930" r="7"/>
-  <line x1="96" y1="952" x2="144" y2="952"/>
+ <!-- نمادهای ارز شناور -->
+ <g fill="none" stroke-width="2" opacity="0.16">
+  <g stroke="#F7931A" transform="translate(300 760)"><circle cx="0" cy="0" r="24"/><text x="0" y="9" font-size="26" font-weight="700" fill="#F7931A" stroke="none" text-anchor="middle" font-family="Arial">B</text></g>
+  <g stroke="#627EEA" transform="translate(470 560)"><circle cx="0" cy="0" r="20"/><text x="0" y="7" font-size="22" font-weight="700" fill="#627EEA" stroke="none" text-anchor="middle" font-family="Arial">E</text></g>
  </g>
 </svg>"""
 
@@ -431,12 +455,12 @@ def build_html(data: dict[str, Any]) -> str:
 
     stats = (
         stat("ارزش بازار", big_fa(mc.get("value")), mc.get("change_24h"))
-        + stat("حجم ۲۴ساعته", big_fa(vol.get("value")), vol.get("change_24h"))
+        + stat("حجم ۲۴س", big_fa(vol.get("value")), vol.get("change_24h"))
         + stat("دامیننس BTC", _fa(f"{dom.get('btc', 0):.1f}") + "٪", dom.get("btc_change_24h"))
         + stat("دامیننس ETH", _fa(f"{dom.get('eth', 0):.1f}") + "٪", dom.get("eth_change_24h"))
     )
 
-    logo = _file_url(_IMG / "logo-lockup.png")
+    logo = _file_url(_IMG / "logo-light.png")
     B = BRAND
 
     return f"""<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
@@ -454,11 +478,11 @@ html,body{{width:720px;height:1280px;font-family:Vaz,sans-serif;
 .bg{{position:absolute;inset:0;z-index:0;pointer-events:none}}
 .bg svg{{width:100%;height:100%;display:block}}
 .hd,.stats,.body,.ft{{z-index:2}}
-/* جلوهٔ شیشه‌ای (Glassmorphism) */
-.glass{{background:rgba(255,255,255,.055);
-  backdrop-filter:blur(13px) saturate(150%);-webkit-backdrop-filter:blur(13px) saturate(150%);
-  border:1px solid rgba(255,255,255,.14);
-  box-shadow:0 10px 30px -16px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.10)}}
+/* جلوهٔ شیشه‌ای (Glassmorphism) — شفافیت کم تا پس‌زمینه از پشتِ شیشه دیده شود */
+.glass{{background:rgba(255,255,255,.035);
+  backdrop-filter:blur(8px) saturate(135%);-webkit-backdrop-filter:blur(8px) saturate(135%);
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 10px 30px -18px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.12)}}
 /* هدر: عنوان راست، تاریخ چپ */
 .hd{{position:absolute;top:20px;left:24px;right:24px;
   display:flex;justify-content:space-between;align-items:flex-start;direction:rtl}}
@@ -469,15 +493,16 @@ html,body{{width:720px;height:1280px;font-family:Vaz,sans-serif;
 .datepill{{background:linear-gradient(135deg,{B['navy']},{B['blue']});color:#fff;
   font-weight:800;font-size:14.5px;padding:9px 15px;border-radius:12px;white-space:nowrap;
   border:1px solid rgba(166,240,232,.3);box-shadow:0 6px 18px -8px rgba(0,0,0,.6)}}
-/* شاخص‌ها */
+/* شاخص‌ها — همه در یک خط */
 .stats{{position:absolute;top:90px;left:24px;right:24px;
-  display:flex;flex-wrap:wrap;gap:8px 18px;padding:11px 14px;border-radius:14px;direction:rtl}}
-.st{{display:inline-flex;align-items:center;gap:6px;font-size:12.5px}}
+  display:flex;flex-wrap:nowrap;justify-content:space-between;gap:0 8px;
+  padding:11px 14px;border-radius:14px;direction:rtl;overflow:hidden}}
+.st{{display:inline-flex;align-items:center;gap:5px;font-size:11px;white-space:nowrap}}
 .st__l{{color:{B['muted']};font-weight:600}}
 .st__v{{color:#fff;font-weight:800}}
 .up{{color:{B['up']}}} .down{{color:{B['down']}}} .flat{{color:{B['dim']}}}
 /* بدنه */
-.body{{position:absolute;top:152px;left:24px;right:24px;bottom:96px;
+.body{{position:absolute;top:152px;left:24px;right:24px;bottom:104px;
   overflow:hidden;display:flex;flex-direction:column;gap:11px}}
 .sec{{display:flex;flex-direction:column;min-height:0}}
 .sec--coins{{flex:5}} .sec--keys{{flex:5}} .sec--gl{{flex:4}}
@@ -531,17 +556,17 @@ html,body{{width:720px;height:1280px;font-family:Vaz,sans-serif;
 .gl__c{{font-weight:800;font-size:12px}}
 .ic-badge{{color:#fff;font-weight:900;font-size:11px;background:linear-gradient(135deg,{B['blue']},{B['navy']})}}
 /* فوتر: شبکه‌های اجتماعی چپ، لوگو راست */
-.ft{{position:absolute;left:24px;right:24px;bottom:16px;height:62px;
+.ft{{position:absolute;left:24px;right:24px;bottom:16px;height:70px;
   display:flex;align-items:center;justify-content:space-between;direction:ltr;
-  padding-top:11px;border-top:1px solid {B['line']}}}
+  padding-top:10px;border-top:1px solid {B['line']}}}
 .ft__social{{display:flex;align-items:center;gap:9px}}
 .soc{{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:#dbe7f7;
   background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)}}
 .soc svg{{width:17px;height:17px;display:block}}
-.ft__id{{color:{B['teal2']};font-weight:800;font-size:16px;margin-left:5px;letter-spacing:.2px}}
-.brand{{background:{B['light']};border-radius:12px;padding:7px 15px;display:flex;align-items:center;
-  box-shadow:0 6px 18px -8px rgba(0,0,0,.6)}}
-.brand img{{height:30px;display:block}}
+.ft__id{{color:{B['teal2']};font-family:Quick,Vaz,sans-serif;font-weight:700;font-size:23px;
+  margin-left:6px;letter-spacing:.3px}}
+.brand{{background:transparent;padding:0;display:flex;align-items:center}}
+.brand img{{height:50px;display:block;filter:drop-shadow(0 2px 10px rgba(0,0,0,.5))}}
 </style></head>
 <body><div class="card">
   <div class="bg">{_BG_SVG}</div>
