@@ -259,9 +259,6 @@ async def portfolio_chat(request: Request, payload: dict[str, Any] = Body(...)):
         "answer": answer,
         "conversation_id": conv_id,
         "assets_saved": assets_saved,
-        "_debug": {"event": data.get("event"), "mode": data.get("mode"),
-                   "has_conv_id": bool(data.get("conversation_id")),
-                   "keys": list(data.keys())[:12]},
     })
 
 
