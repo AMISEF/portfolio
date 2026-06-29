@@ -7,9 +7,12 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+import asyncio
+
 from app import db
 from app.config import settings
 from app.routers import admin, advisor, auth, market, pages, portfolio
+from app.services import telegram_signals
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
@@ -25,6 +28,15 @@ app.include_router(advisor.router)
 @app.on_event("startup")
 async def _startup() -> None:
     db.init_db()
+    # ثبت وب‌هوکِ ربات سیگنال‌ها و پاک‌سازی تحلیل‌های منقضی (بدون بلوکه‌کردن استارت‌آپ).
+    if settings.signals_bot_token:
+        async def _init_signals() -> None:
+            try:
+                await telegram_signals.register_webhook()
+            except Exception:  # noqa: BLE001
+                pass
+            telegram_signals.purge_expired()
+        asyncio.create_task(_init_signals())
 
 
 @app.get("/health")

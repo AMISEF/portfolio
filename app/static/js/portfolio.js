@@ -12,6 +12,12 @@
   async function init() {
     // اگر کاربر وارد نشده، گیت سرور‌سایدی نمایش داده شده — API نیازی نیست
     if (!window.IS_AUTHED) return;
+    // آزمون مجدد: با ?retake=1 از تغییرمسیرِ خودکار صرف‌نظر کن و مستقیم آزمون را شروع کن
+    const retake = new URLSearchParams(window.location.search).has("retake");
+    if (retake) {
+      startTest();
+      return;
+    }
     // اگر کاربر قبلاً آزمون داده، مستقیم به مدیریت سرمایه برو
     try {
       const r = await CS.fetchJSON("/api/portfolio/risk");

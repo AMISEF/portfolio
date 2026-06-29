@@ -108,6 +108,20 @@ def init_db() -> None:
                 total_usd    REAL NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_pfhist_uid ON portfolio_history(uid, ts);
+
+            -- تحلیل‌های کانال تلگرام (سیگنال‌ها) با اعتبار محدود (پیش‌فرض ۷ روز).
+            -- هر پست کانال = یک تحلیل ارز با نقاط خرید/فروش + تصویر چارت.
+            CREATE TABLE IF NOT EXISTS channel_signals (
+                message_id  INTEGER PRIMARY KEY,   -- شناسهٔ پیام کانال (یکتا)
+                chat_id     TEXT,
+                ts          INTEGER NOT NULL,       -- زمان پست (unix از تلگرام)
+                text        TEXT NOT NULL DEFAULT '',
+                hashtags    TEXT NOT NULL DEFAULT '[]',
+                image_path  TEXT,                   -- مسیر فایل تصویر چارت (در data/signals)
+                created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+                expires_at  TEXT NOT NULL           -- پس از این زمان از پیشنهادها حذف می‌شود
+            );
+            CREATE INDEX IF NOT EXISTS idx_signals_exp ON channel_signals(expires_at);
             """
         )
         _migrate_users(conn)
@@ -234,7 +248,7 @@ def merge_assets(uid: str, new_assets: list[dict[str, Any]]) -> None:
         for a in new_assets:
             action = (a.get("action") or "set").lower()
             row = conn.execute(
-                "SELECT id, amount FROM assets WHERE uid = ? AND kind = ? AND symbol = ? "
+                "SELECT id, amount, buy_price FROM assets WHERE uid = ? AND kind = ? AND symbol = ? "
                 "AND (purity IS NULL AND ? IS NULL OR purity = ?)",
                 (uid, a["kind"], a["symbol"], a.get("purity"), a.get("purity")),
             ).fetchone()
@@ -245,11 +259,21 @@ def merge_assets(uid: str, new_assets: list[dict[str, Any]]) -> None:
                 continue
 
             if action == "add" and row:
-                new_amount = (row["amount"] or 0) + a["amount"]
+                old_amount = row["amount"] or 0
+                add_amount = a["amount"] or 0
+                new_amount = old_amount + add_amount
                 sets, vals = ["amount = ?"], [new_amount]
-                if a.get("buy_price") is not None:
+                # میانگین وزنیِ قیمت خرید: (مقدار قبلی×قیمت قبلی + مقدار جدید×قیمت جدید) ÷ مجموع
+                new_bp = a.get("buy_price")
+                old_bp = row["buy_price"]
+                avg_bp: float | None = None
+                if new_bp is not None and old_bp is not None and new_amount > 0:
+                    avg_bp = (old_amount * old_bp + add_amount * new_bp) / new_amount
+                elif new_bp is not None:
+                    avg_bp = new_bp
+                if avg_bp is not None:
                     sets.append("buy_price = ?")
-                    vals.append(a["buy_price"])
+                    vals.append(avg_bp)
                 vals.append(row["id"])
                 conn.execute(f"UPDATE assets SET {', '.join(sets)} WHERE id = ?", vals)
             elif row:
@@ -302,6 +326,67 @@ def get_portfolio_history(uid: str, days: int = 365) -> list[dict[str, Any]]:
             (uid, f"-{int(days)} days"),
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+# ---- سیگنال‌های کانال تلگرام ----
+def upsert_signal(message_id: int, chat_id: str, ts: int, text: str,
+                  hashtags_json: str, image_path: str | None, ttl_days: int) -> None:
+    """درج/به‌روزرسانی یک تحلیل کانال. هنگام ویرایش پست، متن/هشتگ به‌روز می‌شود؛
+    اگر تصویر جدید None باشد، تصویر قبلی حفظ می‌شود."""
+    with _LOCK, _conn() as conn:
+        existing = conn.execute(
+            "SELECT image_path FROM channel_signals WHERE message_id = ?", (message_id,)
+        ).fetchone()
+        if existing and image_path is None:
+            image_path = existing["image_path"]
+        conn.execute(
+            """
+            INSERT INTO channel_signals (message_id, chat_id, ts, text, hashtags, image_path, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, datetime('now', ?))
+            ON CONFLICT(message_id) DO UPDATE SET
+                chat_id=excluded.chat_id, ts=excluded.ts, text=excluded.text,
+                hashtags=excluded.hashtags, image_path=excluded.image_path,
+                expires_at=excluded.expires_at
+            """,
+            (message_id, chat_id, ts, text, hashtags_json, image_path,
+             f"+{int(ttl_days)} days"),
+        )
+
+
+def list_active_signals(limit: int = 50, tag: str | None = None) -> list[dict[str, Any]]:
+    """تحلیل‌های معتبر (منقضی‌نشده) به ترتیب جدیدترین."""
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM channel_signals WHERE expires_at > datetime('now') "
+            "ORDER BY ts DESC LIMIT ?",
+            (int(limit) if not tag else 500,),
+        ).fetchall()
+    out = [dict(r) for r in rows]
+    if tag:
+        import json as _json
+        t = tag.lstrip("#").lower()
+        out = [r for r in out if t in (_json.loads(r.get("hashtags") or "[]"))][:limit]
+    return out
+
+
+def get_signal(message_id: int) -> dict[str, Any] | None:
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM channel_signals WHERE message_id = ?", (message_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def purge_expired_signals() -> list[str]:
+    """حذف تحلیل‌های منقضی؛ بازگشت مسیر تصاویرشان برای پاک‌سازی فایل."""
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT image_path FROM channel_signals WHERE expires_at <= datetime('now') "
+            "AND image_path IS NOT NULL"
+        ).fetchall()
+        paths = [r["image_path"] for r in rows if r["image_path"]]
+        conn.execute("DELETE FROM channel_signals WHERE expires_at <= datetime('now')")
+        return paths
 
 
 # ---- کاربران ----

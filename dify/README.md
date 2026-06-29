@@ -167,7 +167,11 @@ curl -s -X POST https://portfolio.cryptosmart.site/api/advisor/context \
 
 - **قاعدهٔ دارایی مجاز:** کم‌ریسک = طلا/دلار/تتر | متوسط = +BTC/ETH | پرریسک = +آلت‌کوین.
 - **ابزار context:** نواحی خرید/فروش و رژیم بازار (همان اندپوینت ورک‌فلو ۱).
-- **ابزار signals:** آخرین تحلیل‌های کانال با هشتگ‌ها (`/api/advisor/signals`).
+- **ابزار signals:** تحلیل‌های کانال پورتفولیو (`/api/advisor/signals`) که ربات
+  `portfolio_Cryptosmart_bot` از طریق وب‌هوک تلگرام دریافت کرده و تا ۷ روز نگه
+  می‌دارد. این تحلیل‌ها وین‌ریت بالایی دارند و در پرامپت بر تحلیل تکنیکال خودکار
+  ارجحیت داده شده‌اند. هر پست `text` (نقاط خرید/فروش)، `hashtags`، `image_url`
+  (تصویر چارت) و `expires_at` دارد.
 - **چنل پیشنهادی** را خودِ اپ بر اساس موجودی تتر می‌سازد (برنزی/نقره‌ای/طلایی) و
   زیر متن نمایش می‌دهد؛ مدل لازم نیست آن را بسازد.
 
@@ -181,10 +185,17 @@ curl -s -X POST https://portfolio.cryptosmart.site/api/advisor/context \
 4. اپ را **Publish** کن، سپس از **API Access** کلید را بردار و در `.env` سرور بگذار:
    ```bash
    DIFY_ALLOCATION_KEY=<کلید API ورک‌فلو>
-   # برای خواندن تحلیل‌های کانال (ربات الگو آنالایزر باید ادمین کانال باشد):
-   ALGO_ANALYZER_BOT_TOKEN=<توکن ربات از BotFather>
+   # برای خواندن تحلیل‌های کانال پورتفولیو (ربات باید «ادمین» کانال باشد):
+   SIGNALS_BOT_TOKEN=<توکن ربات portfolio_Cryptosmart_bot از BotFather>
+   SIGNALS_CHANNEL_ID=-1004451073096
+   PUBLIC_BASE_URL=https://portfolio.cryptosmart.site
    pm2 restart cryptosmart-portfolio
    ```
+
+   > پس از ری‌استارت، برنامه خودکار وب‌هوک تلگرام را روی
+   > `PUBLIC_BASE_URL/api/advisor/telegram/webhook` ثبت می‌کند. از آن پس هر پست
+   > جدید کانال (متن تحلیل + تصویر چارت) ذخیره و تا ۷ روز در پیشنهادها لحاظ می‌شود.
+   > ربات حتماً باید **ادمین کانال** باشد؛ عضو ساده نمی‌تواند `channel_post` بدهد.
 
 > نام فیلد خروجی End node باید `result` باشد (یا اگر تغییرش دادی، همان را در
 > `DIFY_ALLOCATION_OUTPUT` بگذار). اپ متنِ همین فیلد را به کاربر نشان می‌دهد.

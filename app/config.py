@@ -125,6 +125,21 @@ class Settings(BaseSettings):
     algo_channel_url: str = "https://t.me/CRYPTOSMART_ORG"
     algo_signup_bot_url: str = "https://t.me/cryptosmart_futures_bot"
 
+    # ---- سیگنال‌های کانال پورتفولیو (ربات portfolio_Cryptosmart_bot) ----
+    # ربات تحلیل که ادمین کانال «Portfolio CryptoSmart» است. از طریق وب‌هوک تلگرام
+    # پست‌های کانال (تحلیل ارز + نقاط خرید/فروش + تصویر چارت) دریافت و در دیتابیس
+    # نگه داشته می‌شوند. هر تحلیل به مدت signals_ttl_days روز معتبر است و سپس
+    # خودکار حذف می‌شود. این تحلیل‌ها به ورک‌فلوِ سبدچینی هوش مصنوعی خورانده می‌شوند.
+    # ⚠️ توکن فقط در .env سرور (SIGNALS_BOT_TOKEN) قرار می‌گیرد، هرگز در کد.
+    signals_bot_token: str = ""
+    signals_channel_id: str = "-1004451073096"
+    signals_channel_url: str = "https://t.me/Portfolio_CryptoSmart"
+    signals_ttl_days: int = 7
+    # نشانیِ عمومیِ این برنامه (برای ثبت وب‌هوک تلگرام و ساخت URL تصاویر).
+    public_base_url: str = "https://portfolio.cryptosmart.site"
+    # توکن مخفیِ تأیید وب‌هوک؛ اگر خالی باشد از admin_secret_key مشتق می‌شود.
+    signals_webhook_secret: str = ""
+
     # ---- ایمیل (ارسال کد تأیید و بازیابی رمز از طریق Resend) ----
     # ارسال از طریق REST API سرویس Resend انجام می‌شود (با httpx، بدون وابستگی
     # اضافه). کلید فقط در .env سرور قرار می‌گیرد و هرگز در کد/مخزن نیست.
@@ -154,6 +169,14 @@ class Settings(BaseSettings):
     @property
     def admin_email_list(self) -> set[str]:
         return {e.strip().lower() for e in self.admin_emails.split(",") if e.strip()}
+
+    @property
+    def signals_webhook_secret_effective(self) -> str:
+        """توکن مخفیِ مؤثرِ وب‌هوک سیگنال‌ها (تنظیم‌شده یا مشتق از admin_secret_key)."""
+        if self.signals_webhook_secret:
+            return self.signals_webhook_secret
+        import hashlib
+        return hashlib.sha256(f"sig:{self.admin_secret_key}".encode()).hexdigest()[:40]
 
 
 settings = Settings()

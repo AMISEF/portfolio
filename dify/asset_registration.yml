@@ -191,28 +191,34 @@ workflow:
             ساختار هر دارایی:
             {"kind":"crypto"|"gold18"|"gold24"|"gold_coin"|"tether"|"paper_dollar"|"other","symbol":"نماد (فقط crypto مثل BTC)","name":"نام نمایشی","amount":عدد,"buy_value":عدد|null,"buy_currency":"toman"|"usd","buy_basis":"per_unit"|"total","action":"add"|"set"|"remove"}
 
-            فیلد action — حتماً یکی از سه مقدار زیر باشد:
-            • "add" → کاربر دارایی بیشتری خریده («خریدم دیگه / گرفتم / اضافه کردم»)؛ مقدار به موجودی اضافه می‌شود.
-            • "remove" → کاربر دارایی را فروخته («فروختم / خارج کردم / فروش دادم»)؛ از لیست حذف می‌شود. buy_value نیاز نیست، amount=0 باشد.
-            • "set" → کاربر موجودی فعلی را اعلام می‌کند («دارم / داشتم / هستم»)؛ مقدار جایگزین می‌شود. (پیش‌فرض برای ثبت اول)
+            فیلد action — حتماً یکی از سه مقدار زیر باشد. این فیلد بسیار مهم است؛ با دقت انتخاب کن:
+            • "add" → هر وقت کاربر فعلِ «خرید» را به کار برد: «خریدم / گرفتم / اضافه کردم / دیگه خریدم / زدم». مقدار به موجودی قبلی اضافه و قیمت خرید به‌صورت میانگین وزنی به‌روز می‌شود. (این حالت برای ثبت اولِ یک دارایی هم درست کار می‌کند چون به صفر اضافه می‌شود.)
+            • "remove" → کاربر دارایی را فروخته یا حذفش را خواست: «فروختم / خارج کردم / فروش دادم / حذف کن». از لیست حذف می‌شود. buy_value=null و amount=0 بگذار.
+            • "set" → کاربر فقط موجودی فعلی‌اش را گزارش می‌کند بدون فعلِ خرید: «دارم / داشتم / موجودی‌ام … است / X واحد دارم». مقدار جایگزینِ موجودی قبلی می‌شود.
+
+            قاعدهٔ کلیدی: «خریدم/گرفتم» ⇒ همیشه action="add" (حتی اگر قیمت هم گفته باشد). «دارم/داشتم» ⇒ action="set". «فروختم» ⇒ action="remove". هرگز خرید را با set اشتباه نگیر.
 
             نکته: اگر کاربر «مبلغ کل» گفت → amount=مقدار_دارایی و buy_basis="total".
 
-            مثال ۱ — ثبت اولیه (set):
+            مثال ۱ — خرید (add):
             ورودی: «۱۰ تتر روی ۱۷۰ هزار تومن خریدم»
-            خروجی: {"status":"ready","reply":"ثبت شد ✅ ۱۰ تتر با قیمت خرید ۱۷۰٬۰۰۰ تومان.","assets":[{"kind":"tether","symbol":"USDT","name":"تتر","amount":10,"buy_value":170000,"buy_currency":"toman","buy_basis":"per_unit","action":"set"}]}
+            خروجی: {"status":"ready","reply":"ثبت شد ✅ ۱۰ تتر با قیمت خرید ۱۷۰٬۰۰۰ تومان به سبد اضافه شد.","assets":[{"kind":"tether","symbol":"USDT","name":"تتر","amount":10,"buy_value":170000,"buy_currency":"toman","buy_basis":"per_unit","action":"add"}]}
 
-            مثال ۲ — خرید بیشتر (add):
-            ورودی: «۱۶۸ تتر دیگه گرفتم روی ۱۷۵ هزار»
-            خروجی: {"status":"ready","reply":"ثبت شد ✅ ۱۶۸ تتر با قیمت ۱۷۵٬۰۰۰ تومان اضافه می‌شود.","assets":[{"kind":"tether","symbol":"USDT","name":"تتر","amount":168,"buy_value":175000,"buy_currency":"toman","buy_basis":"per_unit","action":"add"}]}
+            مثال ۲ — خرید بیشترِ همان دارایی (add):
+            ورودی: «۱۶۸ تتر دیگه روی ۱۷۵ هزار گرفتم»
+            خروجی: {"status":"ready","reply":"ثبت شد ✅ ۱۶۸ تتر با قیمت ۱۷۵٬۰۰۰ تومان به موجودی شما اضافه شد (میانگین قیمت خرید به‌روز می‌شود).","assets":[{"kind":"tether","symbol":"USDT","name":"تتر","amount":168,"buy_value":175000,"buy_currency":"toman","buy_basis":"per_unit","action":"add"}]}
 
-            مثال ۳ — فروش (remove):
+            مثال ۳ — گزارش موجودی فعلی (set):
+            ورودی: «الان ۵۰۰ تتر دارم»
+            خروجی: {"status":"ready","reply":"ثبت شد ✅ موجودی تتر شما روی ۵۰۰ تنظیم شد.","assets":[{"kind":"tether","symbol":"USDT","name":"تتر","amount":500,"buy_value":null,"buy_currency":"toman","buy_basis":"per_unit","action":"set"}]}
+
+            مثال ۴ — فروش (remove):
             ورودی: «بیت‌کوینم رو فروختم»
             خروجی: {"status":"ready","reply":"بیت‌کوین از لیست دارایی‌هایتان حذف شد ✅","assets":[{"kind":"crypto","symbol":"BTC","name":"بیت‌کوین","amount":0,"buy_value":null,"buy_currency":"toman","buy_basis":"per_unit","action":"remove"}]}
 
-            مثال ۴ — طلا (set):
-            ورودی: «۱۰ گرم طلای ۱۸ عیار روی ۱۶ میلیون تومان»
-            خروجی: {"status":"ready","reply":"ثبت شد ✅ ۱۰ گرم طلای ۱۸ عیار با قیمت ۱۶٬۰۰۰٬۰۰۰ تومان.","assets":[{"kind":"gold18","name":"طلای ۱۸ عیار","amount":10,"buy_value":16000000,"buy_currency":"toman","buy_basis":"per_unit","action":"set"}]}
+            مثال ۵ — طلا (add):
+            ورودی: «۱۰ گرم طلای ۱۸ عیار روی ۱۶ میلیون تومان خریدم»
+            خروجی: {"status":"ready","reply":"ثبت شد ✅ ۱۰ گرم طلای ۱۸ عیار با قیمت ۱۶٬۰۰۰٬۰۰۰ تومان به سبد اضافه شد.","assets":[{"kind":"gold18","name":"طلای ۱۸ عیار","amount":10,"buy_value":16000000,"buy_currency":"toman","buy_basis":"per_unit","action":"add"}]}
 
             هیچ‌چیز غیر از JSON خالص برنگردان.
         - id: 43352307-7ea5-4fda-af7b-643d9311c125

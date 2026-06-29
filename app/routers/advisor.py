@@ -17,17 +17,18 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 from typing import Any
 
 import httpx
 from fastapi import APIRouter, Header, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from app import db
 from app.config import settings
 from app.services import portfolio_valuation, risk, sourcearena, ta, tabdeal, toobit
-from app.services import chart_svg
+from app.services import chart_svg, telegram_signals
 
 router = APIRouter(prefix="/api/advisor", tags=["advisor"])
 
@@ -196,73 +197,75 @@ async def context(request: Request,
 _HASHTAG_RE = re.compile(r"#(\w+)", re.UNICODE)
 
 
+@router.post("/telegram/webhook")
+async def telegram_webhook(request: Request,
+                           x_telegram_bot_api_secret_token: str | None = Header(default=None)):
+    """وب‌هوک تلگرام برای ربات سیگنال‌ها: هر پست کانال را ذخیره می‌کند.
+
+    تلگرام هدر «X-Telegram-Bot-Api-Secret-Token» را با همان مقداری که هنگام
+    setWebhook دادیم می‌فرستد؛ اگر نخواند، درخواست را رد می‌کنیم. همیشه ۲۰۰
+    برمی‌گردانیم تا تلگرام پیام را دوباره صف نکند (خطاها داخلی نادیده گرفته می‌شوند).
+    """
+    if x_telegram_bot_api_secret_token != settings.signals_webhook_secret_effective:
+        return JSONResponse({"ok": False}, status_code=403)
+    try:
+        update = await request.json()
+    except Exception:  # noqa: BLE001
+        return JSONResponse({"ok": True})
+    try:
+        await telegram_signals.process_update(update)
+    except Exception:  # noqa: BLE001
+        pass
+    return JSONResponse({"ok": True})
+
+
+@router.get("/signal-image/{message_id}")
+async def signal_image(message_id: int):
+    """تصویر چارتِ یک تحلیل کانال (در صورت موجود بودن)."""
+    sig = db.get_signal(message_id)
+    path = (sig or {}).get("image_path")
+    if not path or not os.path.exists(path):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    return FileResponse(path, headers={"Cache-Control": "public, max-age=86400"})
+
+
 @router.get("/signals")
 async def channel_signals(x_advisor_key: str | None = Header(default=None),
                           limit: int = 50, tag: str | None = None):
-    """آخرین تحلیل‌های کانال کریپتو اسمارت که ربات «الگو آنالایزر» دیده است.
+    """تحلیل‌های معتبر کانال پورتفولیو (ذخیره‌شده از وب‌هوک، اعتبار ۷ روز).
 
-    با توکن ربات (ALGO_ANALYZER_BOT_TOKEN) از getUpdates پیام‌های کانال خوانده،
-    هشتگ‌ها (#طلا #تتر #btc #eth …) و کپشن تصاویر استخراج می‌شوند تا ورک‌فلو Dify
-    بتواند نقاط خرید روز را در سبد لحاظ کند.
-
-    نکته: ربات باید ادمین کانال باشد و وب‌هوک فعال نباشد تا getUpdates کار کند.
-    فیلتر اختیاری: ?tag=btc تنها پست‌های دارای آن هشتگ را برمی‌گرداند.
+    ربات «portfolio_Cryptosmart_bot» پست‌های کانال را با نقاط خرید/فروش و تصویر
+    چارت می‌فرستد؛ این‌جا تحلیل‌های منقضی‌نشده برگردانده می‌شوند تا ورک‌فلوِ
+    سبدچینی Dify آن‌ها را در پیشنهاد لحاظ کند. فیلتر اختیاری: ?tag=btc.
     """
     if settings.advisor_api_key and x_advisor_key != settings.advisor_api_key:
         return JSONResponse({"error": "unauthorized"}, status_code=401)
-    token = settings.algo_analyzer_bot_token
-    if not token:
-        return JSONResponse({"posts": [], "error": "no_bot_token"})
 
-    try:
-        chan_id = int(settings.algo_channel_id)
-    except (TypeError, ValueError):
-        chan_id = None
-
-    try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0)) as client:
-            r = await client.get(
-                f"https://api.telegram.org/bot{token}/getUpdates",
-                params={"allowed_updates": '["channel_post","edited_channel_post"]',
-                        "limit": 100, "timeout": 0},
-            )
-            r.raise_for_status()
-            data = r.json()
-    except Exception as exc:  # noqa: BLE001
-        return JSONResponse({"posts": [], "error": f"{type(exc).__name__}: {exc}"})
-
+    telegram_signals.purge_expired()
+    base = settings.public_base_url.rstrip("/")
+    rows = db.list_active_signals(limit=limit, tag=tag)
     posts: list[dict[str, Any]] = []
-    for upd in (data.get("result") or []):
-        post = upd.get("channel_post") or upd.get("edited_channel_post")
-        if not post:
-            continue
-        chat = post.get("chat") or {}
-        if chan_id is not None and chat.get("id") != chan_id:
-            continue
-        text = post.get("text") or post.get("caption") or ""
-        if not text:
-            continue
-        tags = [t.lower() for t in _HASHTAG_RE.findall(text)]
-        photos = post.get("photo") or []
-        file_id = photos[-1].get("file_id") if photos else None
+    for r in rows:
+        try:
+            tags = json.loads(r.get("hashtags") or "[]")
+        except Exception:  # noqa: BLE001
+            tags = []
+        has_image = bool(r.get("image_path"))
         posts.append({
-            "message_id": post.get("message_id"),
-            "date": post.get("date"),
-            "text": text,
+            "message_id": r.get("message_id"),
+            "date": r.get("ts"),
+            "text": r.get("text"),
             "hashtags": tags,
-            "has_image": bool(file_id),
-            "image_file_id": file_id,
+            "has_image": has_image,
+            "image_url": f"{base}/api/advisor/signal-image/{r.get('message_id')}" if has_image else None,
+            "expires_at": r.get("expires_at"),
         })
-
-    if tag:
-        t = tag.lstrip("#").lower()
-        posts = [p for p in posts if t in p["hashtags"]]
-    posts.sort(key=lambda p: p.get("date") or 0, reverse=True)
     return JSONResponse({
-        "channel": settings.algo_channel_url,
-        "count": len(posts[:limit]),
-        "posts": posts[:limit],
-        "note": "هشتگ‌ها: #طلا #تتر #btc #eth و سایر آلت‌کوین‌ها (مثل #stg).",
+        "channel": settings.signals_channel_url,
+        "count": len(posts),
+        "posts": posts,
+        "note": ("تحلیل‌های کانال پورتفولیو با نقاط خرید/فروش و وین‌ریت بالا؛ "
+                 "اعتبار هر تحلیل تا تاریخ expires_at. هشتگ‌ها مثل #btc #eth #طلا."),
     })
 
 
