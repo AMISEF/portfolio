@@ -176,33 +176,45 @@ workflow:
         prompt_template:
         - id: 64c70eed-22ee-4a16-91a2-a0f884205213
           role: system
-          text: "وظیفه: استخراج دارایی‌های کاربر و بازگرداندن یک JSON خالص.\n\nهمیشه\
-            \ فقط یک JSON معتبر برگردان — هیچ متن اضافه‌ای قبل یا بعد از آن نباشد:\n\
-            {\"status\":\"ready\"|\"ask\",\"reply\":\"پیام فارسی\",\"assets\":[...]}\n\
-            \nقوانین:\n۱) اگر کاربر دارایی با مقدار و قیمت کامل داد → status=\"ready\"\
-            \ و assets را پر کن.\n۲) اگر اطلاعات ناقص بود → status=\"ask\" و در reply\
-            \ فقط همان اطلاعات ناقص را بپرس.\n۳) در اولین پیام گفتگو، reply را با یک\
-            \ معرفی کوتاه و دوستانه شروع کن؛ در پیام‌های بعدی هرگز سلام تکرار نکن.\n\
-            ۴) اگر کاربر سؤال غیر مرتبط پرسید → status=\"ask\" و در reply راهنمایی\
-            \ کن که دارایی‌هایش را بنویسد.\n\nساختار هر دارایی:\n{\"kind\":\"crypto\"\
-            |\"gold18\"|\"gold24\"|\"gold_coin\"|\"tether\"|\"paper_dollar\"|\"other\"\
-            ,\"symbol\":\"نماد (فقط crypto مثل BTC)\",\"name\":\"نام نمایشی\",\"amount\"\
-            :عدد,\"buy_value\":عدد,\"buy_currency\":\"toman\"|\"usd\",\"buy_basis\"\
-            :\"per_unit\"|\"total\"}\n\nنکته: اگر کاربر «مبلغ کل» گفت → amount=کل÷قیمت_واحد\
-            \ و buy_basis=\"per_unit\".\n\nمثال ۱:\nورودی: «۱۰ تتر روی ۱۷۰ هزار تومن\
-            \ خریدم»\nخروجی: {\"status\":\"ready\",\"reply\":\"ثبت شد ✅ ۱۰ تتر با قیمت\
-            \ خرید ۱۷۰٬۰۰۰ تومان.\",\"assets\":[{\"kind\":\"tether\",\"symbol\":\"\
-            USDT\",\"name\":\"تتر\",\"amount\":10,\"buy_value\":170000,\"buy_currency\"\
-            :\"toman\",\"buy_basis\":\"per_unit\"}]}\n\nمثال ۲:\nورودی: «۱۰ گرم طلای\
-            \ ۱۸ عیار روی ۱۶ میلیون تومان»\nخروجی: {\"status\":\"ready\",\"reply\"\
-            :\"ثبت شد ✅ ۱۰ گرم طلای ۱۸ عیار با قیمت ۱۶٬۰۰۰٬۰۰۰ تومان.\",\"assets\"\
-            :[{\"kind\":\"gold18\",\"name\":\"طلای ۱۸ عیار\",\"amount\":10,\"buy_value\"\
-            :16000000,\"buy_currency\":\"toman\",\"buy_basis\":\"per_unit\"}]}\n\nمثال\
-            \ ۳:\nورودی: «۱۰ دلار STG روی ۰.۱۶۲۲»\nخروجی: {\"status\":\"ready\",\"\
-            reply\":\"ثبت شد ✅ حدود ۶۱.۶۵ واحد STG با قیمت ۰.۱۶۲۲ دلار.\",\"assets\"\
-            :[{\"kind\":\"crypto\",\"symbol\":\"STG\",\"name\":\"Stargate\",\"amount\"\
-            :61.65,\"buy_value\":0.1622,\"buy_currency\":\"usd\",\"buy_basis\":\"per_unit\"\
-            }]}\n\nهیچ‌چیز غیر از JSON خالص برنگردان."
+          text: |
+            وظیفه: استخراج دارایی‌های کاربر و بازگرداندن یک JSON خالص.
+
+            همیشه فقط یک JSON معتبر برگردان — هیچ متن اضافه‌ای قبل یا بعد از آن نباشد:
+            {"status":"ready"|"ask","reply":"پیام فارسی","assets":[...]}
+
+            قوانین:
+            ۱) اگر کاربر دارایی با مقدار کامل داد → status="ready" و assets را پر کن.
+            ۲) اگر اطلاعات ناقص بود → status="ask" و در reply فقط همان اطلاعات ناقص را بپرس.
+            ۳) در اولین پیام گفتگو، reply را با یک معرفی کوتاه و دوستانه شروع کن؛ در پیام‌های بعدی هرگز سلام تکرار نکن.
+            ۴) اگر کاربر سؤال غیر مرتبط پرسید → status="ask" و در reply راهنمایی کن که دارایی‌هایش را بنویسد.
+
+            ساختار هر دارایی:
+            {"kind":"crypto"|"gold18"|"gold24"|"gold_coin"|"tether"|"paper_dollar"|"other","symbol":"نماد (فقط crypto مثل BTC)","name":"نام نمایشی","amount":عدد,"buy_value":عدد|null,"buy_currency":"toman"|"usd","buy_basis":"per_unit"|"total","action":"add"|"set"|"remove"}
+
+            فیلد action — حتماً یکی از سه مقدار زیر باشد:
+            • "add" → کاربر دارایی بیشتری خریده («خریدم دیگه / گرفتم / اضافه کردم»)؛ مقدار به موجودی اضافه می‌شود.
+            • "remove" → کاربر دارایی را فروخته («فروختم / خارج کردم / فروش دادم»)؛ از لیست حذف می‌شود. buy_value نیاز نیست، amount=0 باشد.
+            • "set" → کاربر موجودی فعلی را اعلام می‌کند («دارم / داشتم / هستم»)؛ مقدار جایگزین می‌شود. (پیش‌فرض برای ثبت اول)
+
+            نکته: اگر کاربر «مبلغ کل» گفت → amount=مقدار_دارایی و buy_basis="total".
+
+            مثال ۱ — ثبت اولیه (set):
+            ورودی: «۱۰ تتر روی ۱۷۰ هزار تومن خریدم»
+            خروجی: {"status":"ready","reply":"ثبت شد ✅ ۱۰ تتر با قیمت خرید ۱۷۰٬۰۰۰ تومان.","assets":[{"kind":"tether","symbol":"USDT","name":"تتر","amount":10,"buy_value":170000,"buy_currency":"toman","buy_basis":"per_unit","action":"set"}]}
+
+            مثال ۲ — خرید بیشتر (add):
+            ورودی: «۱۶۸ تتر دیگه گرفتم روی ۱۷۵ هزار»
+            خروجی: {"status":"ready","reply":"ثبت شد ✅ ۱۶۸ تتر با قیمت ۱۷۵٬۰۰۰ تومان اضافه می‌شود.","assets":[{"kind":"tether","symbol":"USDT","name":"تتر","amount":168,"buy_value":175000,"buy_currency":"toman","buy_basis":"per_unit","action":"add"}]}
+
+            مثال ۳ — فروش (remove):
+            ورودی: «بیت‌کوینم رو فروختم»
+            خروجی: {"status":"ready","reply":"بیت‌کوین از لیست دارایی‌هایتان حذف شد ✅","assets":[{"kind":"crypto","symbol":"BTC","name":"بیت‌کوین","amount":0,"buy_value":null,"buy_currency":"toman","buy_basis":"per_unit","action":"remove"}]}
+
+            مثال ۴ — طلا (set):
+            ورودی: «۱۰ گرم طلای ۱۸ عیار روی ۱۶ میلیون تومان»
+            خروجی: {"status":"ready","reply":"ثبت شد ✅ ۱۰ گرم طلای ۱۸ عیار با قیمت ۱۶٬۰۰۰٬۰۰۰ تومان.","assets":[{"kind":"gold18","name":"طلای ۱۸ عیار","amount":10,"buy_value":16000000,"buy_currency":"toman","buy_basis":"per_unit","action":"set"}]}
+
+            هیچ‌چیز غیر از JSON خالص برنگردان.
         - id: 43352307-7ea5-4fda-af7b-643d9311c125
           role: user
           text: '{{#sys.query#}}'

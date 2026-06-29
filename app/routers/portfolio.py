@@ -153,6 +153,10 @@ def _parse_dify_assets(uid: str, raw_json: str) -> bool:
 
     merged = []
     for a in assets:
+        action = (a.get("action") or "set").lower()
+        if action not in ("add", "remove", "set"):
+            action = "set"
+
         kind_dify = (a.get("kind") or "other").lower()
         kind = _DIFY_KIND.get(kind_dify, "toman")
         symbol = (a.get("symbol") or "").strip().upper() or _DIFY_SYMBOL.get(kind, kind.upper())
@@ -160,28 +164,30 @@ def _parse_dify_assets(uid: str, raw_json: str) -> bool:
         try:
             amount = float(a.get("amount") or 0)
         except (TypeError, ValueError):
-            continue
-        if amount <= 0:
-            continue
+            amount = 0.0
 
-        buy_value = a.get("buy_value")
-        buy_currency = (a.get("buy_currency") or "toman").lower()
-        buy_basis = (a.get("buy_basis") or "per_unit").lower()
+        if amount <= 0 and action != "remove":
+            continue
 
         buy_price: float | None = None
-        if buy_value is not None:
-            try:
-                buy_price = float(buy_value)
-            except (TypeError, ValueError):
-                pass
-        if buy_price and buy_basis == "total" and amount > 0:
-            buy_price = buy_price / amount
-        if buy_price and buy_currency == "usd":
-            from app.cache import cache as _cache
-            usdt_data = _cache.get_stale("tabdeal:usdt")
-            rate = ((usdt_data or {}).get("usdt_irt") or {}).get("price") or 0
-            if rate > 0:
-                buy_price = buy_price * rate
+        if action != "remove":
+            buy_value = a.get("buy_value")
+            buy_currency = (a.get("buy_currency") or "toman").lower()
+            buy_basis = (a.get("buy_basis") or "per_unit").lower()
+
+            if buy_value is not None:
+                try:
+                    buy_price = float(buy_value)
+                except (TypeError, ValueError):
+                    pass
+            if buy_price and buy_basis == "total" and amount > 0:
+                buy_price = buy_price / amount
+            if buy_price and buy_currency == "usd":
+                from app.cache import cache as _cache
+                usdt_data = _cache.get_stale("tabdeal:usdt")
+                rate = ((usdt_data or {}).get("usdt_irt") or {}).get("price") or 0
+                if rate > 0:
+                    buy_price = buy_price * rate
 
         merged.append({
             "kind": kind,
@@ -191,8 +197,11 @@ def _parse_dify_assets(uid: str, raw_json: str) -> bool:
             "buy_price": buy_price,
             "purity": _DIFY_PURITY.get(kind_dify),
             "horizon": None,
+            "action": action,
         })
 
+    if not merged:
+        return False
     db.merge_assets(uid, merged)
     return True
 
