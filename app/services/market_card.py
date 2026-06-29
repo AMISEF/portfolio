@@ -611,45 +611,81 @@ def _chrome_bin() -> str:
     raise RuntimeError("Chromium binary not found (set CHROMIUM_BIN in .env)")
 
 
-# ابعاد طراحی (CSS px) و ضریب مقیاس برای خروجی 4K عمودی (۹:۱۶ ⇒ ۲۱۶۰×۳۸۴۰)
+# ابعاد طراحی (CSS px) و ضریب مقیاس برای خروجی عمودیِ ۹:۱۶.
+# ضریب پیش‌فرض ۳ ⇒ 4K (۲۱۶۰×۳۸۴۰). روی سرورِ کم‌رم می‌توان با MARKET_CARD_SCALE=2
+# آن را به ۱۴۴۰×۲۵۶۰ کاهش داد تا مصرف حافظهٔ کرومیوم کمتر شود.
 _W, _H, _SCALE = 720, 1280, 3
 # هِدلسِ کرومیوم ارتفاع viewport را حدود ۷۵px کمتر از window می‌گیرد؛ پنجره را
 # بلندتر می‌سازیم تا کلِ کارت (با فوتر) داخل viewport بیفتد و بعد دقیق برش می‌زنیم.
 _MARGIN = 120
+# فقط یک رِندر هم‌زمان (جلوگیری از فشار حافظه/کرش هنگام چند درخواست هم‌زمان).
+_RENDER_LOCK = asyncio.Lock()
+# مهلتِ سختِ رِندر (ثانیه)؛ اگر کرومیوم گیر کند، کشته می‌شود تا برنامه بلوکه نشود.
+_RENDER_TIMEOUT = 75.0
+
+
+def _render_scale() -> int:
+    try:
+        return max(1, min(4, int(os.environ.get("MARKET_CARD_SCALE", str(_SCALE)))))
+    except Exception:
+        return _SCALE
 
 
 async def render_png(out_path: Path) -> Path:
-    """HTML را می‌سازد و با Chromium بدون‌هد در ۴K عمودی (۲۱۶۰×۳۸۴۰، ۹:۱۶) اسکرین‌شات می‌گیرد."""
+    """HTML را می‌سازد و با Chromium بدون‌هد، تصویرِ عمودیِ ۹:۱۶ را اسکرین‌شات می‌گیرد.
+
+    رِندرها سریالی می‌شوند، با مهلتِ سخت و پروفایلِ موقتِ مجزا (تا قفلِ پروفایل یا
+    گیرکردن کرومیوم هیچ‌گاه برنامه را پایین نیاورد).
+    """
+    async with _RENDER_LOCK:
+        return await _render_once(out_path)
+
+
+async def _render_once(out_path: Path) -> Path:
+    scale = _render_scale()
     data = await gather()
     html = build_html(data)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False, encoding="utf-8") as f:
-        f.write(html)
-        html_path = f.name
-    raw = out_path.with_suffix(".raw.png")
+    workdir = tempfile.mkdtemp(prefix="mcard-")
+    html_path = os.path.join(workdir, "card.html")
+    raw = os.path.join(workdir, "raw.png")
+    Path(html_path).write_text(html, encoding="utf-8")
     try:
         cmd = [
             _chrome_bin(), "--headless=new", "--no-sandbox", "--disable-gpu",
-            "--hide-scrollbars", "--disable-dev-shm-usage", "--allow-file-access-from-files",
-            f"--force-device-scale-factor={_SCALE}",
+            "--disable-software-rasterizer", "--disable-dev-shm-usage", "--no-zygote",
+            "--disable-extensions", "--disable-background-networking",
+            "--hide-scrollbars", "--allow-file-access-from-files",
+            f"--user-data-dir={os.path.join(workdir, 'prof')}",
+            f"--crash-dumps-dir={workdir}",
+            f"--force-device-scale-factor={scale}",
             f"--window-size={_W},{_H + _MARGIN}",
-            f"--screenshot={raw}", "--virtual-time-budget=3000",
+            f"--screenshot={raw}", "--virtual-time-budget=4000",
             f"file://{html_path}",
         ]
         proc = await asyncio.create_subprocess_exec(
             *cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE)
-        _, stderr = await proc.communicate()
-        if not raw.exists() or raw.stat().st_size == 0:
-            raise RuntimeError(f"Chromium screenshot failed: {stderr.decode()[-500:]}")
-        # برش دقیق به ۲۱۶۰×۳۸۴۰ (حذفِ حاشیهٔ اضافیِ پایین)
-        from PIL import Image
-        img = Image.open(raw).convert("RGB")
-        img = img.crop((0, 0, _W * _SCALE, _H * _SCALE))
-        img.save(out_path, "PNG")
+        try:
+            _, stderr = await asyncio.wait_for(proc.communicate(), timeout=_RENDER_TIMEOUT)
+        except asyncio.TimeoutError:
+            for _kill in (proc.kill,):
+                try:
+                    _kill()
+                except Exception:  # noqa: BLE001
+                    pass
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=5)
+            except Exception:  # noqa: BLE001
+                pass
+            raise RuntimeError("Chromium render timed out")
+        if not os.path.exists(raw) or os.path.getsize(raw) == 0:
+            raise RuntimeError(f"Chromium screenshot failed: {(stderr or b'').decode(errors='ignore')[-400:]}")
+
+        def _crop() -> None:
+            from PIL import Image
+            with Image.open(raw) as im:
+                im.convert("RGB").crop((0, 0, _W * scale, _H * scale)).save(out_path, "PNG")
+        await asyncio.to_thread(_crop)
         return out_path
     finally:
-        for p in (html_path, raw):
-            try:
-                os.unlink(p)
-            except Exception:
-                pass
+        shutil.rmtree(workdir, ignore_errors=True)
