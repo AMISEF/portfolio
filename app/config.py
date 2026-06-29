@@ -96,10 +96,13 @@ class Settings(BaseSettings):
     # ---- پورتفولیو / مدیریت سرمایه ----
     # دیتابیس SQLite پروفایل ریسک و دارایی‌ها (طبق .gitignore کامیت نمی‌شود).
     portfolio_db_file: str = "data/portfolio.db"
-    # چت‌بات مدیریت سرمایه از پلتفرم Dify (سلف‌هاست؛ کلید در .env سرور).
+    # چت‌بات ثبت دارایی (asset_registration.yml) — کلید در .env با نام DIFY_API_KEY.
     # وب‌اپ روی /app است؛ API سرویس روی /v1. قابل بازنویسی با DIFY_API_BASE در .env.
     dify_api_base: str = "http://38.252.8.181/v1"
     dify_api_key: str = ""
+    # مشاور سبد (portfolio_advisor.yml) — ورک‌فلوِ سه سبد هفتگی/ماهانه/سالانه.
+    # کلید جداگانه در .env با نام DIFY_ADVISOR_KEY.
+    dify_advisor_key: str = ""
 
     # ---- مشاور سبد (ابزار تحلیل بازار برای ورک‌فلو Dify) ----
     # اگر تنظیم شود، اندپوینت /api/advisor/context هدر «X-Advisor-Key» را الزامی

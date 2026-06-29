@@ -15,7 +15,8 @@ API (نیاز به ورود — به‌جز instruments و risk/questions):
   POST   /api/portfolio/assets          ← افزودن دارایی
   PATCH  /api/portfolio/assets/{id}     ← ویرایش مقدار یا قیمت خرید
   DELETE /api/portfolio/assets/{id}     ← حذف دارایی
-  POST   /api/portfolio/chat            ← چت‌بات Dify
+  POST   /api/portfolio/chat            ← چت‌بات Dify (asset_registration)
+  POST   /api/portfolio/advisor         ← ورک‌فلو مشاور سبد (portfolio_advisor)
 """
 from __future__ import annotations
 
@@ -250,6 +251,63 @@ async def portfolio_chat(request: Request, payload: dict[str, Any] = Body(...)):
         "conversation_id": conv_id,
         "assets_saved": assets_saved,
     })
+
+
+@router.post("/api/portfolio/advisor")
+async def portfolio_advisor(request: Request):
+    """ورک‌فلوِ مشاور سبد (portfolio_advisor.yml): سه سبد هفتگی/ماهانه/سالانه."""
+    uid = _auth_uid(request)
+    if uid is None:
+        return _401()
+    if not settings.dify_advisor_key:
+        return JSONResponse({"error": "کلید DIFY_ADVISOR_KEY تنظیم نشده است"}, status_code=503)
+
+    db = _db()
+    profile = db.get_risk_profile(uid)
+    valued = await portfolio_valuation.value_portfolio(uid, db)
+    risk_pct = float((profile or {}).get("percent") or 50)
+
+    assets_json = json.dumps(
+        [
+            {
+                "kind": it.get("kind"), "symbol": it.get("symbol"),
+                "name": it.get("name"), "amount": it.get("amount"),
+                "buy_price": it.get("buy_price"),
+            }
+            for it in valued.get("items", [])
+        ],
+        ensure_ascii=False,
+    )
+
+    inputs = {
+        "uid": uid,
+        "risk_percent": round(risk_pct),
+        "risk_label": (profile or {}).get("label") or "",
+        "risk_desc": (profile or {}).get("description") or "",
+        "assets_json": assets_json,
+        "extra_symbols": "",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
+            r = await client.post(
+                f"{settings.dify_api_base}/workflows/run",
+                headers={
+                    "Authorization": f"Bearer {settings.dify_advisor_key}",
+                    "Content-Type": "application/json",
+                },
+                json={"inputs": inputs, "response_mode": "blocking", "user": uid},
+            )
+            r.raise_for_status()
+            data = r.json()
+    except httpx.HTTPStatusError as exc:
+        return JSONResponse({"error": f"خطای Dify: {exc.response.status_code}"}, status_code=502)
+    except Exception as exc:
+        return JSONResponse({"error": str(exc)}, status_code=502)
+
+    outputs = ((data.get("data") or {}).get("outputs")) or {}
+    advice = outputs.get("advice") or next((v for v in outputs.values() if isinstance(v, str) and v.strip()), "")
+    return JSONResponse({"ok": bool(advice), "advice": advice, "context": outputs.get("context", "")})
 
 
 # ───────────────────────── API: کاتالوگ ابزارها ─────────────────────────
