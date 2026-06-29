@@ -223,15 +223,36 @@ def clear_assets(uid: str) -> None:
 
 
 def merge_assets(uid: str, new_assets: list[dict[str, Any]]) -> None:
-    """ادغام دارایی‌های AI با دارایی‌های موجود — بدون پاک‌کردن دارایی‌های دستی."""
+    """ادغام دارایی‌های AI با دارایی‌های موجود.
+
+    هر دارایی می‌تواند action داشته باشد:
+      "add"    → مقدار را به موجودی اضافه کن (خرید جدید)
+      "remove" → دارایی را حذف کن (فروش)
+      "set"    → مقدار را جایگزین کن (پیش‌فرض)
+    """
     with _LOCK, _conn() as conn:
         for a in new_assets:
+            action = (a.get("action") or "set").lower()
             row = conn.execute(
-                "SELECT id FROM assets WHERE uid = ? AND kind = ? AND symbol = ? "
+                "SELECT id, amount FROM assets WHERE uid = ? AND kind = ? AND symbol = ? "
                 "AND (purity IS NULL AND ? IS NULL OR purity = ?)",
                 (uid, a["kind"], a["symbol"], a.get("purity"), a.get("purity")),
             ).fetchone()
-            if row:
+
+            if action == "remove":
+                if row:
+                    conn.execute("DELETE FROM assets WHERE id = ?", (row["id"],))
+                continue
+
+            if action == "add" and row:
+                new_amount = (row["amount"] or 0) + a["amount"]
+                sets, vals = ["amount = ?"], [new_amount]
+                if a.get("buy_price") is not None:
+                    sets.append("buy_price = ?")
+                    vals.append(a["buy_price"])
+                vals.append(row["id"])
+                conn.execute(f"UPDATE assets SET {', '.join(sets)} WHERE id = ?", vals)
+            elif row:
                 sets, vals = ["amount = ?"], [a["amount"]]
                 if a.get("buy_price") is not None:
                     sets.append("buy_price = ?")
