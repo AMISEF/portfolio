@@ -460,7 +460,12 @@ def build_html(data: dict[str, Any]) -> str:
         + stat("دامیننس ETH", _fa(f"{dom.get('eth', 0):.1f}") + "٪", dom.get("eth_change_24h"))
     )
 
-    logo = _file_url(_IMG / "logo-lockup.png")
+    # لوگو: اگر فایلِ سفیدِ شفافِ شما (logo-white.png) موجود باشد همان استفاده می‌شود؛
+    # وگرنه به logo-lockup.png برمی‌گردد. هیچ تغییری روی فایلِ لوگو اعمال نمی‌شود.
+    _logo = _IMG / "logo-white.png"
+    if not _logo.exists():
+        _logo = _IMG / "logo-lockup.png"
+    logo = _file_url(_logo)
     B = BRAND
 
     return f"""<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
@@ -529,7 +534,7 @@ html,body{{width:720px;height:1280px;font-family:Vaz,sans-serif;
 .row__ic img{{width:100%;height:100%;object-fit:cover}}
 .row__nm{{font-weight:800;font-size:17px;color:#fff;line-height:1.2}}
 .row__nm small{{display:block;font-weight:600;font-size:11.5px;color:{B['muted']}}}
-.row__l{{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;direction:ltr}}
+.row__l{{display:flex;flex-direction:row;align-items:center;gap:10px;direction:ltr}}
 .row__price{{font-weight:900;font-size:19px;color:#fff;letter-spacing:-.2px}}
 .row__price--rtl{{direction:rtl}}
 .chip{{font-weight:800;font-size:12.5px;padding:3px 9px;border-radius:8px}}
