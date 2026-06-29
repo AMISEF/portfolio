@@ -92,13 +92,9 @@ async def heatmap():
 
 @router.get("/coins")
 async def coins():
-    """۵ ارز برتر از توبیت (قیمت زندهٔ ۵ثانیه) + شِماتیک قیمت (اسپارک‌لاین، ۶۰ثانیه)."""
-    c, sp = await asyncio.gather(_safe(toobit.top_coins()), _safe(toobit.sparklines()))
-    data = c if isinstance(c, dict) and "error" not in c else mock_data.toobit_top_coins()
-    spmap = sp.get("sparklines", {}) if isinstance(sp, dict) and "error" not in sp else {}
-    for coin in data.get("coins", []):
-        coin["spark"] = spmap.get(coin["symbol"], [])
-    return data
+    """ارزهای برتر بازار از توبیت (قیمت و تغییر ۲۴ساعتهٔ زنده، هر ۵ ثانیه) برای نوار متحرک."""
+    c = await _safe(toobit.top_coins())
+    return c if isinstance(c, dict) and "error" not in c else mock_data.toobit_top_coins()
 
 
 @router.get("/prices")

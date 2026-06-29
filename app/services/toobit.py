@@ -19,8 +19,9 @@ import httpx
 from app.config import settings
 from app.services import mock_data
 
-# ارزهای اصلی بازار به ترتیب نمایش (نماد بدون USDT) — مطابق CoinMarketCap
-TOP_SYMBOLS = ["BTC", "ETH", "BNB", "SOL", "XRP"]
+# ارزهای برتر بازار به ترتیب نمایش (نماد بدون USDT) — برای نوار متحرکِ خانه.
+# فهرستِ بزرگ‌تر تا نوار متحرک پُرتر و شبیه ویجت CryptoRank باشد.
+TOP_SYMBOLS = ["BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "TRX", "AVAX", "LINK", "DOT", "LTC"]
 
 
 async def get_top_coins() -> dict[str, Any]:
