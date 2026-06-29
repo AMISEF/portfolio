@@ -338,3 +338,34 @@ async def export_users(request: Request, payload: dict[str, Any] = Body(...)):
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers=headers,
     )
+
+
+# ───────────────────────── تصویر روزانهٔ «نمای کلی بازار» ─────────────────────────
+@router.post("/api/admin/market-card/send")
+async def market_card_send(request: Request):
+    """ساخت فوریِ تصویر نمای کلی بازار و ارسالِ نمونه به کانال (فقط ادمین)."""
+    u = current_user(request)
+    if not _is_admin(u):
+        return _deny()
+    from app.services import market_card_job
+    try:
+        res = await market_card_job.generate_and_send()
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "error": f"{type(e).__name__}: {e}"}, status_code=500)
+    return JSONResponse(res, status_code=200 if res.get("ok") else 502)
+
+
+@router.get("/api/admin/market-card/preview.png")
+async def market_card_preview(request: Request):
+    """پیش‌نمایش تصویر در مرورگر بدون ارسال به کانال (فقط ادمین)."""
+    u = current_user(request)
+    if not _is_admin(u):
+        return _deny()
+    from pathlib import Path
+    from app.services import market_card
+    out = Path("data/market_card/preview.png")
+    try:
+        await market_card.render_png(out)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "error": f"{type(e).__name__}: {e}"}, status_code=500)
+    return Response(content=out.read_bytes(), media_type="image/png")

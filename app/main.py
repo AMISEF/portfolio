@@ -12,7 +12,7 @@ import asyncio
 from app import db
 from app.config import settings
 from app.routers import admin, advisor, auth, market, pages, portfolio
-from app.services import telegram_signals
+from app.services import market_card_job, telegram_signals
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
@@ -37,6 +37,8 @@ async def _startup() -> None:
                 pass
             telegram_signals.purge_expired()
         asyncio.create_task(_init_signals())
+        # زمان‌بندِ روزانهٔ تصویر «نمای کلی بازار» (هر روز ۱۱:۰۰ تهران).
+        asyncio.create_task(market_card_job.daily_loop())
 
 
 @app.get("/health")

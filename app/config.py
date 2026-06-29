@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     toobit_rsi_ttl: int = 300          # میانگین RSI بازار (هر ۵ دقیقه)
     toobit_gainers_count: int = 5
     toobit_swap_ttl: int = 5           # قیمت زندهٔ SWAP کالاها (طلا/نقره/نفت) هر ۵ ثانیه
+    # بیشترین رشد/افت (Gainers / Top losers) برای تصویر روزانهٔ بازار
+    toobit_gl_count: int = 3           # تعداد در هر فهرست (مطابق UI توبیت)
+    toobit_gl_min_qv: float = 50_000   # حداقل حجم دلاری ۲۴ساعته برای حذف جفت‌های کم‌نقدینگی
+    toobit_gl_ttl: int = 300           # کش ۵ دقیقه
 
     # ---- CoinMarketCap (شاخص‌های کلان + فصل آلت‌کوین) ----
     # کلید از متغیر محیطی CMC_API_KEY خوانده می‌شود.

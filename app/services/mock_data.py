@@ -98,6 +98,22 @@ def toobit_oil() -> dict:
     return {"source": "sample", "oil": {"name": "نفت خام", "sub": "بشکه", "price": 72.94, "change_24h": 1.21}}
 
 
+def toobit_gainers_losers() -> dict:
+    """بیشترین رشد/افت نمونه (هم‌شکل خروجی توبیت)."""
+    gainers = [
+        ("TAC", "TACUSDT", 0.05915, 166.20),
+        ("SYN", "SYNUSDT", 0.50383, 43.59),
+        ("UB", "UBUSDT", 0.11861, 42.01),
+    ]
+    losers = [
+        ("ESPORTS", "ESPORTSUSDT", 0.03692, -27.12),
+        ("GUA", "GUAUSDT", 0.34428, -20.65),
+        ("MANTA", "MANTAUSDT", 0.07584, -18.57),
+    ]
+    mk = lambda r: [{"symbol": s, "pair": p, "price": pr, "change_24h": ch} for (s, p, pr, ch) in r]
+    return {"source": "sample", "gainers": mk(gainers), "losers": mk(losers)}
+
+
 def toobit_swap_commodities() -> dict:
     """کالاهای جهانی (SWAP) — طلا/نقره/نفت از توبیت."""
     return {"source": "sample", "commodities": {

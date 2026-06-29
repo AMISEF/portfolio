@@ -240,6 +240,47 @@ async def heatmap() -> dict[str, Any]:
     return await cached("toobit:heatmap", settings.toobit_heatmap_ttl, get_heatmap, mock_data.toobit_heatmap)
 
 
+# ---- بیشترین رشد / بیشترین افت (Gainers / Top losers) به‌سبک توبیت ----
+async def get_gainers_losers() -> dict[str, Any]:
+    """بیشترین رشد و بیشترین افتِ ۲۴ساعتهٔ جفت‌های USDT (بدون استیبل‌کوین).
+
+    برای حذف جفت‌های کم‌نقدینگی، حداقل حجم دلاری toobit_gl_min_qv لازم است.
+    """
+    timeout = httpx.Timeout(settings.http_timeout)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        resp = await client.get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
+        resp.raise_for_status()
+        data = resp.json()
+
+    rows = []
+    for t in (data if isinstance(data, list) else []):
+        sym = (t.get("s") or t.get("symbol") or "").upper()
+        if not sym.endswith("USDT"):
+            continue
+        base = sym[:-4]
+        if base in _STABLES or not base:
+            continue
+        price = _f(t, "c", "lastPrice")
+        qv = _f(t, "qv", "quoteVolume", "q")
+        if price <= 0 or qv < settings.toobit_gl_min_qv:
+            continue
+        rows.append({"symbol": base, "pair": sym, "price": price,
+                     "change_24h": round(_pct(t), 2), "volume_24h": qv})
+
+    if not rows:
+        raise RuntimeError("Toobit: no usable tickers for gainers/losers")
+    n = settings.toobit_gl_count
+    gainers = sorted(rows, key=lambda r: r["change_24h"], reverse=True)[:n]
+    losers = sorted(rows, key=lambda r: r["change_24h"])[:n]
+    return {"source": "live", "gainers": gainers, "losers": losers}
+
+
+async def gainers_losers() -> dict[str, Any]:
+    from app.cache import cached
+    return await cached("toobit:gainers_losers", settings.toobit_gl_ttl,
+                        get_gainers_losers, mock_data.toobit_gainers_losers)
+
+
 # ---- اسپارک‌لاین (شِماتیک قیمت) ۵ ارز برتر از کندل‌های توبیت ----
 async def _closes(client: httpx.AsyncClient, sym: str, interval: str, limit: int) -> list[float]:
     r = await client.get(f"{settings.toobit_base_url}/quote/v1/klines",
