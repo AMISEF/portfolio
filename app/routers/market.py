@@ -254,6 +254,7 @@ async def debug():
     raw_calls = [
         ("tabdeal_usdtirt", _raw_get(f"{settings.tabdeal_base_url}/r/api/v1/depth/", {"symbol": "USDTIRT"})),
         ("toobit_ticker24", _raw_get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")),
+        ("toobit_contract24", _raw_get(f"{settings.toobit_base_url}/quote/v1/contract/ticker/24hr")),
         ("fng", _raw_get(settings.fng_base_url, {"limit": "1"})),
     ]
     if settings.sourcearena_token:
@@ -267,6 +268,7 @@ async def debug():
         _safe(toobit.top_coins()),
         _safe(toobit.oil()),
         _safe(toobit.heatmap()),
+        _safe(toobit.swap_commodities()),
         _safe(coinmarketcap.macro()),
         _safe(coinmarketcap.altseason()),
         _safe(coinmarketcap.fng()),
@@ -281,12 +283,13 @@ async def debug():
     out["parsed"]["toobit_oil"] = results[3]
     hm = results[4]
     out["parsed"]["toobit_heatmap"] = hm if "error" in hm else {"source": hm.get("source"), "top5": hm.get("heatmap", [])[:5]}
-    out["parsed"]["cmc_macro"] = results[5]
-    out["parsed"]["cmc_altseason"] = results[6]
-    out["parsed"]["fear_greed"] = results[7]
-    out["parsed"]["commodities"] = results[8]
+    out["parsed"]["toobit_swap_commodities"] = results[5]
+    out["parsed"]["cmc_macro"] = results[6]
+    out["parsed"]["cmc_altseason"] = results[7]
+    out["parsed"]["fear_greed"] = results[8]
+    out["parsed"]["commodities"] = results[9]
 
-    for (name, _), res in zip(raw_calls, results[9:]):
+    for (name, _), res in zip(raw_calls, results[10:]):
         out["raw"][name] = res
 
     # نقشهٔ حرارتی CMC (دسته/مارکت‌کپ/تغییر چنددوره‌ای) — خلاصهٔ پارس‌شده
@@ -302,5 +305,13 @@ async def debug():
         sample = [t for t in tb if isinstance(t, dict) and
                   (t.get("s", t.get("symbol", "")) or "").upper() in ("BTCUSDT", "ETHUSDT", "XRPUSDT", "SOLUSDT")]
         out["raw"]["toobit_ticker24"]["json"] = {"count": len(tb), "sample": sample[:6]}
+
+    # کوتاه‌کردن تیکر فیوچرز و نمایش سه نماد کالا (طلا/نقره/نفت برنت)
+    tc = out["raw"].get("toobit_contract24", {}).get("json")
+    if isinstance(tc, list):
+        wanted = {"XAU-SWAP-USDT", "XAG-SWAP-USDT", "XBR-SWAP-USDT"}
+        sample = [t for t in tc if isinstance(t, dict) and
+                  (t.get("s", t.get("symbol", "")) or "").upper() in wanted]
+        out["raw"]["toobit_contract24"]["json"] = {"count": len(tc), "sample": sample}
 
     return out

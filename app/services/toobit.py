@@ -122,39 +122,40 @@ async def oil() -> dict[str, Any]:
     return await cached("toobit:oil", settings.toobit_oil_ttl, get_oil, mock_data.toobit_oil)
 
 
-# ---- کالاهای زنده توبیت: انس طلا / نقره / نفت برنت ----
-# نمادهای واقعی توبیت (تأییدشده): XAUUSDT، XAGUSDT، OILBRENTUSDT
-_COMMODITY_MAP = [
-    ("XAUUSDT",      "XAU", "انس طلا",    "اونس"),
-    ("XAGUSDT",      "XAG", "نقره جهانی", "اونس"),
-    ("OILBRENTUSDT", "OIL", "نفت برنت",  "بشکه"),
+# ---- کالاهای زندهٔ فیوچرز توبیت (USDT-M): انس طلا / نقره / نفت برنت ----
+# نمادهای قرارداد دائمی (perpetual swap) — مطابق مستند رسمی فیوچرز توبیت.
+# اندپوینت ویژهٔ فیوچرز: /quote/v1/contract/ticker/24hr (با /contract/) و نه تیکر اسپات.
+_SWAP_MAP = [
+    ("XAU-SWAP-USDT", "XAU", "انس طلا",    "اونس"),
+    ("XAG-SWAP-USDT", "XAG", "نقره جهانی", "اونس"),
+    ("XBR-SWAP-USDT", "OIL", "نفت برنت",   "بشکه"),
 ]
-# نمادهای جایگزین نفت (به ترتیب اولویت) در صورتی که OILBRENTUSDT یافت نشد
-_OIL_FALLBACKS = ["OILUSDT", "USOILUSDT", "WTIUSDT", "BRENTUSDT", "UKOILUSDT"]
 
 
 async def get_swap_commodities() -> dict[str, Any]:
-    """قیمت و تغییر ۲۴ساعتهٔ انس طلا/نقره/نفت از تیکر ۲۴ساعتهٔ توبیت (هر ۵ ثانیه)."""
+    """قیمت و تغییر ۲۴ساعتهٔ انس طلا/نقره/نفت برنت از تیکر ۲۴ساعتهٔ *فیوچرز* توبیت.
+
+    نمادها: XAU-SWAP-USDT، XAG-SWAP-USDT، XBR-SWAP-USDT (قرارداد دائمی USDT-M).
+    اندپوینت قرارداد، فهرستی از تیکرها با همان فیلدهای اسپات برمی‌گرداند
+    (s=نماد، c=قیمت، pcp=درصد تغییر کسری، pc=تغییر مطلق).
+    """
     timeout = httpx.Timeout(settings.http_timeout)
     async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
+        resp = await client.get(f"{settings.toobit_base_url}/quote/v1/contract/ticker/24hr")
         resp.raise_for_status()
         data = resp.json()
 
+    # پاسخ ممکن است فهرست باشد یا (هنگام نماد منفرد) یک شیء؛ هر دو را پوشش بده.
+    rows = data if isinstance(data, list) else ([data] if isinstance(data, dict) else [])
     by_sym: dict[str, dict] = {}
-    for t in (data if isinstance(data, list) else []):
+    for t in rows:
         s = (t.get("s") or t.get("symbol") or "").upper()
         if s:
             by_sym[s] = t
 
     commodities: dict[str, Any] = {}
-    for sym, key, name, sub in _COMMODITY_MAP:
+    for sym, key, name, sub in _SWAP_MAP:
         t = by_sym.get(sym)
-        if not t and key == "OIL":
-            for fb in _OIL_FALLBACKS:
-                t = by_sym.get(fb)
-                if t:
-                    break
         if not t:
             continue
         price = _f(t, "c", "lastPrice", "close")
@@ -163,7 +164,7 @@ async def get_swap_commodities() -> dict[str, Any]:
             commodities[key] = {"name": name, "sub": sub, "price": price, "change_24h": ch}
 
     if not commodities:
-        raise RuntimeError("Toobit: no commodity tickers found (XAU/XAG/OIL)")
+        raise RuntimeError("Toobit futures: no commodity tickers (XAU/XAG/XBR-SWAP-USDT)")
     return {"source": "live", "commodities": commodities}
 
 

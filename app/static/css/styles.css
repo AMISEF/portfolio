@@ -382,28 +382,47 @@ a { color: inherit; text-decoration: none; }
   font-weight: 800; font-size: .76rem; padding: 6px 10px; cursor: pointer; font-family: var(--font); }
 .hm-select:focus { outline: none; border-color: var(--brand); }
 
-.heatmap { position: relative; width: 100%; overflow: hidden; border-radius: 10px;
+.heatmap { position: relative; width: 100%; overflow: hidden; border-radius: 12px;
   background: var(--bg, #0b1220); }
-.hm-cat { position: absolute; overflow: hidden; }
-.hm-cat__lbl { position: absolute; top: 0; left: 0; right: 0; height: 16px; padding: 0 7px;
-  font-size: .62rem; font-weight: 800; letter-spacing: .2px; line-height: 16px;
+/* کادر هر دستهٔ بازار — مرز ظریف و برچسب در گوشهٔ بالا (مثل CryptoRank) */
+.hm-cat { position: absolute; overflow: hidden; border: 1px solid rgba(148,163,184,.22);
+  border-radius: 8px; background: rgba(148,163,184,.04); }
+.hm-cat__lbl { position: absolute; top: 0; left: 0; right: 0; height: 17px; padding: 0 8px;
+  font-size: .64rem; font-weight: 800; letter-spacing: .3px; line-height: 17px; text-transform: capitalize;
   color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 2; }
-.hm { position: absolute; box-sizing: border-box; border: 2px solid var(--bg, #0b1220); border-radius: 5px;
+.hm { position: absolute; box-sizing: border-box; border: 1.5px solid var(--bg, #0b1220); border-radius: 6px;
   overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  cursor: default; line-height: 1.06; text-align: center; padding: 1px;
-  transition: filter .12s ease, transform .12s ease; }
-.hm:hover { filter: brightness(1.12); z-index: 5; transform: scale(1.012);
-  box-shadow: 0 4px 16px rgba(0,0,0,.35); outline: 1.5px solid rgba(255,255,255,.65); }
-.hm__sym { font-weight: 900; letter-spacing: -.3px; text-shadow: 0 1px 2px rgba(0,0,0,.18); }
-.hm__pct { font-weight: 800; font-family: var(--font-mono); opacity: .96; margin-top: 1px; }
-.hm__nm { font-size: 9px; opacity: .78; font-family: var(--font-mono); margin-top: 2px; }
+  cursor: pointer; line-height: 1.06; text-align: center; padding: 1px;
+  transition: filter .12s ease, transform .12s ease, box-shadow .12s ease; }
+.hm:hover { filter: brightness(1.13); z-index: 6; transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(0,0,0,.4); outline: 1.5px solid rgba(255,255,255,.7); }
+.hm__sym { font-weight: 900; letter-spacing: -.3px; text-shadow: 0 1px 2px rgba(0,0,0,.2); }
+.hm__pct { font-weight: 800; font-family: var(--font-mono); opacity: .97; margin-top: 1px; }
+.hm__nm { font-size: 9px; opacity: .8; font-family: var(--font-mono); margin-top: 2px; }
 
-.hm-legend { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap;
-  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); font-size: .68rem; color: var(--text-soft); }
-.hm-leg { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); }
-.hm-leg i { width: 13px; height: 13px; border-radius: 3px; display: inline-block; }
-.heatmap-legend__src { color: var(--text-dim); }
-@media (max-width: 600px) { .hm-controls { gap: 7px; } .hm-seg button { padding: 5px 8px; font-size: .72rem; } }
+/* تول‌تیپ شناورِ دسته — کارت تیره با فهرست ارزها */
+.hm-tip { position: absolute; z-index: 20; min-width: 188px; max-width: 240px; pointer-events: none;
+  background: rgba(15,23,42,.97); border: 1px solid rgba(148,163,184,.28); border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.5); padding: 8px 9px; backdrop-filter: blur(6px);
+  font-family: var(--font); direction: ltr; }
+.hm-tip__head { font-size: .74rem; font-weight: 800; color: #f1f5f9; padding-bottom: 6px; margin-bottom: 5px;
+  border-bottom: 1px solid rgba(148,163,184,.2); }
+.hm-tip__row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center;
+  padding: 2px 4px; border-radius: 5px; font-size: .72rem; }
+.hm-tip__row.is-hi { background: rgba(99,179,237,.16); }
+.hm-tip__sym { font-weight: 800; color: #e2e8f0; }
+.hm-tip__price { font-family: var(--font-mono); color: #cbd5e1; }
+.hm-tip__ch { font-family: var(--font-mono); font-weight: 700; min-width: 52px; text-align: right; color: #94a3b8; }
+.hm-tip__ch.up { color: #16C784; }
+.hm-tip__ch.down { color: #EA3943; }
+
+/* راهنمای رنگ — قرص‌های رنگی با مقدار درون آن‌ها (سبک CryptoRank)، چسبیده به راست */
+.hm-legend { display: flex; gap: 4px; justify-content: flex-end; align-items: center; flex-wrap: wrap;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+.hm-leg { font-family: var(--font-mono); font-size: .68rem; font-weight: 800; padding: 3px 9px;
+  border-radius: 7px; min-width: 38px; text-align: center; }
+@media (max-width: 600px) { .hm-controls { gap: 7px; } .hm-seg button { padding: 5px 8px; font-size: .72rem; }
+  .hm-legend { justify-content: center; } .hm-leg { font-size: .62rem; padding: 2px 6px; min-width: 32px; } }
 
 /* ==========================================================================
    گیج ترس و طمع
