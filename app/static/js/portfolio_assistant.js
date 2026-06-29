@@ -798,9 +798,11 @@
         "</div>";
     }
 
-    function renderText(t) {
+    function renderText(t, err) {
       if (!t) {
-        $("algoText").innerHTML = '<p class="algo-empty">در حال حاضر امکان دریافت پیشنهاد نیست. لطفاً کمی بعد دوباره تلاش کنید.</p>';
+        let msg = '<p class="algo-empty">در حال حاضر امکان دریافت پیشنهاد نیست. لطفاً کمی بعد دوباره تلاش کنید.</p>';
+        if (err) msg += '<p class="algo-empty algo-empty--detail">جزئیات خطا: ' + esc(String(err)) + "</p>";
+        $("algoText").innerHTML = msg;
         return;
       }
       const html = esc(t).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br>");
@@ -815,9 +817,11 @@
         });
         const d = await r.json().catch(() => ({}));
         if (r.status === 403 && d.sub_required) { show(elLocked); return; }
-        renderChips(d); renderText(r.ok ? d.text : ""); renderChannel(d.channel);
+        renderChips(d);
+        renderText(d.ok ? d.text : "", d.error);
+        renderChannel(d.channel);
         show(elResult);
-      } catch (e) { renderText(""); renderChannel(null); show(elResult); }
+      } catch (e) { renderText("", e.message); renderChannel(null); show(elResult); }
     }
 
     $("algoRun").addEventListener("click", run);
