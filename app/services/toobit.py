@@ -122,44 +122,48 @@ async def oil() -> dict[str, Any]:
     return await cached("toobit:oil", settings.toobit_oil_ttl, get_oil, mock_data.toobit_oil)
 
 
-# ---- کالاهای SWAP زنده: انس طلا / نقره / نفت برنت ----
-# نمادهای قراردادِ دائمی (perpetual) توبیت: XAU-SWAP-USDT، XAG-SWAP-USDT، XBR-SWAP-USDT
-_SWAP_MAP = {
-    "XAU-SWAP-USDT": ("XAU", "انس طلا", "اونس"),
-    "XAG-SWAP-USDT": ("XAG", "نقره جهانی", "اونس"),
-    "XBR-SWAP-USDT": ("OIL", "نفت برنت", "بشکه"),
-}
+# ---- کالاهای زنده توبیت: انس طلا / نقره / نفت برنت ----
+# نمادهای واقعی توبیت (تأییدشده): XAUUSDT، XAGUSDT، OILBRENTUSDT
+_COMMODITY_MAP = [
+    ("XAUUSDT",      "XAU", "انس طلا",    "اونس"),
+    ("XAGUSDT",      "XAG", "نقره جهانی", "اونس"),
+    ("OILBRENTUSDT", "OIL", "نفت برنت",  "بشکه"),
+]
+# نمادهای جایگزین نفت (به ترتیب اولویت) در صورتی که OILBRENTUSDT یافت نشد
+_OIL_FALLBACKS = ["OILUSDT", "USOILUSDT", "WTIUSDT", "BRENTUSDT", "UKOILUSDT"]
 
 
 async def get_swap_commodities() -> dict[str, Any]:
-    """قیمت و تغییر ۲۴ساعتهٔ انس طلا/نقره/نفت از اندپوینت SWAP توبیت (هر ۵ ثانیه)."""
+    """قیمت و تغییر ۲۴ساعتهٔ انس طلا/نقره/نفت از تیکر ۲۴ساعتهٔ توبیت (هر ۵ ثانیه)."""
     timeout = httpx.Timeout(settings.http_timeout)
     async with httpx.AsyncClient(timeout=timeout) as client:
-        resp = await client.get(f"{settings.toobit_base_url}/swap/v2/quote/ticker/24hr")
+        resp = await client.get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
         resp.raise_for_status()
         data = resp.json()
 
-    tickers = data if isinstance(data, list) else (
-        data.get("data") or data.get("result") or [] if isinstance(data, dict) else []
-    )
     by_sym: dict[str, dict] = {}
-    for t in tickers:
+    for t in (data if isinstance(data, list) else []):
         s = (t.get("s") or t.get("symbol") or "").upper()
         if s:
             by_sym[s] = t
 
     commodities: dict[str, Any] = {}
-    for swap_sym, (key, name, sub) in _SWAP_MAP.items():
-        t = by_sym.get(swap_sym.upper())
+    for sym, key, name, sub in _COMMODITY_MAP:
+        t = by_sym.get(sym)
+        if not t and key == "OIL":
+            for fb in _OIL_FALLBACKS:
+                t = by_sym.get(fb)
+                if t:
+                    break
         if not t:
             continue
-        price = _f(t, "c", "lastPrice", "close", "mp", "markPrice")
+        price = _f(t, "c", "lastPrice", "close")
         ch = round(_pct(t), 2)
         if price > 0:
             commodities[key] = {"name": name, "sub": sub, "price": price, "change_24h": ch}
 
     if not commodities:
-        raise RuntimeError("Toobit SWAP: no commodity tickers found")
+        raise RuntimeError("Toobit: no commodity tickers found (XAU/XAG/OIL)")
     return {"source": "live", "commodities": commodities}
 
 
