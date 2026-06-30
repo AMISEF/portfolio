@@ -156,6 +156,16 @@ def _font_css() -> str:
     weights = {"Regular": 400, "Medium": 500, "SemiBold": 600,
                "Bold": 700, "ExtraBold": 800, "Black": 900}
     out = []
+    # فونتِ اصلی: «دانا» (Dana) — اگر فایل‌های Dana-*.woff2 در app/static/fonts باشند
+    # استفاده می‌شوند؛ در غیر این صورت روی Vazirmatn برمی‌گردد (fallback). برای دریافت
+    # روی سرور: راهنمای پایین فایل (یا دانلود از github.com/rastikerdar/dana-font).
+    dana_w = {"Regular": 400, "Medium": 500, "DemiBold": 600,
+              "Bold": 700, "ExtraBold": 800, "Black": 900}
+    for name, w in dana_w.items():
+        uri = _data_uri(_FONTS / f"Dana-{name}.woff2", "font/woff2")
+        if uri:
+            out.append(f"@font-face{{font-family:Dana;src:url({uri}) format('woff2');"
+                       f"font-weight:{w};font-style:normal;font-display:block}}")
     for name, w in weights.items():
         uri = _data_uri(_FONTS / f"Vazirmatn-{name}.woff2", "font/woff2")
         if uri:
@@ -370,6 +380,22 @@ _BG_SVG = """<svg viewBox="0 0 720 1280" xmlns="http://www.w3.org/2000/svg" pres
 </svg>"""
 
 
+# کندل‌استیکِ پس‌زمینهٔ باکس Gainers/Top losers (سبزِ صعودی / قرمزِ نزولی).
+def _candles_svg(color: str, ys: list[int]) -> str:
+    parts = []
+    for i, cy in enumerate(ys):
+        cx = 24 + i * 42
+        parts.append(f'<line x1="{cx}" y1="{cy - 48}" x2="{cx}" y2="{cy + 48}"/>')
+        parts.append(f'<rect x="{cx - 13}" y="{cy - 26}" width="26" height="52" rx="3"/>')
+    return (f'<svg class="gl__cbg" viewBox="0 0 260 300" preserveAspectRatio="xMidYMid slice" '
+            f'xmlns="http://www.w3.org/2000/svg"><g stroke="{color}" stroke-width="3.4" '
+            f'fill="{color}" opacity="0.16">' + "".join(parts) + "</g></svg>")
+
+
+_CBG_UP = _candles_svg("#16C784", [226, 200, 178, 150, 122, 96])    # صعودی (Gainers)
+_CBG_DOWN = _candles_svg("#EA3943", [96, 122, 150, 178, 200, 226])  # نزولی (Top losers)
+
+
 # ───────────────────────── ساخت HTML ─────────────────────────
 def _chip(ch: float) -> str:
     cls = "up" if ch > 0 else ("down" if ch < 0 else "flat")
@@ -388,15 +414,20 @@ def _coin_box(g: dict, icons: dict) -> str:
     )
 
 
-def _key_row(key: str, name: str, sub: str, price_html: str, ch: float,
+def _key_row(key: str, name: str, price_html: str, ch: float,
              rtl_price: bool = False) -> str:
-    pc = "row__price row__price--rtl" if rtl_price else "row__price"
+    """ردیفِ قیمتِ کلیدی: آیکون در گوشهٔ چپ؛ سمتِ راست به‌ترتیبِ عمودی نام، قیمت،
+    و درصد تغییرِ ۲۴ساعته (بدون زیرنویس)."""
+    pc = "kr__price kr__price--rtl" if rtl_price else "kr__price"
+    cls = "up" if ch >= 0 else "down"
     return (
-        '<div class="row glass">'
-        '<div class="row__r">' + _metal_icon(key, "row__ic") +
-        f'<span class="row__nm">{name}<small>{sub}</small></span></div>'
-        '<div class="row__l">'
-        f'<span class="{pc}">{price_html}</span>' + _chip(ch) + '</div></div>'
+        '<div class="kr glass">'
+        + _metal_icon(key, "kr__ic")
+        + '<div class="kr__txt">'
+        + f'<span class="kr__nm">{name}</span>'
+        + f'<span class="{pc}">{price_html}</span>'
+        + f'<span class="kr__chg {cls}">{pct_fa(ch)}</span>'
+        + '</div></div>'
     )
 
 
@@ -416,8 +447,9 @@ def _gl_row(it: dict, icons: dict) -> str:
 
 def _gl_box(title: str, icon_svg: str, rows: list[dict], kind: str, icons: dict) -> str:
     body = "".join(_gl_row(r, icons) for r in rows[:settings.toobit_gl_count])
+    cbg = _CBG_UP if kind == "up" else _CBG_DOWN
     return (
-        f'<div class="gl glass gl--{kind}">'
+        f'<div class="gl glass gl--{kind}">{cbg}'
         f'<div class="gl__hd"><span class="gl__hi">{icon_svg}</span>'
         f'<span class="gl__t">{title}</span></div>{body}</div>'
     )
@@ -434,31 +466,15 @@ def build_html(data: dict[str, Any]) -> str:
     comm = pr.get("commodities") or {}
     xau, xag, oil = comm.get("XAU") or {}, comm.get("XAG") or {}, comm.get("OIL") or {}
     key_rows = (
-        _key_row("usdt", "تتر / تومان", "تومان", toman_fa(usdt.get("price")), usdt.get("change_24h", 0), rtl_price=True)
-        + _key_row("g18", "طلای ۱۸ عیار", "هر گرم", toman_fa(g18.get("price")), g18.get("change_24h", 0), rtl_price=True)
-        + _key_row("XAU", "طلای جهانی", "اونس", usd_fa(xau.get("price")), xau.get("change_24h", 0))
-        + _key_row("XAG", "نقره", "اونس", usd_fa(xag.get("price")), xag.get("change_24h", 0))
-        + _key_row("OIL", "نفت خام", "بشکه", usd_fa(oil.get("price")), oil.get("change_24h", 0))
+        _key_row("usdt", "تتر / تومان", toman_fa(usdt.get("price")), usdt.get("change_24h", 0), rtl_price=True)
+        + _key_row("g18", "طلای ۱۸ عیار", toman_fa(g18.get("price")), g18.get("change_24h", 0), rtl_price=True)
+        + _key_row("XAU", "طلای جهانی", usd_fa(xau.get("price")), xau.get("change_24h", 0))
+        + _key_row("XAG", "نقره", usd_fa(xag.get("price")), xag.get("change_24h", 0))
+        + _key_row("OIL", "نفت خام", usd_fa(oil.get("price")), oil.get("change_24h", 0))
     )
 
     gl_html = (_gl_box("Gainers", _ICON_GAIN, gl.get("gainers", []), "up", icons)
                + _gl_box("Top losers", _ICON_LOSE, gl.get("losers", []), "down", icons))
-
-    mc, vol, dom = mac.get("market_cap") or {}, mac.get("volume_24h") or {}, mac.get("dominance") or {}
-
-    def stat(label, val, ch=None):
-        c = ""
-        if ch is not None and ch != 0:
-            c = f'<span class="st__c {"up" if ch > 0 else "down"}">{pct_fa(ch)}</span>'
-        return (f'<span class="st"><span class="st__l">{label}</span>'
-                f'<span class="st__v">{val}</span>{c}</span>')
-
-    stats = (
-        stat("ارزش بازار", big_fa(mc.get("value")), mc.get("change_24h"))
-        + stat("حجم ۲۴س", big_fa(vol.get("value")), vol.get("change_24h"))
-        + stat("دامیننس BTC", _fa(f"{dom.get('btc', 0):.1f}") + "٪", dom.get("btc_change_24h"))
-        + stat("دامیننس ETH", _fa(f"{dom.get('eth', 0):.1f}") + "٪", dom.get("eth_change_24h"))
-    )
 
     # لوگو: اگر فایلِ سفیدِ شفافِ شما (logo-white.png) موجود باشد همان استفاده می‌شود؛
     # وگرنه به logo-lockup.png برمی‌گردد. هیچ تغییری روی فایلِ لوگو اعمال نمی‌شود.
@@ -467,12 +483,18 @@ def build_html(data: dict[str, Any]) -> str:
         _logo = _IMG / "logo-lockup.png"
     logo = _file_url(_logo)
     B = BRAND
+    # ── ناحیهٔ امنِ استوریِ اینستاگرام ──────────────────────────────────────────
+    # نوارِ شاخص‌های کلانِ بالا حذف شد و سرتیترِ «نمای کلی بازار» پایین‌تر آمد تا
+    # بالای تصویر کاملاً خالی بماند (جای آیدی/لوگوی پیجِ اینستاگرام). پایین هم برای
+    # نوارِ کامنت/ریپلای خالی می‌ماند. مقادیر برحسب px طراحی (۷۲۰×۱۲۸۰) ⇒ ×۳ در 4K.
+    PAD_TOP = 120   # فضای خالیِ بالای استوری (هدر از این پایین‌تر شروع می‌شود)
+    PAD_BOT = 128   # فضای خالیِ پایینِ استوری (نوارِ کامنت/ریپلای)
 
     return f"""<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
 <style>
 {_font_css()}
 *{{margin:0;padding:0;box-sizing:border-box}}
-html,body{{width:720px;height:1280px;font-family:Vaz,sans-serif;
+html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
   background:{B['bg0']};color:{B['ink']};-webkit-font-smoothing:antialiased}}
 .card{{width:720px;height:1280px;overflow:hidden;position:relative;
   background:
@@ -482,106 +504,99 @@ html,body{{width:720px;height:1280px;font-family:Vaz,sans-serif;
 /* لایهٔ تزئینیِ پس‌زمینه (چارت/هوش مصنوعی/کرهٔ زمین) */
 .bg{{position:absolute;inset:0;z-index:0;pointer-events:none}}
 .bg svg{{width:100%;height:100%;display:block}}
-.hd,.stats,.body,.ft{{z-index:2}}
+.hd,.body,.ft{{z-index:2}}
 /* جلوهٔ شیشه‌ای (Glassmorphism) — شفاف‌تر تا پس‌زمینه کاملاً از پشتِ شیشه دیده شود */
 .glass{{background:rgba(255,255,255,.022);
   backdrop-filter:blur(9px) saturate(140%);-webkit-backdrop-filter:blur(9px) saturate(140%);
   border:1px solid rgba(255,255,255,.20);
   box-shadow:0 10px 30px -20px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.15)}}
-/* هدر: عنوان راست، تاریخ چپ */
-.hd{{position:absolute;top:20px;left:24px;right:24px;
+.up{{color:{B['up']}}} .down{{color:{B['down']}}} .flat{{color:{B['dim']}}}
+/* هدر: عنوان راست، تاریخ چپ — پایین‌تر آمده تا بالای صفحه برای استوری خالی بماند */
+.hd{{position:absolute;top:{PAD_TOP}px;left:24px;right:24px;
   display:flex;justify-content:space-between;align-items:flex-start;direction:rtl}}
-.title{{font-size:31px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1.05;text-align:right;
+.title{{font-size:36px;font-weight:900;color:#fff;letter-spacing:-.4px;line-height:1.05;text-align:right;
   text-shadow:0 2px 14px rgba(0,0,0,.35)}}
 .title .ac{{color:{B['teal']}}}
-.title small{{display:block;font-size:12.5px;font-weight:600;color:{B['muted']};margin-top:7px}}
+.title small{{display:block;font-size:15px;font-weight:600;color:{B['muted']};margin-top:8px}}
 .datepill{{background:linear-gradient(135deg,{B['navy']},{B['blue']});color:#fff;
-  font-weight:800;font-size:14.5px;padding:9px 15px;border-radius:12px;white-space:nowrap;
+  font-weight:800;font-size:17px;padding:11px 17px;border-radius:13px;white-space:nowrap;
   border:1px solid rgba(166,240,232,.3);box-shadow:0 6px 18px -8px rgba(0,0,0,.6)}}
-/* شاخص‌ها — همه در یک خط */
-.stats{{position:absolute;top:90px;left:24px;right:24px;
-  display:flex;flex-wrap:nowrap;justify-content:space-between;gap:0 8px;
-  padding:11px 14px;border-radius:14px;direction:rtl;overflow:hidden}}
-.st{{display:inline-flex;align-items:center;gap:5px;font-size:11px;white-space:nowrap}}
-.st__l{{color:{B['muted']};font-weight:600}}
-.st__v{{color:#fff;font-weight:800}}
-.up{{color:{B['up']}}} .down{{color:{B['down']}}} .flat{{color:{B['dim']}}}
 /* بدنه */
-.body{{position:absolute;top:152px;left:24px;right:24px;bottom:104px;
+.body{{position:absolute;top:{PAD_TOP + 80}px;left:24px;right:24px;bottom:{PAD_BOT + 86}px;
   overflow:hidden;display:flex;flex-direction:column;gap:11px}}
 .sec{{display:flex;flex-direction:column;min-height:0}}
-.sec--coins{{flex:5}} .sec--keys{{flex:5}} .sec--gl{{flex:4}}
-.sec h3{{font-size:16px;font-weight:800;color:{B['glow']};margin:0 2px 8px;display:flex;
-  align-items:center;gap:8px;text-shadow:0 2px 10px rgba(0,0,0,.3)}}
-.sec h3::before{{content:"";width:4px;height:17px;border-radius:3px;
+.sec--coins{{flex:5}} .sec--keys{{flex:8}} .sec--gl{{flex:4}}
+.sec h3{{font-size:19px;font-weight:800;color:{B['glow']};margin:0 2px 9px;display:flex;
+  align-items:center;gap:9px;text-shadow:0 2px 10px rgba(0,0,0,.3)}}
+.sec h3::before{{content:"";width:5px;height:20px;border-radius:3px;
   background:linear-gradient(180deg,{B['teal']},{B['blue']})}}
 /* شبکهٔ ۳×۲ ارزهای برتر (باکس‌های مربع شیشه‌ای) */
 .coingrid{{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);
-  grid-template-rows:repeat(2,1fr);gap:10px}}
-.coin{{min-height:0;overflow:hidden;border-radius:18px;padding:6px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}}
-.coin__ic{{width:42px;height:42px;border-radius:50%;overflow:hidden;flex:none;display:grid;
+  grid-template-rows:repeat(2,1fr);gap:11px}}
+.coin{{min-height:0;overflow:hidden;border-radius:18px;padding:5px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}}
+.coin__ic{{width:34px;height:34px;border-radius:50%;overflow:hidden;flex:none;display:grid;
   place-items:center;background:rgba(255,255,255,.10)}}
 .coin__ic img{{width:100%;height:100%;object-fit:cover}}
 .coin__nm{{font-weight:800;font-size:16px;color:#fff}}
 .coin__price{{font-weight:900;font-size:16px;color:#fff;direction:ltr;letter-spacing:-.2px}}
-/* ردیف قیمت‌های کلیدی */
-.list{{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}}
-.row{{flex:1;min-height:0;overflow:hidden;border-radius:15px;padding:8px 15px;
-  display:flex;align-items:center;justify-content:space-between}}
-.row__r{{display:flex;align-items:center;gap:12px;min-width:0}}
-.row__ic{{width:34px;height:34px;border-radius:50%;overflow:hidden;flex:none;display:grid;place-items:center;background:rgba(255,255,255,.10)}}
-.row__ic img{{width:100%;height:100%;object-fit:cover}}
-.row__nm{{font-weight:800;font-size:17px;color:#fff;line-height:1.2}}
-.row__nm small{{display:block;font-weight:600;font-size:11.5px;color:{B['muted']}}}
-.row__l{{display:flex;flex-direction:row;align-items:center;gap:10px;direction:ltr}}
-.row__price{{font-weight:900;font-size:19px;color:#fff;letter-spacing:-.2px}}
-.row__price--rtl{{direction:rtl}}
-.chip{{font-weight:800;font-size:12.5px;padding:3px 9px;border-radius:8px}}
+.coin .chip{{font-size:11px;padding:1px 8px}}
+/* قیمت‌های کلیدی — آیکونِ چپ، و سمتِ راست: نام / قیمت / درصدِ تغییر (عمودی) */
+.list{{flex:1;min-height:0;display:flex;flex-direction:column;gap:7px}}
+.kr{{flex:1;min-height:0;overflow:hidden;border-radius:16px;padding:5px 18px;
+  display:flex;align-items:center;gap:15px;direction:ltr}}
+.kr__ic{{width:44px;height:44px;border-radius:50%;overflow:hidden;flex:none;display:grid;
+  place-items:center;background:rgba(255,255,255,.10)}}
+.kr__ic img{{width:100%;height:100%;object-fit:cover}}
+.kr__txt{{display:flex;flex-direction:column;align-items:flex-start;gap:0;min-width:0;line-height:1.04}}
+.kr__nm{{font-weight:700;font-size:20px;color:#fff}}
+.kr__price{{font-weight:800;font-size:23px;color:#fff;letter-spacing:-.3px;direction:ltr}}
+.kr__price--rtl{{direction:rtl}}
+.kr__chg{{font-weight:800;font-size:17px}}
+.chip{{font-weight:800;font-size:13px;padding:3px 9px;border-radius:8px}}
 .chip--up{{color:{B['up']};background:rgba(22,199,132,.16)}}
 .chip--down{{color:{B['down']};background:rgba(234,57,67,.16)}}
 .chip--flat{{color:{B['dim']};background:rgba(124,154,200,.16)}}
-/* Gainers / Top losers — کنار هم، سبک توبیت (LTR) */
+/* Gainers / Top losers — کنار هم؛ پس‌زمینهٔ کندلِ سبز(چپ)/قرمز(راست) */
 .glwrap{{flex:1;min-height:0;display:flex;gap:13px;direction:ltr}}
-.gl{{flex:1;min-height:0;border-radius:16px;overflow:hidden;display:flex;flex-direction:column}}
-.gl__hd{{display:flex;align-items:center;gap:8px;padding:9px 14px;font-weight:800;font-size:15px;color:#fff}}
+.gl{{position:relative;flex:1;min-height:0;border-radius:16px;overflow:hidden;display:flex;flex-direction:column}}
+.gl__cbg{{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}}
+.gl__hd{{position:relative;z-index:1;display:flex;align-items:center;gap:9px;padding:10px 15px;font-weight:800;font-size:18px;color:#fff}}
 .gl--up .gl__hd{{background:linear-gradient(90deg,rgba(22,199,132,.34),rgba(22,199,132,0))}}
 .gl--down .gl__hd{{background:linear-gradient(90deg,rgba(234,57,67,.34),rgba(234,57,67,0))}}
-.gl__hi{{width:18px;height:18px;display:grid;place-items:center;flex:none}}
-.gl__hi svg{{width:18px;height:18px}}
-.gl__row{{flex:1;min-height:0;display:flex;align-items:center;justify-content:space-between;
-  padding:6px 13px;border-top:1px solid rgba(255,255,255,.06)}}
-.gl__l{{display:flex;align-items:center;gap:8px;min-width:0}}
-.gl__ic{{width:26px;height:26px;border-radius:50%;overflow:hidden;flex:none;display:grid;place-items:center;background:rgba(255,255,255,.10)}}
+.gl__hi{{width:20px;height:20px;display:grid;place-items:center;flex:none}}
+.gl__hi svg{{width:20px;height:20px}}
+.gl__row{{position:relative;z-index:1;flex:1;min-height:0;display:flex;align-items:center;justify-content:space-between;
+  padding:5px 14px;border-top:1px solid rgba(255,255,255,.06)}}
+.gl__l{{display:flex;align-items:center;gap:9px;min-width:0}}
+.gl__ic{{width:30px;height:30px;border-radius:50%;overflow:hidden;flex:none;display:grid;place-items:center;background:rgba(255,255,255,.10)}}
 .gl__ic img{{width:100%;height:100%;object-fit:cover}}
-.gl__l b{{font-size:14px;font-weight:800;color:#fff}}
-.gl__q{{font-size:11px;color:{B['dim']};font-weight:600}}
+.gl__l b{{font-size:17px;font-weight:800;color:#fff}}
+.gl__q{{font-size:12px;color:{B['dim']};font-weight:600}}
 .gl__rr{{display:flex;flex-direction:column;align-items:flex-end;gap:1px}}
-.gl__p{{font-weight:800;font-size:13.5px;color:#fff}}
-.gl__c{{font-weight:800;font-size:12px}}
-.ic-badge{{color:#fff;font-weight:900;font-size:11px;background:linear-gradient(135deg,{B['blue']},{B['navy']})}}
+.gl__p{{font-weight:800;font-size:16px;color:#fff}}
+.gl__c{{font-weight:800;font-size:14px}}
+.ic-badge{{color:#fff;font-weight:900;font-size:12px;background:linear-gradient(135deg,{B['blue']},{B['navy']})}}
 /* فوتر: شبکه‌های اجتماعی چپ، لوگو راست */
-.ft{{position:absolute;left:24px;right:24px;bottom:16px;height:70px;
+.ft{{position:absolute;left:24px;right:24px;bottom:{PAD_BOT}px;height:74px;
   display:flex;align-items:center;justify-content:space-between;direction:ltr;
   padding-top:10px;border-top:1px solid {B['line']}}}
 .ft__social{{display:flex;align-items:center;gap:9px}}
-.soc{{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:#dbe7f7;
+.soc{{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:#dbe7f7;
   background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)}}
-.soc svg{{width:17px;height:17px;display:block}}
-.ft__id{{color:{B['teal2']};font-family:Quick,Vaz,sans-serif;font-weight:700;font-size:23px;
+.soc svg{{width:18px;height:18px;display:block}}
+.ft__id{{color:{B['teal2']};font-family:Quick,Vaz,sans-serif;font-weight:700;font-size:25px;
   margin-left:6px;letter-spacing:.3px}}
 .brand{{background:transparent;padding:0;display:flex;align-items:center}}
-.brand img{{height:50px;display:block;
-  filter:drop-shadow(0 0 7px rgba(255,255,255,.55)) drop-shadow(0 2px 8px rgba(0,0,0,.45))}}
+.brand img{{height:66px;display:block}}
 </style></head>
 <body><div class="card">
   <div class="bg">{_BG_SVG}</div>
   <div class="hd">
     <div class="title">نمای کلی <span class="ac">بازار</span>
-      <small>گزارش روزانهٔ بازار کریپتو · کریپتو‌اسمارت</small></div>
+      <small>گزارش بازار کریپتو · کریپتو‌اسمارت</small></div>
     <div class="datepill">{data['shamsi']}</div>
   </div>
-  <div class="stats glass">{stats}</div>
   <div class="body">
     <section class="sec sec--coins"><h3>ارزهای برتر بازار</h3><div class="coingrid">{coin_boxes}</div></section>
     <section class="sec sec--keys"><h3>قیمت‌های کلیدی</h3><div class="list">{key_rows}</div></section>
