@@ -259,8 +259,12 @@ async def get_gainers_losers() -> dict[str, Any]:
     """بیشترین رشد و بیشترین افتِ ۲۴ساعتهٔ جفت‌های USDT (بدون استیبل‌کوین).
 
     برای حذف جفت‌های کم‌نقدینگی، حداقل حجم دلاری toobit_gl_min_qv لازم است.
+
+    این اندپوینت تیکرِ کاملِ بازار (هزاران جفت) را برمی‌گرداند؛ پاسخ حجیم است،
+    پس برخلاف بقیهٔ فراخوانی‌های توبیت با مهلتِ کوتاهِ پیش‌فرض، مهلتِ بلندتری
+    می‌گیرد تا تایم‌اوت نخورد (تایم‌اوت مکرر یعنی این تابع همیشه fallback می‌دهد).
     """
-    timeout = httpx.Timeout(settings.http_timeout)
+    timeout = httpx.Timeout(30.0, connect=10.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
         resp = await client.get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")
         resp.raise_for_status()
