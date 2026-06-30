@@ -274,6 +274,20 @@ async def _safe(coro):
         return {"error": f"{type(e).__name__}: {e}"}
 
 
+async def _fresh_gainers_losers() -> dict[str, Any]:
+    """بیشترین رشد/افتِ زنده — بدون کش، با یک تلاشِ مجدد.
+
+    toobit.gainers_losers() کش ۵دقیقه‌ای دارد و در خطای مکرر، آخرین مقدارِ
+    موفقِ کش‌شده را برای همیشه برمی‌گرداند (داده‌ی ثابت/قدیمی). چون این تصویر
+    باید هر بار «آخرین» گینر/لوزر را نشان دهد، مستقیماً (بدون کش) درخواست
+    می‌زنیم؛ در صورت شکستِ اول یک‌بار دیگر امتحان می‌کنیم.
+    """
+    try:
+        return await toobit.get_gainers_losers()
+    except Exception:  # noqa: BLE001
+        return await toobit.get_gainers_losers()
+
+
 async def gather() -> dict[str, Any]:
     from app.routers import market as mkt
     from app.services import coinmarketcap
@@ -281,7 +295,7 @@ async def gather() -> dict[str, Any]:
     coins_d, prices_d, gl_d, macro_d = await asyncio.gather(
         _safe(toobit.card_coins()),
         _safe(mkt.prices()),
-        _safe(toobit.gainers_losers()),
+        _safe(_fresh_gainers_losers()),
         _safe(coinmarketcap.macro()),
     )
 
@@ -400,15 +414,13 @@ def _coin_box(g: dict, icons: dict) -> str:
     """باکسِ ارزِ برتر (شبکهٔ ۳×۲): آیکون در گوشهٔ چپ؛ سمتِ راست به‌ترتیبِ عمودی
     نام، قیمت، و درصدِ تغییرِ ۲۴ساعته."""
     sym = g.get("symbol", "")
-    ch = float(g.get("change_24h", 0) or 0)
-    cls = "up" if ch >= 0 else "down"
     return (
         '<div class="coin glass">'
         + _icon_html(sym, "coin__ic", icons)
         + '<div class="coin__txt">'
         + f'<span class="coin__nm">{sym}</span>'
         + f'<span class="coin__price">{usd_fa(g.get("price"))}</span>'
-        + f'<span class="coin__chg {cls}">{pct_fa(ch)}</span>'
+        + _chip(g.get("change_24h", 0))
         + '</div></div>'
     )
 
@@ -428,15 +440,14 @@ def _key_row(key: str, name: str, price_html: str, ch: float,
 
 
 def _gl_row(it: dict, icons: dict) -> str:
-    ch = float(it.get("change_24h", 0))
-    cls = "up" if ch >= 0 else "down"
+    """ردیفِ گینر/لوزر: آیکون+نماد سمتِ چپ؛ قیمت وسطِ باکس؛ درصدِ تغییر (به‌صورتِ
+    چیپِ سبز/قرمز، هم‌سبکِ بقیهٔ بخش‌ها) سمتِ راستِ قیمت."""
     return (
         '<div class="gl__row">'
         '<span class="gl__l">' + _icon_html(it.get("symbol", ""), "gl__ic", icons) +
         f'<b>{it.get("symbol","")}</b><span class="gl__q">/USDT</span></span>'
-        '<span class="gl__rr">'
         f'<span class="gl__p">{_usd_num(it.get("price"))}</span>'
-        f'<span class="gl__c {cls}">{ch:+.2f}%</span></span>'
+        + _chip(it.get("change_24h", 0)) +
         '</div>'
     )
 
@@ -534,10 +545,10 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
 .coin__ic{{width:48px;height:48px;border-radius:50%;overflow:hidden;flex:none;display:grid;
   place-items:center;background:rgba(255,255,255,.10)}}
 .coin__ic img{{width:100%;height:100%;object-fit:cover}}
-.coin__txt{{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0;line-height:1.08}}
+.coin__txt{{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;line-height:1.08}}
 .coin__nm{{font-weight:800;font-size:21px;color:#fff}}
 .coin__price{{font-weight:900;font-size:21px;color:#fff;direction:ltr;letter-spacing:-.2px}}
-.coin__chg{{font-weight:800;font-size:16px}}
+.coin .chip{{font-size:15px;padding:3px 10px}}
 /* قیمت‌های کلیدی — آیکونِ چپ، و سمتِ راست: نام / قیمت / درصدِ تغییر (عمودی) */
 .list{{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}}
 .kr{{flex:1;min-height:0;overflow:hidden;border-radius:16px;padding:6px 20px;
@@ -564,16 +575,17 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
 .gl--down .gl__hd{{background:linear-gradient(90deg,rgba(234,57,67,.34),rgba(234,57,67,0))}}
 .gl__hi{{width:20px;height:20px;display:grid;place-items:center;flex:none}}
 .gl__hi svg{{width:20px;height:20px}}
-.gl__row{{position:relative;z-index:1;flex:1;min-height:0;display:flex;align-items:center;justify-content:space-between;
-  padding:5px 14px;border-top:1px solid rgba(255,255,255,.06)}}
+/* ستون‌بندی: آیکون+نماد (چپ) / قیمت (وسطِ باکس) / چیپِ درصدِ تغییر (راستِ قیمت) */
+.gl__row{{position:relative;z-index:1;min-height:0;display:grid;
+  grid-template-columns:auto 1fr auto;align-items:center;gap:10px;
+  padding:7px 14px;border-top:1px solid rgba(255,255,255,.06)}}
 .gl__l{{display:flex;align-items:center;gap:9px;min-width:0}}
 .gl__ic{{width:30px;height:30px;border-radius:50%;overflow:hidden;flex:none;display:grid;place-items:center;background:rgba(255,255,255,.10)}}
 .gl__ic img{{width:100%;height:100%;object-fit:cover}}
 .gl__l b{{font-size:17px;font-weight:800;color:#fff}}
 .gl__q{{font-size:12px;color:{B['dim']};font-weight:600}}
-.gl__rr{{display:flex;flex-direction:column;align-items:flex-end;gap:1px}}
-.gl__p{{font-weight:800;font-size:16px;color:#fff}}
-.gl__c{{font-weight:800;font-size:14px}}
+.gl__p{{font-weight:800;font-size:17px;color:#fff;text-align:center}}
+.gl .chip{{font-size:14px;padding:2px 9px}}
 .ic-badge{{color:#fff;font-weight:900;font-size:12px;background:linear-gradient(135deg,{B['blue']},{B['navy']})}}
 /* فوتر: شبکه‌های اجتماعی چپ، لوگو راست */
 .ft{{position:absolute;left:24px;right:24px;bottom:{PAD_BOT}px;height:74px;
