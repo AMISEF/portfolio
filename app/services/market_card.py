@@ -604,10 +604,20 @@ def _chrome_bin() -> str:
         return env
     for g in sorted(glob("/opt/pw-browsers/chromium-*/chrome-linux/chrome"), reverse=True):
         return g
-    for name in ("chromium", "chromium-browser", "google-chrome", "google-chrome-stable"):
+    # کرومیومِ غیرِ snap ترجیح دارد: نسخهٔ snap به‌خاطر confinement فایل‌های پروژه
+    # (لوگو/فونت/آیکون در /var/www) را نمی‌تواند بخواند و /tmp خصوصی دارد.
+    names = ("google-chrome-stable", "google-chrome", "chromium", "chromium-browser")
+    snap_fallback = None
+    for name in names:
         p = shutil.which(name)
-        if p:
-            return p
+        if not p:
+            continue
+        if "/snap/" in os.path.realpath(p):
+            snap_fallback = snap_fallback or p
+            continue
+        return p
+    if snap_fallback:
+        return snap_fallback
     raise RuntimeError("Chromium binary not found (set CHROMIUM_BIN in .env)")
 
 
