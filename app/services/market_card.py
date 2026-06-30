@@ -350,13 +350,7 @@ _BG_SVG = """<svg viewBox="0 0 720 1280" xmlns="http://www.w3.org/2000/svg" pres
  <!-- مدارِ نقطه‌چین گردِ کره -->
  <ellipse cx="565" cy="232" rx="128" ry="48" stroke="#19C3B3" fill="none" stroke-width="1.4"
    stroke-dasharray="5 9" opacity="0.20" transform="rotate(-22 565 232)"/>
- <!-- کندل‌استیک‌ها پایین -->
- <g opacity="0.20">
-  <g stroke="#16C784" stroke-width="2.2"><line x1="60" y1="1000" x2="60" y2="1108"/><line x1="112" y1="985" x2="112" y2="1092"/><line x1="214" y1="1018" x2="214" y2="1124"/><line x1="262" y1="996" x2="262" y2="1100"/></g>
-  <g fill="#16C784"><rect x="48" y="1022" width="24" height="56" rx="3"/><rect x="100" y="1010" width="24" height="50" rx="3"/><rect x="202" y="1044" width="24" height="52" rx="3"/><rect x="250" y="1020" width="24" height="48" rx="3"/></g>
-  <g stroke="#EA3943" stroke-width="2.2"><line x1="160" y1="992" x2="160" y2="1102"/><line x1="320" y1="1000" x2="320" y2="1110"/><line x1="372" y1="1014" x2="372" y2="1120"/></g>
-  <g fill="#EA3943"><rect x="148" y="1028" width="24" height="46" rx="3"/><rect x="308" y="1034" width="24" height="42" rx="3"/><rect x="360" y="1042" width="24" height="48" rx="3"/></g>
- </g>
+ <!-- (کندل‌استیکِ سراسریِ پس‌زمینه حذف شد؛ کندلِ سبز/قرمزِ مخصوص داخلِ باکسِ Gainers/Losers است) -->
  <!-- شبکهٔ گره‌های هوش مصنوعی -->
  <g stroke="#6F95C8" fill="#6F95C8" stroke-width="1.4" opacity="0.20">
   <g fill="none"><line x1="115" y1="250" x2="190" y2="198"/><line x1="115" y1="250" x2="165" y2="330"/><line x1="190" y1="198" x2="262" y2="278"/><line x1="165" y1="330" x2="262" y2="278"/><line x1="190" y1="198" x2="250" y2="150"/></g>
@@ -403,31 +397,33 @@ def _chip(ch: float) -> str:
 
 
 def _coin_box(g: dict, icons: dict) -> str:
-    """باکس مربعِ ارز (شبکهٔ ۳×۲): آیکون، نام، قیمت، تغییر."""
+    """باکسِ ارزِ برتر (شبکهٔ ۳×۲): آیکون در گوشهٔ چپ؛ سمتِ راست به‌ترتیبِ عمودی
+    نام، قیمت، و درصدِ تغییرِ ۲۴ساعته."""
     sym = g.get("symbol", "")
+    ch = float(g.get("change_24h", 0) or 0)
+    cls = "up" if ch >= 0 else "down"
     return (
         '<div class="coin glass">'
         + _icon_html(sym, "coin__ic", icons)
-        + f'<div class="coin__nm">{sym}</div>'
-        + f'<div class="coin__price">{usd_fa(g.get("price"))}</div>'
-        + _chip(g.get("change_24h", 0)) + '</div>'
+        + '<div class="coin__txt">'
+        + f'<span class="coin__nm">{sym}</span>'
+        + f'<span class="coin__price">{usd_fa(g.get("price"))}</span>'
+        + f'<span class="coin__chg {cls}">{pct_fa(ch)}</span>'
+        + '</div></div>'
     )
 
 
 def _key_row(key: str, name: str, price_html: str, ch: float,
              rtl_price: bool = False) -> str:
-    """ردیفِ قیمتِ کلیدی: آیکون در گوشهٔ چپ؛ سمتِ راست به‌ترتیبِ عمودی نام، قیمت،
-    و درصد تغییرِ ۲۴ساعته (بدون زیرنویس)."""
+    """ردیفِ افقیِ قیمتِ کلیدی: آیکون+نام در یک‌سو، قیمت+درصدِ تغییر در سویِ دیگر
+    (بدون زیرنویسِ واحد، با فونتِ درشت)."""
     pc = "kr__price kr__price--rtl" if rtl_price else "kr__price"
-    cls = "up" if ch >= 0 else "down"
     return (
         '<div class="kr glass">'
-        + _metal_icon(key, "kr__ic")
-        + '<div class="kr__txt">'
-        + f'<span class="kr__nm">{name}</span>'
-        + f'<span class="{pc}">{price_html}</span>'
-        + f'<span class="kr__chg {cls}">{pct_fa(ch)}</span>'
-        + '</div></div>'
+        '<div class="kr__r">' + _metal_icon(key, "kr__ic") +
+        f'<span class="kr__nm">{name}</span></div>'
+        '<div class="kr__l">'
+        f'<span class="{pc}">{price_html}</span>' + _chip(ch) + '</div></div>'
     )
 
 
@@ -525,7 +521,7 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
 .body{{position:absolute;top:{PAD_TOP + 80}px;left:24px;right:24px;bottom:{PAD_BOT + 86}px;
   overflow:hidden;display:flex;flex-direction:column;gap:11px}}
 .sec{{display:flex;flex-direction:column;min-height:0}}
-.sec--coins{{flex:5}} .sec--keys{{flex:8}} .sec--gl{{flex:4}}
+.sec--coins{{flex:5}} .sec--keys{{flex:7}} .sec--gl{{flex:4}}
 .sec h3{{font-size:19px;font-weight:800;color:{B['glow']};margin:0 2px 9px;display:flex;
   align-items:center;gap:9px;text-shadow:0 2px 10px rgba(0,0,0,.3)}}
 .sec h3::before{{content:"";width:5px;height:20px;border-radius:3px;
@@ -533,26 +529,28 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
 /* شبکهٔ ۳×۲ ارزهای برتر (باکس‌های مربع شیشه‌ای) */
 .coingrid{{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);
   grid-template-rows:repeat(2,1fr);gap:11px}}
-.coin{{min-height:0;overflow:hidden;border-radius:18px;padding:5px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}}
-.coin__ic{{width:34px;height:34px;border-radius:50%;overflow:hidden;flex:none;display:grid;
+.coin{{min-height:0;overflow:hidden;border-radius:18px;padding:8px 13px;
+  display:flex;align-items:center;gap:12px;direction:ltr}}
+.coin__ic{{width:48px;height:48px;border-radius:50%;overflow:hidden;flex:none;display:grid;
   place-items:center;background:rgba(255,255,255,.10)}}
 .coin__ic img{{width:100%;height:100%;object-fit:cover}}
-.coin__nm{{font-weight:800;font-size:16px;color:#fff}}
-.coin__price{{font-weight:900;font-size:16px;color:#fff;direction:ltr;letter-spacing:-.2px}}
-.coin .chip{{font-size:11px;padding:1px 8px}}
+.coin__txt{{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0;line-height:1.08}}
+.coin__nm{{font-weight:800;font-size:21px;color:#fff}}
+.coin__price{{font-weight:900;font-size:21px;color:#fff;direction:ltr;letter-spacing:-.2px}}
+.coin__chg{{font-weight:800;font-size:16px}}
 /* قیمت‌های کلیدی — آیکونِ چپ، و سمتِ راست: نام / قیمت / درصدِ تغییر (عمودی) */
-.list{{flex:1;min-height:0;display:flex;flex-direction:column;gap:7px}}
-.kr{{flex:1;min-height:0;overflow:hidden;border-radius:16px;padding:5px 18px;
-  display:flex;align-items:center;gap:15px;direction:ltr}}
-.kr__ic{{width:44px;height:44px;border-radius:50%;overflow:hidden;flex:none;display:grid;
+.list{{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}}
+.kr{{flex:1;min-height:0;overflow:hidden;border-radius:16px;padding:6px 20px;
+  display:flex;align-items:center;justify-content:space-between}}
+.kr__r{{display:flex;align-items:center;gap:14px;min-width:0}}
+.kr__ic{{width:46px;height:46px;border-radius:50%;overflow:hidden;flex:none;display:grid;
   place-items:center;background:rgba(255,255,255,.10)}}
 .kr__ic img{{width:100%;height:100%;object-fit:cover}}
-.kr__txt{{display:flex;flex-direction:column;align-items:flex-start;gap:0;min-width:0;line-height:1.04}}
-.kr__nm{{font-weight:700;font-size:20px;color:#fff}}
-.kr__price{{font-weight:800;font-size:23px;color:#fff;letter-spacing:-.3px;direction:ltr}}
+.kr__nm{{font-weight:800;font-size:24px;color:#fff}}
+.kr__l{{display:flex;align-items:center;gap:12px;direction:ltr}}
+.kr__price{{font-weight:900;font-size:25px;color:#fff;letter-spacing:-.3px}}
 .kr__price--rtl{{direction:rtl}}
-.kr__chg{{font-weight:800;font-size:17px}}
+.kr .chip{{font-size:16px;padding:3px 11px}}
 .chip{{font-weight:800;font-size:13px;padding:3px 9px;border-radius:8px}}
 .chip--up{{color:{B['up']};background:rgba(22,199,132,.16)}}
 .chip--down{{color:{B['down']};background:rgba(234,57,67,.16)}}
