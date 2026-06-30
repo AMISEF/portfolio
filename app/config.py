@@ -52,6 +52,16 @@ class Settings(BaseSettings):
     toobit_gl_min_qv: float = 50_000   # حداقل حجم دلاری ۲۴ساعته برای حذف جفت‌های کم‌نقدینگی
     toobit_gl_ttl: int = 300           # کش ۵ دقیقه
 
+    # ---- تصویر «نمای کلی بازار» (هر چند ساعت در گروه/تاپیک تلگرام) ----
+    # به‌جای ارسال روزانهٔ ساعت ۱۱، هر market_card_interval_hours ساعت یک‌بار در
+    # گروهِ market_card_chat_id و تاپیکِ market_card_topic_id منتشر می‌شود. تصویر
+    # به‌صورت «فایل» (sendDocument) ارسال می‌شود تا کیفیت 4K حفظ شود (تلگرام عکس‌های
+    # sendPhoto را فشرده می‌کند). ربات باید ادمینِ گروه باشد. توکن از SIGNALS_BOT_TOKEN.
+    market_card_chat_id: str = "-1003927576202"   # شناسهٔ گروهِ مقصد
+    market_card_topic_id: int = 1                  # شناسهٔ تاپیک (message_thread_id)
+    market_card_interval_hours: int = 4            # فاصلهٔ انتشار (ساعت)
+    market_card_as_document: bool = True           # ارسال به‌صورت فایل برای حفظ کیفیت
+
     # ---- CoinMarketCap (شاخص‌های کلان + فصل آلت‌کوین) ----
     # کلید از متغیر محیطی CMC_API_KEY خوانده می‌شود.
     cmc_api_key: str = ""
