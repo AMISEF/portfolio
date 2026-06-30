@@ -288,13 +288,67 @@ async def _fresh_gainers_losers() -> dict[str, Any]:
         return await toobit.get_gainers_losers()
 
 
+async def _retry_once(fetcher):
+    try:
+        return await fetcher()
+    except Exception:  # noqa: BLE001
+        return await fetcher()
+
+
+async def _fresh_prices() -> dict[str, Any]:
+    """قیمت‌های کلیدی به‌صورتِ زنده — بدون کشِ طولانی‌مدتِ SourceArena/Yahoo.
+
+    sourcearena.metals() و commodities.commodities() در خطای مکرر، آخرین
+    مقدارِ موفقِ کش‌شده را برای همیشه برمی‌گردانند (دقیقاً همان باگِ گینر/لوزر؛
+    دلیلِ منجمدماندنِ طلای ۱۸ع/انس‌طلا/نقره/نفت). چون این تصویر هر چند ساعت
+    یک‌بار ساخته می‌شود (خیلی کمتر از TTLِ آن کش‌ها)، اینجا فِچرهای خام را
+    مستقیماً (با یک تلاشِ مجدد) صدا می‌زنیم؛ فقط در شکستِ کامل به نسخهٔ کش‌شده
+    برمی‌گردیم تا تتر/تومان و تومانِ طلا و ساختارِ خروجی حفظ شود."""
+    from app.services import sourcearena, commodities as commodities_svc, tabdeal
+
+    usdt_d, metals_d, comm_d = await asyncio.gather(
+        _safe(tabdeal.usdt()),
+        _safe(_retry_once(sourcearena.get_metals)),
+        _safe(_retry_once(commodities_svc.get_commodities)),
+    )
+    if "error" in metals_d:
+        metals_d = await sourcearena.metals()  # واپسین‌چاره: کشِ تحمل‌پذیرِ خطا
+    if "error" in comm_d:
+        comm_d = await commodities_svc.commodities()
+
+    sa_comm = metals_d.get("commodities", {}) if isinstance(metals_d, dict) else {}
+    yh_comm = comm_d.get("commodities", {}) if isinstance(comm_d, dict) else {}
+    commodities: dict[str, Any] = {}
+    for k in ("XAU", "XAG", "OIL"):
+        base = dict(sa_comm.get(k) or {})
+        yv = yh_comm.get(k) or {}
+        if not base:
+            base = dict(yv)
+        else:
+            if yv.get("spark"):
+                base["spark"] = yv["spark"]
+            if not base.get("change_24h") and yv.get("change_24h"):
+                base["change_24h"] = yv["change_24h"]
+        if base:
+            commodities[k] = base
+
+    usdt_irt = usdt_d.get("usdt_irt") if isinstance(usdt_d, dict) else None
+    if isinstance(usdt_irt, dict):
+        usd_chg = metals_d.get("usd_change_24h") if isinstance(metals_d, dict) else None
+        if usd_chg and not usdt_irt.get("change_24h"):
+            usdt_irt["change_24h"] = usd_chg
+
+    gold_18k = metals_d.get("gold_18k") if isinstance(metals_d, dict) else None
+
+    return {"usdt_irt": usdt_irt, "gold_18k": gold_18k, "commodities": commodities}
+
+
 async def gather() -> dict[str, Any]:
-    from app.routers import market as mkt
     from app.services import coinmarketcap
 
     coins_d, prices_d, gl_d, macro_d = await asyncio.gather(
         _safe(toobit.card_coins()),
-        _safe(mkt.prices()),
+        _safe(_fresh_prices()),
         _safe(_fresh_gainers_losers()),
         _safe(coinmarketcap.macro()),
     )
