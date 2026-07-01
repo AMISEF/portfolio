@@ -295,15 +295,41 @@ async def _retry_once(fetcher):
         return await fetcher()
 
 
-async def _fresh_prices() -> dict[str, Any]:
-    """قیمت‌های کلیدی به‌صورتِ زنده — بدون کشِ طولانی‌مدتِ SourceArena/Yahoo.
+async def _prices_from_site() -> dict[str, Any] | None:
+    """قیمت‌های کلیدی را از اندپوینتِ زندهٔ خودِ سایت می‌خواند.
 
-    sourcearena.metals() و commodities.commodities() در خطای مکرر، آخرین
-    مقدارِ موفقِ کش‌شده را برای همیشه برمی‌گردانند (دقیقاً همان باگِ گینر/لوزر؛
-    دلیلِ منجمدماندنِ طلای ۱۸ع/انس‌طلا/نقره/نفت). چون این تصویر هر چند ساعت
-    یک‌بار ساخته می‌شود (خیلی کمتر از TTLِ آن کش‌ها)، اینجا فِچرهای خام را
-    مستقیماً (با یک تلاشِ مجدد) صدا می‌زنیم؛ فقط در شکستِ کامل به نسخهٔ کش‌شده
-    برمی‌گردیم تا تتر/تومان و تومانِ طلا و ساختارِ خروجی حفظ شود."""
+    وب‌سایت (portfolio.cryptosmart.site/api/market/prices) قیمت‌های لحظه‌ای را
+    نشان می‌دهد؛ چون آن فرایندِ همیشه‌درحال‌اجرا کشِ گرم و شبکهٔ سالم به منابع
+    دارد. تصویرِ بازار ممکن است در یک فرایندِ CLIِ جدا (کشِ خالی) ساخته شود؛ پس
+    به‌جای محاسبهٔ دوباره، همان عددی را می‌گیریم که کاربر روی سایت می‌بیند.
+    برمی‌گرداند None اگر اندپوینت در دسترس نبود (تا به محاسبهٔ محلی برگردیم)."""
+    base = (settings.public_base_url or "").rstrip("/")
+    if not base:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0), follow_redirects=True) as client:
+            r = await client.get(f"{base}/api/market/prices")
+        if r.status_code != 200:
+            return None
+        d = r.json()
+    except Exception:  # noqa: BLE001
+        return None
+    if not isinstance(d, dict) or not d.get("gold_18k") or not d.get("commodities"):
+        return None
+    return {"usdt_irt": d.get("usdt_irt"), "gold_18k": d.get("gold_18k"),
+            "commodities": d.get("commodities")}
+
+
+async def _fresh_prices() -> dict[str, Any]:
+    """قیمت‌های کلیدیِ لحظه‌ای.
+
+    اول از اندپوینتِ زندهٔ سایت (کشِ گرمِ سرور) می‌گیرد؛ اگر در دسترس نبود، به
+    فراخوانیِ مستقیمِ منابع برمی‌گردد (SourceArena/Yahoo با یک تلاشِ مجدد، و در
+    نهایت کشِ تحمل‌پذیرِ خطا)."""
+    from_site = await _prices_from_site()
+    if from_site is not None:
+        return from_site
+
     from app.services import sourcearena, commodities as commodities_svc, tabdeal
 
     usdt_d, metals_d, comm_d = await asyncio.gather(
