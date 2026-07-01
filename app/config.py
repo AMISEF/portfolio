@@ -154,6 +154,11 @@ class Settings(BaseSettings):
     public_base_url: str = "https://portfolio.cryptosmart.site"
     # توکن مخفیِ تأیید وب‌هوک؛ اگر خالی باشد از admin_secret_key مشتق می‌شود.
     signals_webhook_secret: str = ""
+    # شناسهٔ عددیِ کاربرانِ تلگرامِ مجاز به استفاده از دکمهٔ «نمای کلی بازار» در
+    # چتِ خصوصیِ ربات (با کاما جدا کنید؛ از @userinfobot بگیرید). اگر خالی بماند،
+    # هر کسی که به ربات پیام خصوصی بدهد می‌تواند دکمه را بزند — برای امنیتِ
+    # بیشتر حتماً پر شود.
+    telegram_admin_ids: str = ""
 
     # ---- ایمیل (ارسال کد تأیید و بازیابی رمز از طریق Resend) ----
     # ارسال از طریق REST API سرویس Resend انجام می‌شود (با httpx، بدون وابستگی

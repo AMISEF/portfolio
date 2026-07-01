@@ -28,6 +28,8 @@ from app.config import settings
 _HASHTAG_RE = re.compile(r"#(\w+)", re.UNICODE)
 _SIGNALS_DIR = Path("data/signals")
 _API = "https://api.telegram.org"
+_ALLOWED_UPDATES = ["channel_post", "edited_channel_post", "message"]
+_BTN_MARKET_CARD = "📊 نمای کلی بازار"
 
 
 def _token() -> str:
@@ -57,14 +59,17 @@ async def register_webhook() -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=httpx.Timeout(20.0)) as client:
             info = await client.get(f"{_API}/bot{token}/getWebhookInfo")
             cur = (info.json().get("result") or {}) if info.is_success else {}
-            if cur.get("url") == url:
+            # اگر هم URL و هم فهرستِ allowed_updates از قبل درست باشند، دوباره
+            # ثبت نمی‌کنیم؛ وگرنه (مثلاً بعد از افزودنِ «message») باید setWebhook
+            # را دوباره بزنیم، چون تلگرام فهرستِ قبلی را برای همیشه نگه می‌دارد.
+            if cur.get("url") == url and set(cur.get("allowed_updates") or []) == set(_ALLOWED_UPDATES):
                 return {"ok": True, "already": True, "url": url}
             r = await client.post(
                 f"{_API}/bot{token}/setWebhook",
                 json={
                     "url": url,
                     "secret_token": secret,
-                    "allowed_updates": ["channel_post", "edited_channel_post"],
+                    "allowed_updates": _ALLOWED_UPDATES,
                     "drop_pending_updates": False,
                 },
             )
@@ -73,9 +78,72 @@ async def register_webhook() -> dict[str, Any]:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 
 
+# ───────────────────────── منوی خصوصیِ ربات (دکمهٔ «نمای کلی بازار») ─────────────────────────
+def _is_authorized(user_id: int | str | None) -> bool:
+    ids = {s.strip() for s in (settings.telegram_admin_ids or "").split(",") if s.strip()}
+    if not ids:
+        return True  # پیکربندی نشده ⇒ محدودیتی اعمال نمی‌شود (توصیه: پر شود)
+    return str(user_id) in ids
+
+
+async def _send_message(chat_id: int, text: str, reply_markup: dict | None = None) -> None:
+    token = _token()
+    if not token:
+        return
+    data: dict[str, Any] = {"chat_id": str(chat_id), "text": text}
+    if reply_markup is not None:
+        data["reply_markup"] = json.dumps(reply_markup)
+    try:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0)) as client:
+            await client.post(f"{_API}/bot{token}/sendMessage", data=data)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _menu_keyboard() -> dict[str, Any]:
+    return {"keyboard": [[{"text": _BTN_MARKET_CARD}]], "resize_keyboard": True}
+
+
+async def _handle_private_message(msg: dict[str, Any]) -> bool:
+    """پیامِ خصوصیِ کاربر به ربات: نمایشِ منو (/start) یا اجرای دکمهٔ «نمای کلی
+    بازار» (ساخت و ارسالِ تصویر به گروه/تاپیکِ پیکربندی‌شده)."""
+    chat = msg.get("chat") or {}
+    if chat.get("type") != "private":
+        return False
+    chat_id = chat.get("id")
+    if chat_id is None:
+        return False
+    text = (msg.get("text") or "").strip()
+
+    if text in ("/start", "/menu"):
+        await _send_message(chat_id, "به ربات کریپتواسمارت خوش آمدید. برای ساختِ فوریِ «نمای کلی بازار» دکمهٔ زیر را بزنید.",
+                            reply_markup=_menu_keyboard())
+        return True
+
+    if text == _BTN_MARKET_CARD:
+        from_id = (msg.get("from") or {}).get("id")
+        if not _is_authorized(from_id):
+            await _send_message(chat_id, "⛔️ شما اجازهٔ استفاده از این دکمه را ندارید.")
+            return True
+        await _send_message(chat_id, "⏳ در حال ساختِ تصویرِ نمای کلی بازار…")
+        from app.services import market_card_job
+        result = await market_card_job.generate_and_send()
+        if result.get("ok"):
+            await _send_message(chat_id, "✅ تصویر ساخته و در گروه ارسال شد.")
+        else:
+            await _send_message(chat_id, f"❌ ارسال ناموفق بود: {result}")
+        return True
+
+    return False
+
+
 # ───────────────────────── پردازش پست کانال ─────────────────────────
 async def process_update(update: dict[str, Any]) -> bool:
-    """یک آپدیت تلگرام را پردازش و در صورت بودنِ پست کانالِ هدف ذخیره می‌کند."""
+    """یک آپدیت تلگرام را پردازش می‌کند: پیامِ خصوصی (منو/دکمه) یا پستِ کانالِ هدف."""
+    msg = update.get("message")
+    if isinstance(msg, dict) and await _handle_private_message(msg):
+        return True
+
     post = update.get("channel_post") or update.get("edited_channel_post")
     if not isinstance(post, dict):
         return False
