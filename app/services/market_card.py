@@ -323,48 +323,33 @@ async def _prices_from_site() -> dict[str, Any] | None:
 async def _fresh_prices() -> dict[str, Any]:
     """قیمت‌های کلیدیِ لحظه‌ای.
 
-    اول از اندپوینتِ زندهٔ سایت (کشِ گرمِ سرور) می‌گیرد؛ اگر در دسترس نبود، به
-    فراخوانیِ مستقیمِ منابع برمی‌گردد (SourceArena/Yahoo با یک تلاشِ مجدد، و در
-    نهایت کشِ تحمل‌پذیرِ خطا)."""
+    تتر/تومان و طلای ۱۸ع: از اندپوینتِ زندهٔ سایت (یا در نبودش SourceArena/Tabdeal
+    مستقیم). XAU/XAG/OIL: همیشه از فیوچرز توبیت (XAU-SWAP-USDT/XAG-SWAP-USDT/
+    XBR-SWAP-USDT) گرفته می‌شود تا دقیقاً با همان مرجعِ قیمتیِ خودِ سایت یکی باشد
+    (بدون واسطهٔ SourceArena/Yahoo که باعثِ اختلافِ قیمت می‌شد)."""
     from_site = await _prices_from_site()
     if from_site is not None:
-        return from_site
+        usdt_irt, gold_18k = from_site.get("usdt_irt"), from_site.get("gold_18k")
+    else:
+        from app.services import sourcearena, tabdeal
 
-    from app.services import sourcearena, commodities as commodities_svc, tabdeal
+        usdt_d, metals_d = await asyncio.gather(
+            _safe(tabdeal.usdt()),
+            _safe(_retry_once(sourcearena.get_metals)),
+        )
+        if "error" in metals_d:
+            metals_d = await sourcearena.metals()
+        usdt_irt = usdt_d.get("usdt_irt") if isinstance(usdt_d, dict) else None
+        gold_18k = metals_d.get("gold_18k") if isinstance(metals_d, dict) else None
+        if isinstance(usdt_irt, dict):
+            usd_chg = metals_d.get("usd_change_24h") if isinstance(metals_d, dict) else None
+            if usd_chg and not usdt_irt.get("change_24h"):
+                usdt_irt["change_24h"] = usd_chg
 
-    usdt_d, metals_d, comm_d = await asyncio.gather(
-        _safe(tabdeal.usdt()),
-        _safe(_retry_once(sourcearena.get_metals)),
-        _safe(_retry_once(commodities_svc.get_commodities)),
-    )
-    if "error" in metals_d:
-        metals_d = await sourcearena.metals()  # واپسین‌چاره: کشِ تحمل‌پذیرِ خطا
-    if "error" in comm_d:
-        comm_d = await commodities_svc.commodities()
-
-    sa_comm = metals_d.get("commodities", {}) if isinstance(metals_d, dict) else {}
-    yh_comm = comm_d.get("commodities", {}) if isinstance(comm_d, dict) else {}
-    commodities: dict[str, Any] = {}
-    for k in ("XAU", "XAG", "OIL"):
-        base = dict(sa_comm.get(k) or {})
-        yv = yh_comm.get(k) or {}
-        if not base:
-            base = dict(yv)
-        else:
-            if yv.get("spark"):
-                base["spark"] = yv["spark"]
-            if not base.get("change_24h") and yv.get("change_24h"):
-                base["change_24h"] = yv["change_24h"]
-        if base:
-            commodities[k] = base
-
-    usdt_irt = usdt_d.get("usdt_irt") if isinstance(usdt_d, dict) else None
-    if isinstance(usdt_irt, dict):
-        usd_chg = metals_d.get("usd_change_24h") if isinstance(metals_d, dict) else None
-        if usd_chg and not usdt_irt.get("change_24h"):
-            usdt_irt["change_24h"] = usd_chg
-
-    gold_18k = metals_d.get("gold_18k") if isinstance(metals_d, dict) else None
+    swap = await _safe(_retry_once(toobit.get_swap_commodities))
+    commodities = swap.get("commodities", {}) if isinstance(swap, dict) and "error" not in swap else {}
+    if not commodities:
+        commodities = (await toobit.swap_commodities()).get("commodities", {})
 
     return {"usdt_irt": usdt_irt, "gold_18k": gold_18k, "commodities": commodities}
 
