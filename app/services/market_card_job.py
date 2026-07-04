@@ -72,17 +72,20 @@ async def generate_and_send() -> dict[str, Any]:
     return await send_image(_OUT, _caption())
 
 
+# ساعت‌های اجرا به وقت تهران (۲۴ساعته)
+_RUN_HOURS = [11, 13]
+
 def _seconds_until_next_run() -> float:
-    """ثانیه تا اجرای بعدی، هم‌ترازِ ساعت‌های مضربِ بازه (۰،۴،۸،… به وقت تهران)."""
+    """ثانیه تا نزدیک‌ترین اجرای بعدی در ساعت‌های ثابتِ _RUN_HOURS به وقت تهران."""
     import datetime as _dt
-    step = max(1, int(settings.market_card_interval_hours))
     now = market_card.tehran_now()
-    # نزدیک‌ترین ساعتِ مضربِ step که از اکنون جلوتر است.
-    next_hour = (now.hour // step + 1) * step
-    target = now.replace(minute=0, second=0, microsecond=0)
-    target += _dt.timedelta(hours=next_hour - now.hour)
-    if target <= now:
-        target += _dt.timedelta(hours=step)
+    candidates = []
+    for h in _RUN_HOURS:
+        target = now.replace(hour=h, minute=0, second=0, microsecond=0)
+        if target <= now:
+            target += _dt.timedelta(days=1)
+        candidates.append(target)
+    target = min(candidates)
     return max(1.0, (target - now).total_seconds())
 
 
