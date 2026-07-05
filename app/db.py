@@ -109,6 +109,15 @@ def init_db() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_pfhist_uid ON portfolio_history(uid, ts);
 
+            -- شمارش ماهانهٔ تحلیل سبد با هوش مصنوعی (سهمیهٔ پلن کاربر).
+            -- month = YYYY-MM به وقت تهران؛ کلید روی (user_id, month).
+            CREATE TABLE IF NOT EXISTS ai_usage (
+                user_id    INTEGER NOT NULL,
+                month      TEXT NOT NULL,
+                used       INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (user_id, month)
+            );
+
             -- تحلیل‌های کانال تلگرام (سیگنال‌ها) با اعتبار محدود (پیش‌فرض ۷ روز).
             -- هر پست کانال = یک تحلیل ارز با نقاط خرید/فروش + تصویر چارت.
             CREATE TABLE IF NOT EXISTS channel_signals (
@@ -147,6 +156,12 @@ def _migrate_users(conn: sqlite3.Connection) -> None:
     # شناسهٔ کاربری برای رکوردهای قدیمیِ بدون user_code
     conn.execute(
         "UPDATE users SET user_code = 'CS-' || (100000 + id) WHERE user_code IS NULL OR user_code = ''"
+    )
+    # نرمال‌سازی اشتراکِ legacy: free/خالی → bronze (پلن رایگانِ جدید).
+    # مقادیر pro/vip به‌صورت lazy در plans.tier_key نرمال می‌شوند (بدون بازنویسی).
+    conn.execute(
+        "UPDATE users SET subscription = 'bronze' "
+        "WHERE subscription IS NULL OR subscription = '' OR subscription = 'free'"
     )
     # ایندکس‌ها پس از افزوده‌شدن ستون‌ها (روی دیتابیس‌های قدیمی هم امن است)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
@@ -640,6 +655,32 @@ def get_session_user(token: str) -> dict[str, Any] | None:
 def delete_session(token: str) -> None:
     with _LOCK, _conn() as conn:
         conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+
+
+# ---- شمارش تحلیل هوش مصنوعی (سهمیهٔ پلن) ----
+def ai_used_count(user_id: int, month: str) -> int:
+    """تعداد تحلیلِ مصرف‌شدهٔ کاربر در ماهِ مشخص (YYYY-MM تهران)."""
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT used FROM ai_usage WHERE user_id = ? AND month = ?",
+            (int(user_id), month),
+        ).fetchone()
+        return int(row["used"]) if row else 0
+
+
+def ai_increment(user_id: int, month: str) -> int:
+    """افزودن یک واحد به شمارش تحلیلِ ماه جاری و بازگشت مقدار جدید."""
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "INSERT INTO ai_usage (user_id, month, used) VALUES (?, ?, 1) "
+            "ON CONFLICT(user_id, month) DO UPDATE SET used = used + 1",
+            (int(user_id), month),
+        )
+        row = conn.execute(
+            "SELECT used FROM ai_usage WHERE user_id = ? AND month = ?",
+            (int(user_id), month),
+        ).fetchone()
+        return int(row["used"]) if row else 1
 
 
 # تضمین وجود جداول حتی بدون رویداد startup (idempotent).

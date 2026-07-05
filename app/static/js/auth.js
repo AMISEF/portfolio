@@ -158,13 +158,24 @@
       const meta = u.is_staff
         ? '<div class="auth-account__meta">شناسه: ' + (u.user_code || "—") + ' • نقش: ' + roleFa + '</div>'
         : "";
+      // وضعیت اشتراک + تاریخ انقضا (در صورت داشتن پلن پولی)
+      let expStr = "";
+      if (u.sub_expires_at) {
+        try { expStr = new Date(String(u.sub_expires_at).replace(" ", "T") + "Z").toLocaleDateString("fa-IR"); } catch (e) { expStr = u.sub_expires_at; }
+      }
+      const subLine = (u.tier_name_fa || u.subscription)
+        ? '<div class="auth-account__sub">اشتراک: <b>' + (u.tier_name_fa || u.subscription) + '</b>'
+          + (expStr ? ' — انقضا: ' + expStr : '') + '</div>'
+        : '<a class="auth-account__sub" href="/subscription">خرید اشتراک</a>';
       body.innerHTML =
         '<div class="auth-account">' +
         '<div class="auth-account__avatar">' + ((u.name && u.name[0]) || "👤") + '</div>' +
         '<div class="auth-account__name">' + (u.name || "کاربر") + '</div>' +
         '<div class="auth-account__email">' + (u.email || "") + '</div>' +
         meta +
+        subLine +
         '</div>' +
+        '<a class="btn-primary" href="/subscription">مدیریت / خرید اشتراک</a>' +
         (u.is_staff ? '<a class="btn-primary btn-admin" href="/admin">ورود به پنل مدیریت</a>' : '') +
         '<button class="btn-primary btn-danger" id="btnLogout">خروج از حساب</button>';
       switchEl.innerHTML = "";

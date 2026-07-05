@@ -40,7 +40,7 @@ from app.routers.pages import STATIC_V  # noqa: E402
 templates.env.globals["static_v"] = STATIC_V
 
 _ROLES = {"admin", "support", "member"}
-_TIERS = {"free", "pro", "vip"}
+_TIERS = {"bronze", "silver", "gold", "diamond"}
 
 
 def _staff(request: Request) -> dict[str, Any] | None:
@@ -225,8 +225,8 @@ async def manage_subscription(request: Request, user_id: int, payload: dict[str,
         exp = db.renew_subscription(user_id, days)
         return JSONResponse({"ok": True, "sub_expires_at": exp})
     if action == "remove":
-        db.set_subscription(user_id, subscription="free", sub_expires_at=None)
-        return JSONResponse({"ok": True, "subscription": "free", "sub_expires_at": None})
+        db.set_subscription(user_id, subscription="bronze", sub_expires_at=None)
+        return JSONResponse({"ok": True, "subscription": "bronze", "sub_expires_at": None})
     return _deny("عملیات نامعتبر است.", 400)
 
 
@@ -293,7 +293,9 @@ _EXPORT_HEADERS = [
     "تعداد دارایی", "گذرواژه", "تاریخ ثبت‌نام",
 ]
 _ROLE_FA = {"admin": "ادمین", "support": "پشتیبان", "member": "عضو ساده"}
-_TIER_FA = {"free": "رایگان", "pro": "حرفه‌ای", "vip": "ویژه"}
+_TIER_FA = {"bronze": "برنزی", "silver": "نقره‌ای", "gold": "طلایی", "diamond": "الماسی",
+            # سازگاری عقب‌رو با مقادیر legacy
+            "free": "برنزی", "pro": "نقره‌ای", "vip": "طلایی"}
 
 
 @router.post("/api/admin/export")
