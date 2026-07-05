@@ -1,6 +1,7 @@
 {% set portfolio_svg = '<path d="M3 13h7V3H3zM14 21h7V11h-7zM14 3v5h7V3zM3 17v4h7v-4z" fill="currentColor"/>' %}
 {% set journal_svg = '<path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M8 8h7M8 12h7M8 16h4"/>' %}
 {% set home_svg = '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>' %}
+{% set exclusive_svg = '<path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/>' %}
 
 <!-- موبایل: نوار پایین (نمای بازار در وسط) -->
 <nav class="nav nav--bottom">
@@ -17,6 +18,10 @@
       <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ portfolio_svg|safe }}</svg></span>
       <span class="nav__label">مدیریت سرمایه</span>
     </a>
+    <a class="nav__item {% if active=='exclusive' %}is-active{% endif %}" href="/exclusive" data-nav="exclusive" aria-label="تحلیل اختصاصی">
+      <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ exclusive_svg|safe }}</svg></span>
+      <span class="nav__label">تحلیل اختصاصی</span>
+    </a>
   </div>
 </nav>
 
@@ -30,6 +35,14 @@
   <a class="nav__item {% if active=='portfolio' %}is-active{% endif %}" href="/portfolio" data-nav="portfolio" aria-label="مدیریت سرمایه">
     <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ portfolio_svg|safe }}</svg></span>
     <span class="nav__label">مدیریت سرمایه</span>
+  </a>
+  <a class="nav__item {% if active=='exclusive' %}is-active{% endif %}" href="/exclusive" data-nav="exclusive" aria-label="تحلیل اختصاصی">
+    <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ exclusive_svg|safe }}</svg></span>
+    <span class="nav__label">تحلیل اختصاصی</span>
+  </a>
+  <a class="nav__item {% if active=='subscription' %}is-active{% endif %}" href="/subscription" data-nav="subscription" aria-label="اشتراک">
+    <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v6H3z"/><path d="M3 11h18v10H3z"/><path d="M7 15h4"/></svg></span>
+    <span class="nav__label">اشتراک</span>
   </a>
   <a class="nav__item {% if active=='journal' %}is-active{% endif %}" href="https://trading-journal.cryptosmart.site/" data-nav="journal" aria-label="تریدینگ ژورنال">
     <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ journal_svg|safe }}</svg></span>

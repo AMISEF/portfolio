@@ -97,23 +97,28 @@
 
     <label class="sub-label">سطح اشتراک</label>
     <div class="tier-pick" id="admSubTierPick" role="radiogroup" aria-label="سطح اشتراک">
-      <button type="button" class="tier-opt tier-opt--pro" data-tier="pro" role="radio" aria-checked="false">
-        <span class="tier-opt__badge">Pro</span>
-        <span class="tier-opt__name">حرفه‌ای</span>
-        <span class="tier-opt__desc">امکانات پیشرفته</span>
+      <button type="button" class="tier-opt tier-opt--bronze" data-tier="bronze" role="radio" aria-checked="false">
+        <span class="tier-opt__badge">برنزی</span>
+        <span class="tier-opt__name">رایگان</span>
+        <span class="tier-opt__desc">۱ تحلیل/ماه</span>
       </button>
-      <button type="button" class="tier-opt tier-opt--vip" data-tier="vip" role="radio" aria-checked="false">
-        <span class="tier-opt__badge">VIP</span>
-        <span class="tier-opt__name">ویژه</span>
+      <button type="button" class="tier-opt tier-opt--silver" data-tier="silver" role="radio" aria-checked="false">
+        <span class="tier-opt__badge">نقره‌ای</span>
+        <span class="tier-opt__name">۹۹ هزار/ماه</span>
+        <span class="tier-opt__desc">۲ تحلیل + اختصاصی</span>
+      </button>
+      <button type="button" class="tier-opt tier-opt--gold" data-tier="gold" role="radio" aria-checked="false">
+        <span class="tier-opt__badge">طلایی</span>
+        <span class="tier-opt__name">۱۹۹ هزار/ماه</span>
+        <span class="tier-opt__desc">نامحدود + گزارش</span>
+      </button>
+      <button type="button" class="tier-opt tier-opt--diamond" data-tier="diamond" role="radio" aria-checked="false">
+        <span class="tier-opt__badge">الماسی</span>
+        <span class="tier-opt__name">سالانه</span>
         <span class="tier-opt__desc">دسترسی کامل</span>
       </button>
-      <button type="button" class="tier-opt tier-opt--free" data-tier="free" role="radio" aria-checked="false">
-        <span class="tier-opt__badge">Free</span>
-        <span class="tier-opt__name">رایگان</span>
-        <span class="tier-opt__desc">پایه</span>
-      </button>
     </div>
-    <input type="hidden" id="admSubTier" value="pro">
+    <input type="hidden" id="admSubTier" value="silver">
 
     <label class="sub-label" for="admSubDays">مدت اشتراک</label>
     <div class="day-presets" id="admSubDayPresets">

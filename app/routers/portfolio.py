@@ -31,7 +31,7 @@ from fastapi.templating import Jinja2Templates
 
 from app import db
 from app.config import settings
-from app.routers.auth import account_display_name, current_user, has_active_subscription
+from app.routers.auth import account_display_name, current_user
 from app.services import algo_allocation, instruments, portfolio_valuation, risk
 
 router = APIRouter()
@@ -82,7 +82,12 @@ async def portfolio_page(request: Request):
 async def assistant_page(request: Request):
     user = current_user(request)
     ctx = _ctx(request, "portfolio", bool(user))
-    ctx["has_sub"] = has_active_subscription(user)
+    # اطلاعات پلن برای گیتِ سبدچینی هوش مصنوعی (سهمیه‌محور به‌جای بولیِ has_sub)
+    from app.services import plans
+    ai_used = db.ai_used_count(int(user["id"]), plans.tehran_month_key()) if user else 0
+    info = plans.tier_info(user, ai_used)
+    ctx["has_sub"] = info["is_paid"]
+    ctx["tier_info"] = info
     return templates.TemplateResponse("portfolio_assistant.html", ctx)
 
 
@@ -434,27 +439,51 @@ async def remove_asset(request: Request, asset_id: int):
 # ───────────────────────── API: سبدچینی با هوش مصنوعی ─────────────────────────
 @router.get("/api/portfolio/ai-allocation/access")
 async def ai_allocation_access(request: Request):
-    """آیا کاربر به سبدچینی هوش مصنوعی دسترسی دارد (اشتراک فعال)؟"""
+    """وضعیت دسترسیِ سبدچینی هوش مصنوعی: پلن + سهمیهٔ باقی‌مانده."""
     user = current_user(request)
     if not user:
         return _401()
-    return JSONResponse({"allowed": has_active_subscription(user)})
+    from app.services import plans
+    ai_used = db.ai_used_count(int(user["id"]), plans.tehran_month_key())
+    info = plans.tier_info(user, ai_used)
+    quota = info["ai_quota"]
+    remaining = info["ai_remaining"]
+    allowed = (remaining is None) or (remaining > 0)
+    return JSONResponse({
+        "allowed": allowed,
+        "tier": info["tier"],
+        "tier_name_fa": info["tier_name_fa"],
+        "is_paid": info["is_paid"],
+        "ai_quota": quota,
+        "ai_used": ai_used,
+        "ai_remaining": remaining,
+    })
 
 
 @router.post("/api/portfolio/ai-allocation")
 async def ai_allocation(request: Request):
     """ساخت سبد پیشنهادی با هوش مصنوعی الگو اسمارت.
 
-    نیازمند ورود + اشتراک فعال است. موجودی تتر و ریسک‌پذیری کاربر را به ورک‌فلوِ
-    Dify می‌دهد و متن سبد پیشنهادی + چنل پیشنهادی را برمی‌گرداند.
+    نیازمند ورود است. سهمیهٔ تحلیل بر اساس پلن کاربر:
+      برنزی ۱/ماه، نقره‌ای ۲/ماه، طلایی/الماسی نامحدود. کارکنان = نامحدود.
+    موجودی تتر و ریسک‌پذیری کاربر را به ورک‌فلوِ Dify می‌دهد و متن سبد پیشنهادی +
+    چنل پیشنهادی را برمی‌گرداند.
     """
     user = current_user(request)
     if not user:
         return _401()
-    if not has_active_subscription(user):
+
+    from app.services import plans
+    month = plans.tehran_month_key()
+    ai_used = db.ai_used_count(int(user["id"]), month)
+    info = plans.tier_info(user, ai_used)
+    quota = info["ai_quota"]
+    remaining = info["ai_remaining"]
+    if remaining is not None and remaining <= 0:
         return JSONResponse(
-            {"error": "این قابلیت ویژهٔ کاربران دارای اشتراک فعال است.",
-             "sub_required": True},
+            {"error": "سهمیهٔ تحلیل هوش مصنوعی این ماه شما تمام شده است.",
+             "quota_exhausted": True, "ai_quota": quota, "ai_used": ai_used,
+             "tier": info["tier"], "tier_name_fa": info["tier_name_fa"]},
             status_code=403,
         )
 
@@ -488,6 +517,9 @@ async def ai_allocation(request: Request):
     }
 
     result = await algo_allocation.run_workflow(inputs, uid)
+    # شمارش یک تحلیلِ موفق در سهمیهٔ ماه جاری (نامحدودها بی‌تأثیر است).
+    if result.get("ok") and quota is not None:
+        db.ai_increment(int(user["id"]), month)
     return JSONResponse({
         "ok": result["ok"],
         "text": result["text"],
@@ -495,4 +527,5 @@ async def ai_allocation(request: Request):
         "risk": {"percent": round(risk_pct), "label": risk_label, "level": universe["level"]},
         "universe": universe,
         "channel": channel,
+        "ai_remaining": (None if quota is None else max(quota - ai_used - 1, 0)),
     })

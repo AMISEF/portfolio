@@ -7,7 +7,8 @@
   const IS_ADMIN = root.dataset.isAdmin === "true";
 
   const ROLE_FA = { admin: "ادمین", support: "پشتیبان", member: "عضو ساده" };
-  const TIER_FA = { free: "رایگان", pro: "حرفه‌ای", vip: "ویژه" };
+  const TIER_FA = { bronze: "برنزی", silver: "نقره‌ای", gold: "طلایی", diamond: "الماسی",
+                    free: "برنزی", pro: "نقره‌ای", vip: "طلایی" };
 
   let users = [];
   let filtered = [];
@@ -281,7 +282,13 @@
     const exp = u.sub_expires_at ? " (تا " + fmtDate(u.sub_expires_at) + ")" : "";
     $("admSubUser").innerHTML = esc(u.full_name || u.email) +
       ' — اشتراک فعلی: <b>' + esc(sub) + "</b>" + esc(exp);
-    setTier(u.subscription === "free" ? "pro" : u.subscription);
+    setTier((function () {
+      // نرمال‌سازی legacy: free/خالی → silver (پیش‌فرضِ انتخاب ادمین)، pro→silver، vip→gold.
+      const s = (u.subscription || "").toLowerCase();
+      if (s === "gold" || s === "silver" || s === "diamond" || s === "bronze") return s;
+      if (s === "vip") return "gold";
+      return "silver";
+    })());
     setDays(30);
     $("admSubModal").hidden = false;
   }

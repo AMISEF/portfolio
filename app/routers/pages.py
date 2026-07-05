@@ -5,11 +5,13 @@ import os
 from pathlib import Path
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings
-from app.routers.auth import account_display_name
+from app.routers.auth import account_display_name, current_user
+from app.services import plans
+from app import db
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -49,3 +51,38 @@ def _ctx(request: Request, active: str) -> dict:
 @router.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("home.html", _ctx(request, "home"))
+
+
+@router.get("/subscription", response_class=HTMLResponse)
+async def subscription_page(request: Request):
+    """صفحهٔ خرید/مدیریت اشتراک — چهار پلن + وضعیت اشتراک جاری کاربر."""
+    user = current_user(request)
+    ai_used = db.ai_used_count(int(user["id"]), plans.tehran_month_key()) if user else 0
+    ctx = _ctx(request, "subscription")
+    ctx["title_fa"] = "اشتراک"
+    ctx["subtitle_fa"] = "مدیریت اشتراک"
+    ctx["is_authed"] = bool(user)
+    ctx["plans_data"] = plans.plans_payload(user, ai_used)
+    return templates.TemplateResponse("subscription.html", ctx)
+
+
+@router.get("/exclusive", response_class=HTMLResponse)
+async def exclusive_page(request: Request):
+    """بخش «تحلیل اختصاصی» (placeholder فاز بعد). گیت‌دار برای پلن‌های پولی."""
+    user = current_user(request)
+    ctx = _ctx(request, "exclusive")
+    ctx["title_fa"] = "تحلیل اختصاصی"
+    ctx["subtitle_fa"] = "تحلیل‌های بازار داخلی و خارجی"
+    ctx["is_authed"] = bool(user)
+    ctx["can_access"] = plans.can_access_exclusive(user)
+    return templates.TemplateResponse("exclusive.html", ctx)
+
+
+@router.get("/api/subscription/plans")
+async def subscription_plans(request: Request):
+    """فهرست چهار پلن + وضعیت اشتراک جاری کاربر (برای صفحهٔ قیمت‌گذاری)."""
+    user = current_user(request)
+    ai_used = 0
+    if user:
+        ai_used = db.ai_used_count(int(user["id"]), plans.tehran_month_key())
+    return JSONResponse(plans.plans_payload(user, ai_used))

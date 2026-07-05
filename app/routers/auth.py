@@ -99,12 +99,18 @@ def _public_user(user: dict[str, Any]) -> dict[str, Any]:
     """اطلاعات عمومیِ کاربر برای فرانت‌اند (بدون رمز).
 
     نکتهٔ امنیتی: شناسهٔ کاربری (user_code) و نقش (role) فقط برای کارکنان
-    (ادمین/پشتیبان) برگردانده می‌شود؛ کاربران عادی این اطلاعات را نمی‌بینند."""
+    (ادمین/پشتیبان) برگردانده می‌شود؛ کاربران عادی این اطلاعات را نمی‌بینند.
+    اطلاعات پلن (tier/tier_name_fa/is_paid/can_access_exclusive) با نرمال‌سازی
+    لایهٔ legacy و درنظرگرفتن انقضا محاسبه می‌شود."""
     role = user.get("role") or "member"
     is_staff = role in ("admin", "support")
     full = user.get("name") or " ".join(
         x for x in (user.get("first_name"), user.get("last_name")) if x
     ) or None
+    # اطلاعات پلن مؤثر (با شمارش سهمیهٔ ماه جاری)
+    from app.services import plans
+    ai_used = db.ai_used_count(int(user["id"]), plans.tehran_month_key())
+    info = plans.tier_info(user, ai_used)
     data: dict[str, Any] = {
         "id": user["id"],
         "email": user["email"],
@@ -113,9 +119,16 @@ def _public_user(user: dict[str, Any]) -> dict[str, Any]:
         "first_name": user.get("first_name"),
         "last_name": user.get("last_name"),
         "phone": user.get("phone"),
-        "subscription": user.get("subscription") or "free",
+        "subscription": user.get("subscription") or "bronze",
         "sub_expires_at": user.get("sub_expires_at"),
         "is_staff": is_staff,
+        "tier": info["tier"],
+        "tier_name_fa": info["tier_name_fa"],
+        "is_paid": info["is_paid"],
+        "can_access_exclusive": info["can_access_exclusive"],
+        "ai_quota": info["ai_quota"],
+        "ai_used": info["ai_used"],
+        "ai_remaining": info["ai_remaining"],
     }
     if is_staff:
         data["user_code"] = user.get("user_code")

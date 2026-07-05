@@ -68,6 +68,10 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       دستیار هوش مصنوعی
     </button>
+    <a class="btn btn--ghost" href="/subscription" title="مدیریت اشتراک">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v6H3z"/><path d="M3 11h18v10H3z"/><path d="M7 15h4"/></svg>
+      مدیریت اشتراک
+    </a>
     <button class="btn btn--algo" id="algoBtn">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
       سبدچینی با هوش مصنوعی
@@ -291,6 +295,7 @@
         </p>
         <div class="algo-desc__assets" id="algoAssets" hidden></div>
       </div>
+      <p class="algo-quota" id="algoQuota" hidden></p>
       <div class="pf2-add-actions">
         <button class="btn btn--algo btn--lg" id="algoRun">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 3 14 9-14 9V3z"/></svg>
@@ -299,15 +304,18 @@
       </div>
     </div>
 
-    <!-- گام دسترسی نداشتن (بدون اشتراک) -->
+    <!-- گام دسترسی نداشتن (سهمیه تمام‌شده / بدون اشتراک) -->
     <div id="algoLocked" hidden>
       <div class="algo-locked">
         <span class="algo-locked__icon">
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </span>
-        <h3>این قابلیت ویژهٔ اعضای دارای اشتراک است</h3>
-        <p>برای استفاده از سبدچینی هوشمند الگو اسمارت، ابتدا باید اشتراک شما توسط مدیریت فعال شود. برای فعال‌سازی با پشتیبانی در ارتباط باشید.</p>
-        <a class="btn btn--brand" href="https://t.me/cryptosmart_sup" target="_blank" rel="noopener">ارتباط با پشتیبانی</a>
+        <h3 id="algoLockedTitle">سهمیهٔ تحلیل این ماه شما تمام شده است</h3>
+        <p id="algoLockedDesc">سهمیهٔ ماهانهٔ تحلیل هوش مصنوعیِ پلن شما به پایان رسیده است. برای تحلیل نامحدود، به پلن بالاتر ارتقا کنید.</p>
+        <div class="pf2-add-actions">
+          <a class="btn btn--brand" href="/subscription">خرید / ارتقای اشتراک</a>
+          <a class="btn btn--ghost" href="https://t.me/cryptosmart_sup" target="_blank" rel="noopener">ارتباط با پشتیبانی</a>
+        </div>
       </div>
     </div>
 
@@ -337,6 +345,7 @@
 <script>
   window.IS_AUTHED = {{ 'true' if is_authed else 'false' }};
   window.HAS_SUB = {{ 'true' if has_sub else 'false' }};
+  window.TIER_INFO = {{ tier_info | tojson if tier_info else 'null' }};
 </script>
 <script src="/static/js/portfolio_assistant.js?v={{ static_v }}"></script>
 {% endblock %}

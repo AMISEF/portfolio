@@ -765,12 +765,43 @@
           elLoading = $("algoLoading"), elResult = $("algoResult");
     const LEVEL_FA = { low: "کم‌ریسک", medium: "ریسک متوسط", high: "پرریسک" };
 
+    // اطلاعات پلن از سرور (assistant_page). ai_remaining === null ⇒ نامحدود.
+    function tierInfo() { return window.TIER_INFO || null; }
+    function hasQuota() {
+      const t = tierInfo();
+      if (!t) return !!window.HAS_SUB;            // سازگاری عقب‌رو
+      return t.ai_remaining === null || t.ai_remaining > 0;
+    }
+
     function show(el) {
       [elIntro, elLocked, elLoading, elResult].forEach(x => { if (x) x.hidden = (x !== el); });
     }
+    function showLocked(opts) {
+      const title = $("algoLockedTitle"), desc = $("algoLockedDesc");
+      if (title && desc) {
+        if (opts && opts.quota_exhausted) {
+          title.textContent = "سهمیهٔ تحلیل این ماه شما تمام شده است";
+          desc.textContent = "سهمیهٔ ماهانهٔ تحلیل هوش مصنوعیِ پلن شما به پایان رسیده است. برای تحلیل نامحدود، به پلن بالاتر ارتقا کنید.";
+        } else {
+          title.textContent = "این قابلیت ویژهٔ اعضای دارای اشتراک است";
+          desc.textContent = "برای استفاده از سبدچینی هوشمند الگو اسمارت، یکی از پلن‌های نقره‌ای، طلایی یا الماسی را فعال کنید.";
+        }
+      }
+      show(elLocked);
+    }
     function openModal() {
       modal.hidden = false;
-      show(window.HAS_SUB ? elIntro : elLocked);
+      // نشانگر سهمیهٔ باقی‌مانده برای پلن‌های محدود (برنزی/نقره‌ای)
+      const qEl = $("algoQuota");
+      const t = tierInfo();
+      if (qEl && t && t.ai_quota !== null && t.ai_quota !== undefined) {
+        qEl.innerHTML = "سهمیهٔ تحلیل این ماه: <b>" + CS.toFa(Math.max(t.ai_remaining || 0, 0))
+          + " از " + CS.toFa(t.ai_quota) + "</b> — برای تحلیل نامحدود، <a href=\"/subscription\">پلن بالاتر</a> را فعال کنید.";
+        qEl.hidden = false;
+      } else if (qEl) {
+        qEl.hidden = true;
+      }
+      show(hasQuota() ? elIntro : elLocked);
     }
     function closeModal() { modal.hidden = true; }
 
@@ -868,7 +899,14 @@
           method: "POST", headers: { "Content-Type": "application/json" },
         });
         const d = await r.json().catch(() => ({}));
-        if (r.status === 403 && d.sub_required) { show(elLocked); return; }
+        if (r.status === 403 && (d.quota_exhausted || d.sub_required)) {
+          showLocked({ quota_exhausted: !!d.quota_exhausted });
+          return;
+        }
+        // به‌روزرسانی سهمیهٔ محلی از پاسخ موفق
+        if (window.TIER_INFO && d.ai_remaining !== undefined && window.TIER_INFO.ai_quota !== null) {
+          window.TIER_INFO.ai_remaining = d.ai_remaining;
+        }
         renderChips(d);
         renderText(d.ok ? d.text : "", d.error);
         renderChannel(d.channel);
