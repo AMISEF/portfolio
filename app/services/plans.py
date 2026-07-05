@@ -142,6 +142,7 @@ def tier_info(user: dict[str, Any] | None, ai_used: int = 0) -> dict[str, Any]:
         "period": plan["period"],
         "is_paid": tier in PAID_TIERS,
         "exclusive": tier in EXCLUSIVE_TIERS,
+        "can_access_exclusive": tier in EXCLUSIVE_TIERS,
         "weekly_report": plan["weekly_report"],
         "direct_manager": plan["direct_manager"],
         "ai_quota": quota,
