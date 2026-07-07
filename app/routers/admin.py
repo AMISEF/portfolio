@@ -396,11 +396,8 @@ def _unlink_quiet(path: str | None) -> None:
 
 def _signal_row(s: dict[str, Any]) -> dict[str, Any]:
     mid = s.get("message_id")
-    images = []
-    if s.get("image_path"):
-        images.append(f"/api/advisor/signal-image/{mid}?i=1")
-    if s.get("image_path2"):
-        images.append(f"/api/advisor/signal-image/{mid}?i=2")
+    imgs = s.get("image_list") or []
+    images = [f"/api/advisor/signal-image/{mid}?i={k}" for k in range(1, len(imgs) + 1)]
     return {
         "id": mid,
         "ts": s.get("ts"),
@@ -420,26 +417,34 @@ async def admin_signals_list(request: Request):
     return JSONResponse({"signals": rows, "count": len(rows)})
 
 
+async def _save_uploads(files: list[UploadFile]) -> list[str]:
+    saved: list[str] = []
+    for f in files or []:
+        p = await _save_signal_upload(f)
+        if p:
+            saved.append(p)
+    return saved
+
+
 @router.post("/api/admin/signals")
 async def admin_signals_create(
     request: Request,
     text: str = Form(""),
-    image1: UploadFile | None = File(None),
-    image2: UploadFile | None = File(None),
+    images: list[UploadFile] = File(default=[]),
 ):
-    """افزودن یک تحلیلِ دستی با کپشن و حداکثر دو تصویر (ادمین/پشتیبان)."""
+    """افزودن یک تحلیلِ دستی با کپشن و n تصویر (گالری) — ادمین/پشتیبان."""
     if not _staff(request):
         return _deny()
     text = (text or "").strip()
-    p1 = await _save_signal_upload(image1)
-    p2 = await _save_signal_upload(image2)
-    if not text and not p1:
-        _unlink_quiet(p1); _unlink_quiet(p2)
+    saved = await _save_uploads(images)
+    if not text and not saved:
+        for p in saved:
+            _unlink_quiet(p)
         return _deny("حداقل یک تصویر یا متن لازم است.", 400)
     mid = db.admin_create_signal(
         text=text,
         hashtags_json=json.dumps(_extract_tags(text), ensure_ascii=False),
-        image_path=p1, image_path2=p2,
+        images=saved,
         ttl_days=settings.signals_ttl_days,
         ts=int(time.time()),
     )
@@ -451,41 +456,36 @@ async def admin_signals_update(
     request: Request,
     message_id: int,
     text: str = Form(""),
-    image1: UploadFile | None = File(None),
-    image2: UploadFile | None = File(None),
-    remove_image1: str = Form(""),
-    remove_image2: str = Form(""),
+    keep_images: str = Form(""),
+    images: list[UploadFile] = File(default=[]),
 ):
-    """ویرایشِ یک تحلیل: کپشن، جایگزینی/حذفِ تصاویر (ادمین/پشتیبان)."""
+    """ویرایشِ یک تحلیل: کپشن، نگه‌داشتنِ گزینشیِ تصاویرِ فعلی (keep_images = آرایهٔ
+    JSON از اندیس‌های ۰-محور) و افزودنِ تصاویرِ جدید — ادمین/پشتیبان."""
     if not _staff(request):
         return _deny()
     sig = db.get_signal(message_id)
     if not sig:
         return _deny("تحلیل یافت نشد.", 404)
 
-    text = (text or "").strip()
-    kwargs: dict[str, Any] = {
-        "text": text,
-        "hashtags_json": json.dumps(_extract_tags(text), ensure_ascii=False),
-    }
-    # تصویرِ اول
-    new1 = await _save_signal_upload(image1)
-    if new1:
-        _unlink_quiet(sig.get("image_path"))
-        kwargs["image_path"] = new1
-    elif remove_image1 in ("1", "true", "on"):
-        _unlink_quiet(sig.get("image_path"))
-        kwargs["image_path"] = None
-    # تصویرِ دوم
-    new2 = await _save_signal_upload(image2)
-    if new2:
-        _unlink_quiet(sig.get("image_path2"))
-        kwargs["image_path2"] = new2
-    elif remove_image2 in ("1", "true", "on"):
-        _unlink_quiet(sig.get("image_path2"))
-        kwargs["image_path2"] = None
+    existing = db.signal_images(message_id)
+    try:
+        keep = {int(x) for x in json.loads(keep_images)} if keep_images else set(range(len(existing)))
+    except Exception:  # noqa: BLE001
+        keep = set(range(len(existing)))
+    kept = [existing[i] for i in range(len(existing)) if i in keep]
+    removed = [existing[i] for i in range(len(existing)) if i not in keep]
 
-    db.admin_update_signal(message_id, **kwargs)
+    saved = await _save_uploads(images)
+    final = kept + saved
+
+    db.admin_update_signal(
+        message_id,
+        text=(text or "").strip(),
+        hashtags_json=json.dumps(_extract_tags(text), ensure_ascii=False),
+        images=final,
+    )
+    for p in removed:
+        _unlink_quiet(p)
     return JSONResponse({"ok": True, "id": message_id})
 
 

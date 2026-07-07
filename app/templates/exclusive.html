@@ -73,6 +73,13 @@
   <button class="lbx__x" id="lbxClose" aria-label="بستن">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
   </button>
+  <span class="lbx__counter" id="lbxCounter" hidden></span>
+  <button class="lbx__nav lbx__nav--prev" id="lbxPrev" aria-label="قبلی" hidden>
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <button class="lbx__nav lbx__nav--next" id="lbxNext" aria-label="بعدی" hidden>
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+  </button>
   <div class="lbx__stage" id="lbxStage">
     <img class="lbx__img" id="lbxImg" alt="تحلیل" draggable="false">
   </div>
@@ -109,19 +116,11 @@
         <label class="mng__label">کپشن تحلیل (با هشتگ ارز، مثل <b>#BTC</b> یا <b>#تتر</b>)</label>
         <textarea class="mng__input" id="mngText" rows="5" placeholder="متن تحلیل را بنویسید…"></textarea>
 
-        <div class="mng__imgs">
-          <div class="mng__imgslot">
-            <label class="mng__label">تصویر اول</label>
-            <div class="mng__preview" id="mngPrev1"></div>
-            <input type="file" id="mngImg1" accept="image/*" class="mng__file">
-            <label class="mng__removechk" id="mngRm1Wrap" hidden><input type="checkbox" id="mngRm1"> حذف تصویر فعلی</label>
-          </div>
-          <div class="mng__imgslot">
-            <label class="mng__label">تصویر دوم (اختیاری)</label>
-            <div class="mng__preview" id="mngPrev2"></div>
-            <input type="file" id="mngImg2" accept="image/*" class="mng__file">
-            <label class="mng__removechk" id="mngRm2Wrap" hidden><input type="checkbox" id="mngRm2"> حذف تصویر فعلی</label>
-          </div>
+        <div class="mng__imgblock">
+          <label class="mng__label">تصاویرِ تحلیل (گالری — می‌توانید چند تصویر انتخاب کنید)</label>
+          <div class="mng__gallery" id="mngGallery"></div>
+          <input type="file" id="mngImgs" accept="image/*" multiple class="mng__file">
+          <div class="mng__filehint">تصاویرِ جدید به گالریِ فعلی افزوده می‌شوند؛ برای حذف، روی × هر تصویر بزنید.</div>
         </div>
 
         <div class="mng__msg" id="mngMsg" hidden></div>
