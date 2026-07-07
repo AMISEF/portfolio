@@ -220,10 +220,10 @@ async def telegram_webhook(request: Request,
 
 
 @router.get("/signal-image/{message_id}")
-async def signal_image(message_id: int):
-    """تصویر چارتِ یک تحلیل کانال (در صورت موجود بودن)."""
-    sig = db.get_signal(message_id)
-    path = (sig or {}).get("image_path")
+async def signal_image(message_id: int, i: int = 1):
+    """تصویر چارتِ یک تحلیل کانال (تصویرِ اول یا دومِ آلبوم با ?i=1|2)."""
+    sig = db.get_signal(message_id) or {}
+    path = sig.get("image_path2") if i == 2 else sig.get("image_path")
     if not path or not os.path.exists(path):
         return JSONResponse({"error": "not_found"}, status_code=404)
     return FileResponse(path, headers={"Cache-Control": "public, max-age=86400"})

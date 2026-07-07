@@ -1396,5 +1396,101 @@ a.auth-account__sub:hover { color: var(--brand); }
 @media (max-width: 540px) {
   .tgc__bubble { max-width: 100%; }
   .tgc__chanavatar { width: 46px; height: 46px; }
-  .tgc__joinbtn { padding: 7px 11px; font-size: .72rem; }
+}
+
+/* تضمینِ مخفی‌شدنِ عناصرِ flex/grid هنگام تنظیمِ صفتِ hidden (وگرنه display غالب می‌شود) */
+.tgc__pager[hidden], .tgc__loading[hidden],
+.mng__view[hidden], .mng__form[hidden],
+.mng__removechk[hidden], .mng__msg[hidden] { display: none !important; }
+
+/* سربرگِ صفحه با دکمهٔ مدیریت */
+.exc__head--row { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; text-align: right; flex-wrap: wrap; }
+.exc__head--row .exc__title { margin: 0; }
+.tgc__managebtn { display: inline-flex; align-items: center; gap: 7px; font-size: .84rem; }
+
+/* چند تصویر کنار هم (آلبومِ دو‌تصویری) */
+.tgc__media--multi { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.tgc__mediaimg { cursor: zoom-in; }
+.tgc__media--multi .tgc__mediaimg { height: 100%; object-fit: cover; aspect-ratio: 1 / 1; }
+
+/* ── نمایشگرِ بزرگ (Lightbox) با زوم ── */
+.lbx { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center;
+  justify-content: center; background: rgba(6,14,26,.92); backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px); }
+.lbx[hidden] { display: none; }
+.lbx__stage { width: 100%; height: 100%; display: flex; align-items: center;
+  justify-content: center; overflow: hidden; touch-action: none; cursor: grab; }
+.lbx__img { max-width: 92vw; max-height: 86vh; transform-origin: center center;
+  will-change: transform; user-select: none; -webkit-user-drag: none; border-radius: 6px; }
+.lbx__x { position: fixed; top: 16px; left: 16px; width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center; border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.12); color: #fff; cursor: pointer; z-index: 3010;
+  transition: var(--trans); }
+.lbx__x:hover { background: rgba(255,255,255,.24); transform: scale(1.06); }
+.lbx__zoom { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+  border-radius: var(--radius-pill); padding: 5px; z-index: 3010; }
+.lbx__zoom button { min-width: 44px; height: 38px; border: none; border-radius: var(--radius-pill);
+  background: transparent; color: #fff; font-size: 1.05rem; font-weight: 900; cursor: pointer;
+  font-family: var(--font); transition: var(--trans); }
+.lbx__zoom button:hover { background: rgba(255,255,255,.18); }
+
+/* ── پنجرهٔ «مدیریت تحلیل‌ها» ── */
+.mng { position: fixed; inset: 0; z-index: 2500; display: flex; align-items: center;
+  justify-content: center; padding: 16px; }
+.mng[hidden] { display: none; }
+.mng__backdrop { position: absolute; inset: 0; background: rgba(6,14,26,.6);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.mng__panel { position: relative; width: 100%; max-width: 720px; max-height: 88vh;
+  display: flex; flex-direction: column; background: var(--surface-solid);
+  border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop);
+  overflow: hidden; }
+.mng__head { display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px; border-bottom: 1px solid var(--border); }
+.mng__title { font-size: 1.1rem; font-weight: 900; color: var(--heading); margin: 0; }
+.mng__x { width: 38px; height: 38px; border-radius: var(--radius-md); display: grid; place-items: center;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer;
+  transition: var(--trans); }
+.mng__x:hover { border-color: var(--down); color: var(--down); }
+.mng__body { padding: 16px 18px; overflow-y: auto; }
+.mng__add { margin-bottom: 14px; }
+.mng__tablewrap { overflow-x: auto; }
+.mng__table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.mng__table th { text-align: right; font-weight: 800; color: var(--text-soft);
+  padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; font-size: .76rem; }
+.mng__table td { padding: 9px 10px; border-bottom: 1px solid var(--border); color: var(--text);
+  white-space: nowrap; }
+.mng__coin { font-weight: 900; color: var(--brand-dark); }
+[data-theme="dark"] .mng__coin { color: var(--brand-light); }
+.mng__t { font-variant-numeric: tabular-nums; }
+.mng__srcbadge { font-size: .68rem; font-weight: 800; padding: 3px 8px; border-radius: var(--radius-pill); }
+.mng__srcbadge--admin { background: rgba(25,195,179,.16); color: var(--brand-dark); }
+.mng__srcbadge--channel { background: var(--chip); color: var(--text-dim); }
+[data-theme="dark"] .mng__srcbadge--admin { color: var(--brand-light); }
+.mng__rowact { display: flex; gap: 6px; }
+.mng__iconbtn { width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); cursor: pointer; font-size: .9rem; transition: var(--trans); }
+.mng__iconbtn:hover { border-color: var(--brand); color: var(--brand-dark); }
+.mng__iconbtn--del:hover { border-color: var(--down); color: var(--down); }
+.mng__empty { text-align: center; padding: 28px; color: var(--text-soft); font-weight: 700; }
+.mng__form { display: flex; flex-direction: column; gap: 12px; }
+.mng__label { font-size: .82rem; font-weight: 800; color: var(--text-soft); }
+.mng__label b { color: var(--brand-dark); font-weight: 900; }
+.mng__input { width: 100%; padding: 11px 13px; border-radius: var(--radius-md);
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  font-family: var(--font-koodak); font-size: .92rem; line-height: 2; resize: vertical; }
+.mng__input:focus { outline: none; border-color: var(--brand); }
+.mng__imgs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mng__imgslot { display: flex; flex-direction: column; gap: 7px; }
+.mng__preview { min-height: 60px; border-radius: var(--radius-md); border: 1px dashed var(--border);
+  display: grid; place-items: center; overflow: hidden; background: var(--surface-2); }
+.mng__preview img { max-width: 100%; max-height: 140px; display: block; }
+.mng__preview:empty::after { content: "بدون تصویر"; color: var(--text-dim); font-size: .76rem; padding: 18px; }
+.mng__file { font-size: .78rem; color: var(--text-soft); }
+.mng__removechk { font-size: .78rem; color: var(--text-soft); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.mng__msg { font-size: .84rem; color: var(--down); font-weight: 700; }
+.mng__actions { display: flex; gap: 10px; justify-content: flex-start; margin-top: 4px; }
+@media (max-width: 540px) {
+  .mng__imgs { grid-template-columns: 1fr; }
 }
