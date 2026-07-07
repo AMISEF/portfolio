@@ -17,6 +17,8 @@
   --font: "Vazirmatn", "B Nazanin", Tahoma, system-ui, -apple-system, "Segoe UI", sans-serif;
   /* اعداد هم با همان فونت نرم وزیرمتن (ارقام جدول‌بندی‌شده) — نه فونت مونوی سیستمی */
   --font-mono: "Vazirmatn", "B Nazanin", Tahoma, sans-serif;
+  /* فونت «تحلیل اختصاصی»: B Koodak (اگر فایل قلم موجود باشد)، با پس‌گَردِ وزیرمتن */
+  --font-koodak: "B Koodak", "BKoodak", "Vazirmatn", Tahoma, sans-serif;
 
   --radius-lg: 22px; --radius-md: 16px; --radius-sm: 10px; --radius-pill: 999px; --radius-nav: 26px;
   --shadow-soft: 0 10px 30px -12px rgba(22,47,85,.25);
@@ -1284,3 +1286,115 @@ a.auth-account__sub:hover { color: var(--brand); }
 .adm-tier--gold { background: linear-gradient(135deg,rgba(245,158,11,.22),rgba(217,119,6,.22)); color:#d97706; border:1px solid rgba(245,158,11,.35); }
 .adm-tier--diamond { background: linear-gradient(135deg,rgba(6,182,212,.20),rgba(34,211,238,.20)); color:#0891b2; border:1px solid rgba(6,182,212,.35); }
 [data-theme="dark"] .adm-tier--diamond { color:#67e8f9; }
+
+/* ============================================================
+   فونت B Koodak — برای بخش «تحلیل اختصاصی»
+   فایل قلم را در app/static/fonts/BKoodak.woff2 (یا .ttf) قرار دهید؛
+   تا زمانِ افزوده‌شدن، به‌صورت خودکار به «وزیرمتن» پس‌گَرد می‌کند.
+   ============================================================ */
+@font-face {
+  font-family: "B Koodak";
+  src: url("/static/fonts/BKoodak.woff2") format("woff2"),
+       url("/static/fonts/BKoodak.woff") format("woff"),
+       url("/static/fonts/BKoodak.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+.font-koodak, .font-koodak .tgc__author, .font-koodak .tgc__caption,
+.font-koodak .tgc__tab, .font-koodak .tgc__channame { font-family: var(--font-koodak); }
+
+/* ============================================================
+   «تحلیل اختصاصی» — کانالِ نمایشیِ سبکِ تلگرام
+   ============================================================ */
+.tgc { display: flex; flex-direction: column; gap: 16px; }
+
+/* سربرگِ کانال */
+.tgc__chanhead { display: flex; align-items: center; gap: 14px; padding: 14px 16px; }
+.tgc__chanavatar { width: 54px; height: 54px; border-radius: 50%; object-fit: cover;
+  flex-shrink: 0; border: 2px solid var(--brand); background: var(--blue-900);
+  box-shadow: 0 4px 12px -4px rgba(22,47,85,.5); }
+.tgc__chanmeta { flex: 1; min-width: 0; }
+.tgc__channame { font-size: 1.02rem; font-weight: 900; color: var(--heading); }
+.tgc__chanhandle { font-size: .78rem; color: var(--brand-dark); font-weight: 700; text-decoration: none; }
+.tgc__chanhandle:hover { color: var(--brand); }
+.tgc__joinbtn { flex-shrink: 0; font-size: .76rem; font-weight: 800; padding: 8px 14px;
+  border-radius: var(--radius-pill); color: var(--on-brand); text-decoration: none;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+  box-shadow: var(--shadow-brand); transition: var(--trans); }
+.tgc__joinbtn:hover { transform: translateY(-2px); }
+
+/* تب‌های بخش‌بندی */
+.tgc__tabs { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 6px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.tgc__tabs::-webkit-scrollbar { display: none; }
+.tgc__tab { flex-shrink: 0; font-size: .84rem; font-weight: 800; padding: 9px 16px;
+  border-radius: var(--radius-pill); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-soft); cursor: pointer;
+  transition: var(--trans); white-space: nowrap; font-family: var(--font-koodak); }
+.tgc__tab:hover { border-color: var(--brand); color: var(--brand-dark); }
+.tgc__tab.is-active { color: var(--on-brand); border-color: transparent;
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
+  box-shadow: var(--shadow-brand); }
+
+/* فید تحلیل‌ها */
+.tgc__feed { display: flex; flex-direction: column; gap: 16px; min-height: 200px; }
+
+/* یک پست (سبکِ تلگرام: آواتار دایره‌ای کنارِ حباب) */
+.tgc__post { display: flex; align-items: flex-end; gap: 10px; }
+.tgc__avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+  flex-shrink: 0; border: 1.5px solid var(--brand); background: var(--blue-900);
+  box-shadow: 0 3px 8px -4px rgba(22,47,85,.5); }
+.tgc__bubble { flex: 1; min-width: 0; max-width: 560px;
+  background: var(--surface-solid); border: 1px solid var(--border);
+  border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg);
+  box-shadow: var(--shadow-soft); overflow: hidden; padding: 12px 14px; }
+.tgc__author { font-size: .86rem; font-weight: 900; color: var(--brand-dark);
+  margin-bottom: 8px; }
+.tgc__media { margin: 0 -14px 10px; background:
+  repeating-conic-gradient(rgba(22,47,85,.05) 0% 25%, transparent 0% 50%) 50% / 22px 22px,
+  linear-gradient(180deg, rgba(25,195,179,.06), rgba(22,47,85,.04)); }
+[data-theme="dark"] .tgc__media { background:
+  repeating-conic-gradient(rgba(255,255,255,.04) 0% 25%, transparent 0% 50%) 50% / 22px 22px,
+  linear-gradient(180deg, rgba(25,195,179,.08), rgba(10,21,37,.3)); }
+.tgc__media img { display: block; width: 100%; height: auto; }
+.tgc__caption { font-size: .92rem; line-height: 2; color: var(--text);
+  white-space: pre-wrap; word-break: break-word; }
+.tgc__tag { color: var(--brand-dark); font-weight: 800; }
+[data-theme="dark"] .tgc__tag { color: var(--brand-light); }
+.tgc__meta { display: flex; align-items: center; gap: 6px; margin-top: 8px;
+  font-size: .72rem; color: var(--text-dim); font-weight: 700; }
+.tgc__meta .tgc__dot { opacity: .6; }
+.tgc__time { font-variant-numeric: tabular-nums; }
+
+/* بارگذاری / خالی / خطا */
+.tgc__loading { display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 48px 16px; color: var(--text-soft); font-size: .9rem; font-weight: 700; }
+.tgc__spinner { width: 30px; height: 30px; border-radius: 50%;
+  border: 3px solid var(--border-strong); border-top-color: var(--brand);
+  animation: tgc-spin .8s linear infinite; }
+@keyframes tgc-spin { to { transform: rotate(360deg); } }
+.tgc__empty { text-align: center; padding: 48px 20px; display: flex; flex-direction: column;
+  align-items: center; gap: 12px; color: var(--text-soft); }
+.tgc__empty-icon { color: var(--brand); opacity: .8; }
+.tgc__empty-title { font-size: 1.05rem; font-weight: 900; color: var(--heading); }
+.tgc__empty-desc { font-size: .86rem; line-height: 1.9; max-width: 420px; }
+
+/* صفحه‌بندی */
+.tgc__pager { display: flex; align-items: center; justify-content: center; gap: 14px;
+  padding: 6px 0 4px; }
+.tgc__pgbtn { display: inline-flex; align-items: center; gap: 5px; font-size: .82rem;
+  font-weight: 800; padding: 9px 15px; border-radius: var(--radius-md);
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  cursor: pointer; transition: var(--trans); font-family: var(--font); }
+.tgc__pgbtn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand-dark);
+  transform: translateY(-2px); }
+.tgc__pgbtn:disabled { opacity: .4; cursor: not-allowed; }
+.tgc__pginfo { font-size: .82rem; font-weight: 800; color: var(--text-soft);
+  font-variant-numeric: tabular-nums; }
+
+@media (max-width: 540px) {
+  .tgc__bubble { max-width: 100%; }
+  .tgc__chanavatar { width: 46px; height: 46px; }
+  .tgc__joinbtn { padding: 7px 11px; font-size: .72rem; }
+}

@@ -78,6 +78,52 @@ async def exclusive_page(request: Request):
     return templates.TemplateResponse("exclusive.html", ctx)
 
 
+_EXC_FILTERS = {"all", "external", "internal", "btc_eth"}
+
+
+@router.get("/api/exclusive/signals")
+async def exclusive_signals(request: Request, filter: str = "all", page: int = 1):
+    """خوراکِ کانالِ «تحلیل اختصاصی» — تحلیل‌های تصویری کانال تلگرام با کپشن.
+
+    گیت‌دار: فقط اعضای دارای اشتراک (نقره‌ای/طلایی/الماسی + ادمین) دسترسی دارند.
+    صفحه‌بندی ۱۰ تحلیل در هر صفحه؛ فیلترِ دسته: all / external / internal / btc_eth.
+    """
+    user = current_user(request)
+    if not plans.can_access_exclusive(user):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
+
+    cat = filter if filter in _EXC_FILTERS else "all"
+    data = db.list_signals_feed(category=cat, page=page, per_page=10)
+
+    posts = []
+    for r in data["items"]:
+        has_image = bool(r.get("image_path"))
+        mid = r.get("message_id")
+        posts.append({
+            "id": mid,
+            "ts": r.get("ts"),
+            "text": r.get("text") or "",
+            "hashtags": r.get("tags") or [],
+            "is_internal": bool(r.get("is_internal")),
+            "is_btc_eth": bool(r.get("is_btc_eth")),
+            "image_url": f"/api/advisor/signal-image/{mid}" if has_image else None,
+        })
+    return JSONResponse({
+        "channel": {
+            "name": "کریپتو اسمارت | Crypto Smart",
+            "handle": "Portfolio_CryptoSmart",
+            "url": settings.signals_channel_url,
+            "avatar": "/static/img/logo.png",
+        },
+        "filter": cat,
+        "page": data["page"],
+        "per_page": data["per_page"],
+        "total": data["total"],
+        "total_pages": data["total_pages"],
+        "posts": posts,
+    })
+
+
 @router.get("/api/subscription/plans")
 async def subscription_plans(request: Request):
     """فهرست چهار پلن + وضعیت اشتراک جاری کاربر (برای صفحهٔ قیمت‌گذاری)."""

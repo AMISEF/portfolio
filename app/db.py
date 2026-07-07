@@ -392,15 +392,107 @@ def get_signal(message_id: int) -> dict[str, Any] | None:
         return dict(row) if row else None
 
 
-def purge_expired_signals() -> list[str]:
-    """حذف تحلیل‌های منقضی؛ بازگشت مسیر تصاویرشان برای پاک‌سازی فایل."""
+# ── دسته‌بندیِ تحلیل‌ها بر پایهٔ هشتگ (برای بخش‌بندیِ «تحلیل اختصاصی») ──
+# «بازار داخلی» = تتر و دلار و طلا (+ انس/نقره/نفت طبق خواستهٔ کاربر).
+_INTERNAL_TAGS = {
+    "تتر", "طلا", "دلار", "طلای", "سکه", "نقره", "نفت", "انس",
+    "usdt", "usd", "tether", "dollar",
+    "gold", "gold18", "xau", "xauusd",
+    "silver", "xag", "xagusd",
+    "oil", "wti", "brent",
+}
+# «بیت‌کوین و اتریوم».
+_BTC_ETH_TAGS = {
+    "btc", "eth", "bitcoin", "ethereum", "بیتکوین", "اتریوم",
+    "btcusdt", "ethusdt",
+}
+
+
+def _classify_signal(hashtags: list[str]) -> tuple[bool, bool]:
+    """(is_internal, is_btc_eth) بر پایهٔ هشتگ‌های یک تحلیل."""
+    tags = {str(t).lstrip("#").lower() for t in (hashtags or [])}
+    return bool(tags & _INTERNAL_TAGS), bool(tags & _BTC_ETH_TAGS)
+
+
+def _match_category(hashtags: list[str], category: str) -> bool:
+    """آیا تحلیل به دستهٔ خواسته‌شده تعلق دارد؟
+
+    all      → همهٔ تحلیل‌ها
+    internal → فقط تتر/دلار/طلا (بازار داخلی)
+    external → همه به‌جز بازار داخلی (بازار خارجی: ارز/شاخص/سهام)
+    btc_eth  → فقط بیت‌کوین و اتریوم
+    """
+    is_internal, is_btc_eth = _classify_signal(hashtags)
+    if category == "internal":
+        return is_internal
+    if category == "external":
+        return not is_internal
+    if category == "btc_eth":
+        return is_btc_eth
+    return True
+
+
+def list_signals_feed(category: str = "all", page: int = 1,
+                      per_page: int = 10) -> dict[str, Any]:
+    """صفحهٔ درخواستی از آرشیو تحلیل‌های کانال (جدیدترین اول) با فیلترِ دسته.
+
+    فیلترِ دسته چون روی هشتگ‌های ذخیره‌شده به‌صورت JSON است در پایتون اعمال
+    می‌شود؛ سپس صفحه‌بندی (پیش‌فرض ۱۰ تحلیل در هر صفحه) روی نتیجهٔ فیلتر انجام
+    می‌گیرد. بر خلاف list_active_signals، این تابع به expires_at وابسته نیست تا
+    آرشیوِ نمایشی تا بازهٔ نگه‌داری کامل در دسترس بماند.
+    """
+    import json as _json
     with _LOCK, _conn() as conn:
         rows = conn.execute(
-            "SELECT image_path FROM channel_signals WHERE expires_at <= datetime('now') "
-            "AND image_path IS NOT NULL"
+            "SELECT * FROM channel_signals ORDER BY ts DESC, message_id DESC"
+        ).fetchall()
+    items: list[dict[str, Any]] = []
+    for r in rows:
+        d = dict(r)
+        try:
+            tags = _json.loads(d.get("hashtags") or "[]")
+        except Exception:  # noqa: BLE001
+            tags = []
+        if not _match_category(tags, category):
+            continue
+        is_internal, is_btc_eth = _classify_signal(tags)
+        d["tags"] = tags
+        d["is_internal"] = is_internal
+        d["is_btc_eth"] = is_btc_eth
+        items.append(d)
+
+    per_page = max(1, int(per_page))
+    total = len(items)
+    total_pages = max(1, (total + per_page - 1) // per_page) if total else 0
+    page = max(1, int(page))
+    start = (page - 1) * per_page
+    return {
+        "items": items[start:start + per_page],
+        "total": total,
+        "total_pages": total_pages,
+        "page": page,
+        "per_page": per_page,
+    }
+
+
+def purge_expired_signals(retention_days: int | None = None) -> list[str]:
+    """حذف تحلیل‌های قدیمی‌تر از بازهٔ نگه‌داریِ آرشیو؛ بازگشت مسیر تصاویرشان.
+
+    توجه: این با «اعتبار ۷روزهٔ سبد هوش مصنوعی» (expires_at) فرق دارد. آن اعتبار
+    فقط در list_active_signals برای پیشنهاد سبد اعمال می‌شود؛ اما تحلیل‌ها برای
+    نمایش در «تحلیل اختصاصی» تا این بازهٔ بلندتر در آرشیو نگه داشته می‌شوند.
+    """
+    days = int(retention_days if retention_days is not None
+               else settings.signals_retention_days)
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT image_path FROM channel_signals "
+            "WHERE created_at <= datetime('now', ?) AND image_path IS NOT NULL",
+            (f"-{days} days",),
         ).fetchall()
         paths = [r["image_path"] for r in rows if r["image_path"]]
-        conn.execute("DELETE FROM channel_signals WHERE expires_at <= datetime('now')")
+        conn.execute("DELETE FROM channel_signals WHERE created_at <= datetime('now', ?)",
+                     (f"-{days} days",))
         return paths
 
 

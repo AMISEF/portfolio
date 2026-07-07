@@ -150,6 +150,11 @@ class Settings(BaseSettings):
     signals_channel_id: str = "-1004451073096"
     signals_channel_url: str = "https://t.me/Portfolio_CryptoSmart"
     signals_ttl_days: int = 7
+    # بازهٔ نگه‌داری «آرشیوِ نمایشیِ» تحلیل‌ها در بخش «تحلیل اختصاصی» (روز).
+    # این با signals_ttl_days (اعتبار ۷روزهٔ خوراکِ سبد هوش مصنوعی) فرق دارد؛ آن
+    # اعتبار فقط برای پیشنهاد سبد است، اما تحلیل‌ها تا این بازه در کانالِ نمایشی
+    # می‌مانند تا کاربر بتواند آرشیو را ورق بزند.
+    signals_retention_days: int = 180
     # نشانیِ عمومیِ این برنامه (برای ثبت وب‌هوک تلگرام و ساخت URL تصاویر).
     public_base_url: str = "https://portfolio.cryptosmart.site"
     # توکن مخفیِ تأیید وب‌هوک؛ اگر خالی باشد از admin_secret_key مشتق می‌شود.
