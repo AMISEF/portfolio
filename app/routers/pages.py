@@ -75,6 +75,7 @@ async def exclusive_page(request: Request):
     ctx["subtitle_fa"] = "تحلیل‌های بازار داخلی و خارجی"
     ctx["is_authed"] = bool(user)
     ctx["can_access"] = plans.can_access_exclusive(user)
+    ctx["is_admin"] = bool(user and (user.get("role") or "member") in ("admin", "support"))
     return templates.TemplateResponse("exclusive.html", ctx)
 
 
@@ -97,8 +98,12 @@ async def exclusive_signals(request: Request, filter: str = "all", page: int = 1
 
     posts = []
     for r in data["items"]:
-        has_image = bool(r.get("image_path"))
         mid = r.get("message_id")
+        images = []
+        if r.get("image_path"):
+            images.append(f"/api/advisor/signal-image/{mid}?i=1")
+        if r.get("image_path2"):
+            images.append(f"/api/advisor/signal-image/{mid}?i=2")
         posts.append({
             "id": mid,
             "ts": r.get("ts"),
@@ -106,14 +111,15 @@ async def exclusive_signals(request: Request, filter: str = "all", page: int = 1
             "hashtags": r.get("tags") or [],
             "is_internal": bool(r.get("is_internal")),
             "is_btc_eth": bool(r.get("is_btc_eth")),
-            "image_url": f"/api/advisor/signal-image/{mid}" if has_image else None,
+            "images": images,
+            "image_url": images[0] if images else None,
         })
     return JSONResponse({
         "channel": {
             "name": "کریپتو اسمارت | Crypto Smart",
             "handle": "Portfolio_CryptoSmart",
             "url": settings.signals_channel_url,
-            "avatar": "/static/img/logo.png",
+            "avatar": "/static/img/channel-avatar.png",
         },
         "filter": cat,
         "page": data["page"],

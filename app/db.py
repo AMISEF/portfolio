@@ -127,6 +127,9 @@ def init_db() -> None:
                 text        TEXT NOT NULL DEFAULT '',
                 hashtags    TEXT NOT NULL DEFAULT '[]',
                 image_path  TEXT,                   -- مسیر فایل تصویر چارت (در data/signals)
+                image_path2 TEXT,                   -- تصویر دومِ همان تحلیل (آلبوم/دو‌تصویری)
+                media_group_id TEXT,                -- شناسهٔ آلبومِ تلگرام (برای گروه‌بندی چند‌تصویری)
+                source      TEXT NOT NULL DEFAULT 'channel',  -- channel | admin
                 created_at  TEXT NOT NULL DEFAULT (datetime('now')),
                 expires_at  TEXT NOT NULL           -- پس از این زمان از پیشنهادها حذف می‌شود
             );
@@ -134,6 +137,7 @@ def init_db() -> None:
             """
         )
         _migrate_users(conn)
+        _migrate_signals(conn)
 
 
 def _migrate_users(conn: sqlite3.Connection) -> None:
@@ -166,6 +170,20 @@ def _migrate_users(conn: sqlite3.Connection) -> None:
     # ایندکس‌ها پس از افزوده‌شدن ستون‌ها (روی دیتابیس‌های قدیمی هم امن است)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)")
+
+
+def _migrate_signals(conn: sqlite3.Connection) -> None:
+    """افزودن ستون‌های جدیدِ channel_signals به دیتابیس‌های موجود (idempotent)."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(channel_signals)").fetchall()}
+    add = {
+        "image_path2": "TEXT",
+        "media_group_id": "TEXT",
+        "source": "TEXT NOT NULL DEFAULT 'channel'",
+    }
+    for name, decl in add.items():
+        if name not in cols:
+            conn.execute(f"ALTER TABLE channel_signals ADD COLUMN {name} {decl}")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_signals_group ON channel_signals(media_group_id)")
 
 
 def assign_user_code(user_id: int) -> str:
@@ -344,28 +362,149 @@ def get_portfolio_history(uid: str, days: int = 365) -> list[dict[str, Any]]:
 
 
 # ---- سیگنال‌های کانال تلگرام ----
-def upsert_signal(message_id: int, chat_id: str, ts: int, text: str,
-                  hashtags_json: str, image_path: str | None, ttl_days: int) -> None:
-    """درج/به‌روزرسانی یک تحلیل کانال. هنگام ویرایش پست، متن/هشتگ به‌روز می‌شود؛
-    اگر تصویر جدید None باشد، تصویر قبلی حفظ می‌شود."""
+def upsert_channel_signal(message_id: int, chat_id: str, ts: int, text: str,
+                          hashtags_json: str, image_path: str | None,
+                          media_group_id: str | None, ttl_days: int) -> None:
+    """درج/به‌روزرسانیِ یک پستِ کانال، با گروه‌بندیِ آلبوم‌های دو‌تصویری.
+
+    تلگرام هر آلبوم را به‌صورت چند «channel_post» جدا (با message_id متفاوت اما
+    media_group_id یکسان) می‌فرستد و معمولاً فقط یکی از آن‌ها کپشن دارد. این تابع
+    تصاویرِ یک آلبوم را در یک ردیف (تحلیلِ واحد) کنار هم نگه می‌دارد: تصویر دوم در
+    image_path2 و کپشن از هر پیامی که متن داشته باشد گرفته می‌شود.
+    """
     with _LOCK, _conn() as conn:
+        if media_group_id:
+            row = conn.execute(
+                "SELECT * FROM channel_signals WHERE media_group_id = ? "
+                "ORDER BY message_id LIMIT 1", (media_group_id,),
+            ).fetchone()
+            if row:
+                sets: list[str] = []
+                vals: list[Any] = []
+                if image_path:
+                    if not row["image_path"]:
+                        sets.append("image_path = ?"); vals.append(image_path)
+                    elif not row["image_path2"]:
+                        sets.append("image_path2 = ?"); vals.append(image_path)
+                if text and not (row["text"] or "").strip():
+                    sets.append("text = ?"); vals.append(text)
+                    sets.append("hashtags = ?"); vals.append(hashtags_json)
+                if sets:
+                    vals.append(row["message_id"])
+                    conn.execute(
+                        f"UPDATE channel_signals SET {', '.join(sets)} WHERE message_id = ?", vals)
+                return
+
         existing = conn.execute(
-            "SELECT image_path FROM channel_signals WHERE message_id = ?", (message_id,)
+            "SELECT image_path, image_path2 FROM channel_signals WHERE message_id = ?",
+            (message_id,),
         ).fetchone()
-        if existing and image_path is None:
-            image_path = existing["image_path"]
+        ip = image_path
+        ip2 = existing["image_path2"] if existing else None
+        if existing and ip is None:
+            ip = existing["image_path"]
         conn.execute(
             """
-            INSERT INTO channel_signals (message_id, chat_id, ts, text, hashtags, image_path, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, datetime('now', ?))
+            INSERT INTO channel_signals
+                (message_id, chat_id, ts, text, hashtags, image_path, image_path2,
+                 media_group_id, source, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'channel', datetime('now', ?))
             ON CONFLICT(message_id) DO UPDATE SET
                 chat_id=excluded.chat_id, ts=excluded.ts, text=excluded.text,
                 hashtags=excluded.hashtags, image_path=excluded.image_path,
+                image_path2=excluded.image_path2, media_group_id=excluded.media_group_id,
                 expires_at=excluded.expires_at
             """,
-            (message_id, chat_id, ts, text, hashtags_json, image_path,
+            (message_id, chat_id, ts, text, hashtags_json, ip, ip2,
+             media_group_id, f"+{int(ttl_days)} days"),
+        )
+
+
+def upsert_signal(message_id: int, chat_id: str, ts: int, text: str,
+                  hashtags_json: str, image_path: str | None, ttl_days: int) -> None:
+    """سازگاریِ عقب‌رو: درج/به‌روزرسانیِ سادهٔ یک تحلیل (بدون گروه‌بندیِ آلبوم)."""
+    upsert_channel_signal(message_id, chat_id, ts, text, hashtags_json,
+                          image_path, None, ttl_days)
+
+
+# ---- مدیریتِ تحلیل‌ها توسط ادمین ----
+def admin_create_signal(text: str, hashtags_json: str, image_path: str | None,
+                        image_path2: str | None, ttl_days: int, ts: int | None = None) -> int:
+    """ساخت یک تحلیلِ دستیِ ادمین. شناسهٔ منفیِ یکتا می‌گیرد تا با message_idهای
+    مثبتِ تلگرام تداخل نکند. بازگشت: message_id."""
+    import time as _time
+    now = int(_time.time())
+    mid = -int(_time.time() * 1000)
+    with _LOCK, _conn() as conn:
+        while conn.execute("SELECT 1 FROM channel_signals WHERE message_id = ?", (mid,)).fetchone():
+            mid -= 1
+        conn.execute(
+            """
+            INSERT INTO channel_signals
+                (message_id, chat_id, ts, text, hashtags, image_path, image_path2,
+                 source, expires_at)
+            VALUES (?, '', ?, ?, ?, ?, ?, 'admin', datetime('now', ?))
+            """,
+            (mid, int(ts or now), text, hashtags_json, image_path, image_path2,
              f"+{int(ttl_days)} days"),
         )
+    return mid
+
+
+def admin_update_signal(message_id: int, *, text: str | None = None,
+                        hashtags_json: str | None = None,
+                        image_path: Any = "__keep__",
+                        image_path2: Any = "__keep__") -> bool:
+    """ویرایشِ گزینشیِ یک تحلیل (متن/هشتگ/تصاویر). مقدار __keep__ یعنی بدون تغییر."""
+    sets: list[str] = []
+    vals: list[Any] = []
+    if text is not None:
+        sets.append("text = ?"); vals.append(text)
+    if hashtags_json is not None:
+        sets.append("hashtags = ?"); vals.append(hashtags_json)
+    if image_path != "__keep__":
+        sets.append("image_path = ?"); vals.append(image_path)
+    if image_path2 != "__keep__":
+        sets.append("image_path2 = ?"); vals.append(image_path2)
+    if not sets:
+        return False
+    vals.append(message_id)
+    with _LOCK, _conn() as conn:
+        cur = conn.execute(
+            f"UPDATE channel_signals SET {', '.join(sets)} WHERE message_id = ?", vals)
+        return cur.rowcount > 0
+
+
+def delete_signal(message_id: int) -> list[str]:
+    """حذف یک تحلیل؛ بازگشت مسیر تصاویرش برای پاک‌سازیِ فایل."""
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT image_path, image_path2 FROM channel_signals WHERE message_id = ?",
+            (message_id,),
+        ).fetchone()
+        if not row:
+            return []
+        conn.execute("DELETE FROM channel_signals WHERE message_id = ?", (message_id,))
+        return [p for p in (row["image_path"], row["image_path2"]) if p]
+
+
+def admin_list_signals(limit: int = 500) -> list[dict[str, Any]]:
+    """همهٔ تحلیل‌ها (جدیدترین اول) برای جدولِ مدیریتِ ادمین، با هشتگ‌های پارس‌شده."""
+    import json as _json
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM channel_signals ORDER BY ts DESC, message_id DESC LIMIT ?",
+            (int(limit),),
+        ).fetchall()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["tags"] = _json.loads(d.get("hashtags") or "[]")
+        except Exception:  # noqa: BLE001
+            d["tags"] = []
+        out.append(d)
+    return out
 
 
 def list_active_signals(limit: int = 50, tag: str | None = None) -> list[dict[str, Any]]:

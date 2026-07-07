@@ -19,10 +19,16 @@ API:
 """
 from __future__ import annotations
 
+import json
+import os
+import re
+import time
+import uuid
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, Body, Request
+from fastapi import APIRouter, Body, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
@@ -355,6 +361,143 @@ async def market_card_send(request: Request):
     except Exception as e:  # noqa: BLE001
         return JSONResponse({"ok": False, "error": f"{type(e).__name__}: {e}"}, status_code=500)
     return JSONResponse(res, status_code=200 if res.get("ok") else 502)
+
+
+# ───────────────────────── مدیریت تحلیل‌های اختصاصی ─────────────────────────
+_SIGNALS_DIR = Path("data/signals")
+_HASHTAG_RE = re.compile(r"#(\w+)", re.UNICODE)
+_IMG_EXTS = {"png", "jpg", "jpeg", "webp", "gif"}
+
+
+def _extract_tags(text: str) -> list[str]:
+    return [t.lower() for t in _HASHTAG_RE.findall(text or "")]
+
+
+async def _save_signal_upload(f: UploadFile | None) -> str | None:
+    """ذخیرهٔ تصویرِ تحلیلِ آپلودشده در data/signals با نامِ یکتا؛ بازگشتِ مسیر."""
+    if not f or not f.filename:
+        return None
+    ext = (f.filename.rsplit(".", 1)[-1] or "png").lower()
+    if ext not in _IMG_EXTS:
+        ext = "png"
+    _SIGNALS_DIR.mkdir(parents=True, exist_ok=True)
+    dest = _SIGNALS_DIR / f"admin_{uuid.uuid4().hex}.{ext}"
+    dest.write_bytes(await f.read())
+    return str(dest)
+
+
+def _unlink_quiet(path: str | None) -> None:
+    if path:
+        try:
+            Path(path).unlink(missing_ok=True)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _signal_row(s: dict[str, Any]) -> dict[str, Any]:
+    mid = s.get("message_id")
+    images = []
+    if s.get("image_path"):
+        images.append(f"/api/advisor/signal-image/{mid}?i=1")
+    if s.get("image_path2"):
+        images.append(f"/api/advisor/signal-image/{mid}?i=2")
+    return {
+        "id": mid,
+        "ts": s.get("ts"),
+        "text": s.get("text") or "",
+        "hashtags": s.get("tags") or [],
+        "images": images,
+        "source": s.get("source") or "channel",
+    }
+
+
+@router.get("/api/admin/signals")
+async def admin_signals_list(request: Request):
+    """فهرست همهٔ تحلیل‌ها برای جدولِ مدیریت (ادمین/پشتیبان)."""
+    if not _staff(request):
+        return _deny()
+    rows = [_signal_row(s) for s in db.admin_list_signals()]
+    return JSONResponse({"signals": rows, "count": len(rows)})
+
+
+@router.post("/api/admin/signals")
+async def admin_signals_create(
+    request: Request,
+    text: str = Form(""),
+    image1: UploadFile | None = File(None),
+    image2: UploadFile | None = File(None),
+):
+    """افزودن یک تحلیلِ دستی با کپشن و حداکثر دو تصویر (ادمین/پشتیبان)."""
+    if not _staff(request):
+        return _deny()
+    text = (text or "").strip()
+    p1 = await _save_signal_upload(image1)
+    p2 = await _save_signal_upload(image2)
+    if not text and not p1:
+        _unlink_quiet(p1); _unlink_quiet(p2)
+        return _deny("حداقل یک تصویر یا متن لازم است.", 400)
+    mid = db.admin_create_signal(
+        text=text,
+        hashtags_json=json.dumps(_extract_tags(text), ensure_ascii=False),
+        image_path=p1, image_path2=p2,
+        ttl_days=settings.signals_ttl_days,
+        ts=int(time.time()),
+    )
+    return JSONResponse({"ok": True, "id": mid})
+
+
+@router.post("/api/admin/signals/{message_id}")
+async def admin_signals_update(
+    request: Request,
+    message_id: int,
+    text: str = Form(""),
+    image1: UploadFile | None = File(None),
+    image2: UploadFile | None = File(None),
+    remove_image1: str = Form(""),
+    remove_image2: str = Form(""),
+):
+    """ویرایشِ یک تحلیل: کپشن، جایگزینی/حذفِ تصاویر (ادمین/پشتیبان)."""
+    if not _staff(request):
+        return _deny()
+    sig = db.get_signal(message_id)
+    if not sig:
+        return _deny("تحلیل یافت نشد.", 404)
+
+    text = (text or "").strip()
+    kwargs: dict[str, Any] = {
+        "text": text,
+        "hashtags_json": json.dumps(_extract_tags(text), ensure_ascii=False),
+    }
+    # تصویرِ اول
+    new1 = await _save_signal_upload(image1)
+    if new1:
+        _unlink_quiet(sig.get("image_path"))
+        kwargs["image_path"] = new1
+    elif remove_image1 in ("1", "true", "on"):
+        _unlink_quiet(sig.get("image_path"))
+        kwargs["image_path"] = None
+    # تصویرِ دوم
+    new2 = await _save_signal_upload(image2)
+    if new2:
+        _unlink_quiet(sig.get("image_path2"))
+        kwargs["image_path2"] = new2
+    elif remove_image2 in ("1", "true", "on"):
+        _unlink_quiet(sig.get("image_path2"))
+        kwargs["image_path2"] = None
+
+    db.admin_update_signal(message_id, **kwargs)
+    return JSONResponse({"ok": True, "id": message_id})
+
+
+@router.delete("/api/admin/signals/{message_id}")
+async def admin_signals_delete(request: Request, message_id: int):
+    """حذفِ یک تحلیل و فایل‌های تصویرش (ادمین/پشتیبان)."""
+    if not _staff(request):
+        return _deny()
+    paths = db.delete_signal(message_id)
+    for p in paths:
+        _unlink_quiet(p)
+    return JSONResponse({"ok": True})
 
 
 @router.get("/api/admin/market-card/preview.png")

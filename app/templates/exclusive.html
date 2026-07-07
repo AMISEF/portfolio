@@ -3,23 +3,25 @@
 {% block content %}
 
 <section class="exc font-koodak">
-  <div class="exc__head rise">
+  <div class="exc__head exc__head--row rise">
     <h1 class="exc__title">تحلیل <span class="accent">اختصاصی</span></h1>
-    <p class="exc__sub">تحلیل‌های روزانهٔ بازار، مستقیم از کانال کریپتو اسمارت — تصویر، کپشن و نقاط خرید و فروش.</p>
+    {% if is_admin and can_access %}
+    <button type="button" class="btn btn--brand tgc__managebtn" id="tgcManageBtn">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+      مدیریت تحلیل‌ها
+    </button>
+    {% endif %}
   </div>
 
   {% if can_access %}
-  {# دسترسی باز (نقره‌ای/طلایی/الماسی/ادمین) — کانالِ نمایشیِ تحلیل‌ها #}
   <div class="tgc" id="tgc">
 
     <!-- سربرگِ کانال -->
     <div class="tgc__chanhead card">
-      <img class="tgc__chanavatar" src="/static/img/logo.png" alt="کریپتو اسمارت">
+      <img class="tgc__chanavatar" src="/static/img/channel-avatar.png" alt="کریپتو اسمارت">
       <div class="tgc__chanmeta">
         <div class="tgc__channame">کریپتو اسمارت | Crypto Smart</div>
-        <a class="tgc__chanhandle" dir="ltr" href="https://t.me/Portfolio_CryptoSmart" target="_blank" rel="noopener">@Portfolio_CryptoSmart</a>
       </div>
-      <a class="tgc__joinbtn" href="https://t.me/Portfolio_CryptoSmart" target="_blank" rel="noopener">عضویت در کانال</a>
     </div>
 
     <!-- بخش‌بندی (تب‌ها) -->
@@ -64,10 +66,79 @@
   </div>
   {% endif %}
 </section>
+
+{% if can_access %}
+<!-- نمایشگرِ بزرگِ تصویر (زوم + بستن) -->
+<div class="lbx" id="tgcLightbox" hidden>
+  <button class="lbx__x" id="lbxClose" aria-label="بستن">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+  <div class="lbx__stage" id="lbxStage">
+    <img class="lbx__img" id="lbxImg" alt="تحلیل" draggable="false">
+  </div>
+  <div class="lbx__zoom">
+    <button type="button" id="lbxOut" aria-label="کوچک‌نمایی">−</button>
+    <button type="button" id="lbxReset" aria-label="اندازهٔ واقعی">۱:۱</button>
+    <button type="button" id="lbxIn" aria-label="بزرگ‌نمایی">+</button>
+  </div>
+</div>
+{% endif %}
+
+{% if is_admin and can_access %}
+<!-- پنجرهٔ «مدیریت تحلیل‌ها» -->
+<div class="mng" id="tgcManage" hidden>
+  <div class="mng__backdrop" data-mng-close></div>
+  <div class="mng__panel">
+    <div class="mng__head">
+      <h3 class="mng__title">مدیریت تحلیل‌ها</h3>
+      <button type="button" class="mng__x" data-mng-close aria-label="بستن">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="mng__body">
+      <!-- نمای جدول -->
+      <div class="mng__view" id="mngListView">
+        <button type="button" class="btn btn--brand mng__add" id="mngAddBtn">+ افزودن تحلیل</button>
+        <div class="mng__tablewrap" id="mngTableWrap"></div>
+      </div>
+
+      <!-- نمای فرم (افزودن/ویرایش) -->
+      <form class="mng__view mng__form" id="mngForm" hidden>
+        <input type="hidden" id="mngId">
+        <label class="mng__label">کپشن تحلیل (با هشتگ ارز، مثل <b>#BTC</b> یا <b>#تتر</b>)</label>
+        <textarea class="mng__input" id="mngText" rows="5" placeholder="متن تحلیل را بنویسید…"></textarea>
+
+        <div class="mng__imgs">
+          <div class="mng__imgslot">
+            <label class="mng__label">تصویر اول</label>
+            <div class="mng__preview" id="mngPrev1"></div>
+            <input type="file" id="mngImg1" accept="image/*" class="mng__file">
+            <label class="mng__removechk" id="mngRm1Wrap" hidden><input type="checkbox" id="mngRm1"> حذف تصویر فعلی</label>
+          </div>
+          <div class="mng__imgslot">
+            <label class="mng__label">تصویر دوم (اختیاری)</label>
+            <div class="mng__preview" id="mngPrev2"></div>
+            <input type="file" id="mngImg2" accept="image/*" class="mng__file">
+            <label class="mng__removechk" id="mngRm2Wrap" hidden><input type="checkbox" id="mngRm2"> حذف تصویر فعلی</label>
+          </div>
+        </div>
+
+        <div class="mng__msg" id="mngMsg" hidden></div>
+        <div class="mng__actions">
+          <button type="button" class="btn btn--ghost" id="mngCancel">انصراف</button>
+          <button type="submit" class="btn btn--brand" id="mngSave">ذخیره</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 {% if can_access %}
+<script>window.CS_IS_ADMIN = {{ 'true' if is_admin else 'false' }};</script>
 <script src="/static/js/exclusive.js?v={{ static_v }}"></script>
 {% endif %}
 {% endblock %}

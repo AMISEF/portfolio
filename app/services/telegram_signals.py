@@ -161,19 +161,21 @@ async def process_update(update: dict[str, Any]) -> bool:
 
     message_id = int(post.get("message_id") or 0)
     ts = int(post.get("date") or 0)
+    media_group_id = post.get("media_group_id")
     tags = [t.lower() for t in _HASHTAG_RE.findall(text)]
 
     image_path: str | None = None
     if file_id:
         image_path = await _download_image(file_id, message_id)
 
-    db.upsert_signal(
+    db.upsert_channel_signal(
         message_id=message_id,
         chat_id=str(chat.get("id") or ""),
         ts=ts,
         text=text,
         hashtags_json=json.dumps(tags, ensure_ascii=False),
         image_path=image_path,
+        media_group_id=str(media_group_id) if media_group_id else None,
         ttl_days=settings.signals_ttl_days,
     )
     purge_expired()
