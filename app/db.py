@@ -555,6 +555,8 @@ def list_active_signals(limit: int = 50, tag: str | None = None) -> list[dict[st
             (int(limit) if not tag else 500,),
         ).fetchall()
     out = [dict(r) for r in rows]
+    for d in out:
+        d["image_list"] = _images_of(d)
     if tag:
         import json as _json
         t = tag.lstrip("#").lower()
