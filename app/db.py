@@ -131,6 +131,8 @@ def init_db() -> None:
                 images      TEXT,                    -- آرایهٔ JSON از همهٔ تصاویرِ آلبوم (n تصویر)
                 media_group_id TEXT,                -- شناسهٔ آلبومِ تلگرام (برای گروه‌بندی چند‌تصویری)
                 source      TEXT NOT NULL DEFAULT 'channel',  -- channel | admin
+                allow_mid   INTEGER NOT NULL DEFAULT 0,  -- مجاز برای پیشنهاد میان‌مدت (تأیید ادمین)
+                allow_long  INTEGER NOT NULL DEFAULT 0,  -- مجاز برای پیشنهاد بلندمدت (تأیید ادمین)
                 created_at  TEXT NOT NULL DEFAULT (datetime('now')),
                 expires_at  TEXT NOT NULL           -- پس از این زمان از پیشنهادها حذف می‌شود
             );
@@ -181,6 +183,8 @@ def _migrate_signals(conn: sqlite3.Connection) -> None:
         "images": "TEXT",
         "media_group_id": "TEXT",
         "source": "TEXT NOT NULL DEFAULT 'channel'",
+        "allow_mid": "INTEGER NOT NULL DEFAULT 0",
+        "allow_long": "INTEGER NOT NULL DEFAULT 0",
     }
     for name, decl in add.items():
         if name not in cols:
@@ -463,9 +467,10 @@ def signal_images(message_id: int) -> list[str]:
 
 # ---- مدیریتِ تحلیل‌ها توسط ادمین ----
 def admin_create_signal(text: str, hashtags_json: str, images: list[str],
-                        ttl_days: int, ts: int | None = None) -> int:
-    """ساخت یک تحلیلِ دستیِ ادمین با n تصویر. شناسهٔ منفیِ یکتا می‌گیرد تا با
-    message_idهای مثبتِ تلگرام تداخل نکند. بازگشت: message_id."""
+                        ttl_days: int, ts: int | None = None,
+                        allow_mid: bool = False, allow_long: bool = False) -> int:
+    """ساخت یک تحلیلِ دستیِ ادمین با n تصویر و پرچم‌های افق (میان/بلندمدت).
+    شناسهٔ منفیِ یکتا می‌گیرد تا با message_idهای مثبتِ تلگرام تداخل نکند."""
     import time as _time
     import json as _json
     now = int(_time.time())
@@ -478,20 +483,23 @@ def admin_create_signal(text: str, hashtags_json: str, images: list[str],
             """
             INSERT INTO channel_signals
                 (message_id, chat_id, ts, text, hashtags, image_path, image_path2,
-                 images, source, expires_at)
-            VALUES (?, '', ?, ?, ?, ?, ?, ?, 'admin', datetime('now', ?))
+                 images, source, allow_mid, allow_long, expires_at)
+            VALUES (?, '', ?, ?, ?, ?, ?, ?, 'admin', ?, ?, datetime('now', ?))
             """,
             (mid, int(ts or now), text, hashtags_json,
              imgs[0] if imgs else None, imgs[1] if len(imgs) > 1 else None,
-             _json.dumps(imgs, ensure_ascii=False), f"+{int(ttl_days)} days"),
+             _json.dumps(imgs, ensure_ascii=False),
+             1 if allow_mid else 0, 1 if allow_long else 0, f"+{int(ttl_days)} days"),
         )
     return mid
 
 
 def admin_update_signal(message_id: int, *, text: str | None = None,
                         hashtags_json: str | None = None,
-                        images: Any = "__keep__") -> bool:
-    """ویرایشِ گزینشیِ یک تحلیل (متن/هشتگ/فهرستِ تصاویر). __keep__ یعنی بدون تغییر."""
+                        images: Any = "__keep__",
+                        allow_mid: Any = "__keep__",
+                        allow_long: Any = "__keep__") -> bool:
+    """ویرایشِ گزینشیِ یک تحلیل (متن/هشتگ/تصاویر/پرچم‌های افق). __keep__ = بدون تغییر."""
     import json as _json
     sets: list[str] = []
     vals: list[Any] = []
@@ -504,6 +512,10 @@ def admin_update_signal(message_id: int, *, text: str | None = None,
         sets.append("images = ?"); vals.append(_json.dumps(imgs, ensure_ascii=False))
         sets.append("image_path = ?"); vals.append(imgs[0] if imgs else None)
         sets.append("image_path2 = ?"); vals.append(imgs[1] if len(imgs) > 1 else None)
+    if allow_mid != "__keep__":
+        sets.append("allow_mid = ?"); vals.append(1 if allow_mid else 0)
+    if allow_long != "__keep__":
+        sets.append("allow_long = ?"); vals.append(1 if allow_long else 0)
     if not sets:
         return False
     vals.append(message_id)
@@ -511,6 +523,29 @@ def admin_update_signal(message_id: int, *, text: str | None = None,
         cur = conn.execute(
             f"UPDATE channel_signals SET {', '.join(sets)} WHERE message_id = ?", vals)
         return cur.rowcount > 0
+
+
+def active_horizon_tags() -> dict[str, list[str]]:
+    """هشتگ‌های تحلیل‌های معتبر (۷روزه) که ادمین برای میان‌مدت/بلندمدت تأیید کرده.
+    بازگشت: {"mid": [...هشتگ‌ها], "long": [...]}."""
+    import json as _json
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT hashtags, allow_mid, allow_long FROM channel_signals "
+            "WHERE expires_at > datetime('now')"
+        ).fetchall()
+    mid: set[str] = set()
+    long: set[str] = set()
+    for r in rows:
+        try:
+            tags = _json.loads(r["hashtags"] or "[]")
+        except Exception:  # noqa: BLE001
+            tags = []
+        if r["allow_mid"]:
+            mid.update(tags)
+        if r["allow_long"]:
+            long.update(tags)
+    return {"mid": sorted(mid), "long": sorted(long)}
 
 
 def delete_signal(message_id: int) -> list[str]:

@@ -325,6 +325,9 @@
       fId.value = r ? r.id : "";
       fText.value = r ? (r.text || "") : "";
       fImgs.value = "";
+      const mid = d.getElementById("mngMid"), lng = d.getElementById("mngLong");
+      if (mid) mid.checked = !!(r && r.allow_mid);
+      if (lng) lng.checked = !!(r && r.allow_long);
       existingImgs = ((r && r.images) || []).map((u, i) => ({ url: u, idx: i, keep: true }));
       renderGallery();
       showForm();
@@ -351,6 +354,9 @@
       }
       const files = fImgs.files ? Array.from(fImgs.files) : [];
       files.forEach((f) => fd.append("images", f));
+      const mid = d.getElementById("mngMid"), lng = d.getElementById("mngLong");
+      fd.append("allow_mid", mid && mid.checked ? "1" : "0");
+      fd.append("allow_long", lng && lng.checked ? "1" : "0");
       const url = id ? "/api/admin/signals/" + id : "/api/admin/signals";
       msg.hidden = true;
       try {

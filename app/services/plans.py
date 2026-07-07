@@ -25,30 +25,34 @@ PLANS: dict[str, dict[str, Any]] = {
         "key": "bronze", "order": 0, "name_fa": "برنزی",
         "price": 0, "price_label": "رایگان", "period": "month",
         "best_for": "شروع مدیریت سرمایه", "highlight": False,
-        "ai_quota": 1, "exclusive": False, "weekly_report": False,
+        "ai_quota": 0, "ai_period": "month", "exclusive": False, "weekly_report": False,
         "support": "عمومی", "direct_manager": False,
+        "desc_fa": "فقط ثبت و مدیریت دارایی در داشبورد و مشاهدهٔ سود/زیان لحظه‌ای.",
     },
     "silver": {
         "key": "silver", "order": 1, "name_fa": "نقره‌ای",
         "price": 99000, "price_label": "۹۹٬۰۰۰ تومان", "period": "month",
         "best_for": " سرمایه‌گذار فعال", "highlight": False,
-        "ai_quota": 2, "exclusive": True, "weekly_report": False,
+        "ai_quota": 10, "ai_period": "month", "exclusive": True, "weekly_report": False,
         "support": "تیمی", "direct_manager": False,
+        "desc_fa": "تحلیل اختصاصی + ۱۰ سبدچینی هوش مصنوعی در ماه.",
     },
     "gold": {
         "key": "gold", "order": 2, "name_fa": "طلایی",
         "price": 199000, "price_label": "۱۹۹٬۰۰۰ تومان", "period": "month",
         "best_for": "تریدر حرفه‌ای", "highlight": True,
-        "ai_quota": None, "exclusive": True, "weekly_report": True,
+        "ai_quota": 30, "ai_period": "month", "exclusive": True, "weekly_report": True,
         "support": "اختصاصی", "direct_manager": False,
+        "desc_fa": "تحلیل اختصاصی + ۳۰ اعتبار سبدچینی هوش مصنوعی در ماه.",
     },
     "diamond": {
         "key": "diamond", "order": 3, "name_fa": "الماسی",
         "price": 1199000, "original_price": 2400000,
         "price_label": "۱٬۱۹۹٬۰۰۰ تومان", "period": "year",
         "best_for": "دسترسی کامل + مدیر", "highlight": False,
-        "ai_quota": None, "exclusive": True, "weekly_report": True,
+        "ai_quota": 600, "ai_period": "year", "exclusive": True, "weekly_report": True,
         "support": "اختصاصی", "direct_manager": True,
+        "desc_fa": "تحلیل اختصاصی + ۶۰۰ اعتبار سبدچینی هوش مصنوعی در سال.",
     },
 }
 
@@ -111,7 +115,7 @@ def can_access_exclusive(user: dict[str, Any] | None) -> bool:
 
 
 def ai_quota_for(tier: str) -> int | None:
-    """سهمیهٔ ماهانهٔ تحلیل هوش مصنوعی (None ⇒ نامحدود)."""
+    """سهمیهٔ تحلیل هوش مصنوعی هر پلن (None ⇒ نامحدود)."""
     return PLANS.get(tier_key(tier), PLANS["bronze"])["ai_quota"]
 
 
@@ -121,6 +125,23 @@ def tehran_month_key() -> str:
     return now.strftime("%Y-%m")
 
 
+def tehran_year_key() -> str:
+    """کلید سال جاری به وقت تهران (YYYY) برای شمارش سهمیهٔ سالانه (الماسی)."""
+    now = _dt.datetime.utcnow() + _dt.timedelta(hours=3, minutes=30)
+    return now.strftime("%Y")
+
+
+def usage_key(user: dict[str, Any] | None) -> str:
+    """کلید دورهٔ شمارشِ سهمیهٔ کاربر: ماهانه برای اغلب پلن‌ها و سالانه برای الماسی.
+
+    برای هم‌سویی با tier_info، همان پلنِ مؤثر (با انقضا) مبنا قرار می‌گیرد.
+    کارکنان (نامحدود) اهمیتی ندارد؛ کلید ماهانه برمی‌گردد.
+    """
+    tier = tier_of(user)
+    period = PLANS.get(tier, PLANS["bronze"]).get("ai_period", "month")
+    return tehran_year_key() if period == "year" else tehran_month_key()
+
+
 def tier_info(user: dict[str, Any] | None, ai_used: int = 0) -> dict[str, Any]:
     """بستهٔ کامل اطلاعات پلن برای فرانت‌اند و API.
 
@@ -128,26 +149,30 @@ def tier_info(user: dict[str, Any] | None, ai_used: int = 0) -> dict[str, Any]:
     باقی‌مانده (None = نامحدود). برای کارکنان (ادمین/پشتیبان) به‌عنوان طلایی گزارش
     می‌شود تا دسترسیِ کامل در UI باز باشد.
     """
-    if user and (user.get("role") or "member") in ("admin", "support"):
-        tier = "gold"
-    else:
-        tier = tier_of(user)
+    # پلنِ نمایشی = پلنِ واقعیِ کاربر (با انقضا). کارکنان همان پلنِ واقعیِ خود را
+    # می‌بینند تا صفحهٔ اشتراک درست باشد (پیش‌تر همه «طلایی» نمایش داده می‌شدند)،
+    # اما در دسترسی (اختصاصی + سهمیه) نامحدود در نظر گرفته می‌شوند.
+    is_staff = bool(user and (user.get("role") or "member") in ("admin", "support"))
+    tier = tier_of(user)
     plan = PLANS[tier]
-    quota = plan["ai_quota"]
+    quota = None if is_staff else plan["ai_quota"]
     remaining = None if quota is None else max(quota - int(ai_used or 0), 0)
+    exclusive = is_staff or tier in EXCLUSIVE_TIERS
     out: dict[str, Any] = {
         "tier": tier,
         "tier_name_fa": plan["name_fa"],
         "price_label": plan["price_label"],
         "period": plan["period"],
-        "is_paid": tier in PAID_TIERS,
-        "exclusive": tier in EXCLUSIVE_TIERS,
-        "can_access_exclusive": tier in EXCLUSIVE_TIERS,
+        "is_paid": is_staff or tier in PAID_TIERS,
+        "exclusive": exclusive,
+        "can_access_exclusive": exclusive,
         "weekly_report": plan["weekly_report"],
         "direct_manager": plan["direct_manager"],
         "ai_quota": quota,
+        "ai_period": plan.get("ai_period", "month"),
         "ai_used": int(ai_used or 0),
         "ai_remaining": remaining,
+        "is_staff": is_staff,
         "sub_expires_at": (user or {}).get("sub_expires_at"),
     }
     return out
@@ -159,13 +184,21 @@ def plans_payload(user: dict[str, Any] | None = None, ai_used: int = 0) -> dict[
     plans = []
     for key in ["bronze", "silver", "gold", "diamond"]:
         p = PLANS[key]
+        q = p["ai_quota"]
+        per_fa = "سال" if p.get("ai_period") == "year" else "ماه"
+        if q is None:
+            q_label = "سبدچینی نامحدود با هوش مصنوعی"
+        elif not q:
+            q_label = "بدون سبدچینی هوش مصنوعی"
+        else:
+            q_label = f"{q} اعتبار سبدچینی هوش مصنوعی در {per_fa}"
         plans.append({
             "key": key, "name_fa": p["name_fa"], "order": p["order"],
             "price_label": p["price_label"], "period": p["period"],
             "best_for": p["best_for"], "highlight": p["highlight"],
-            "original_price": p.get("original_price"),
-            "ai_quota": p["ai_quota"], "ai_quota_label": (
-                "نامحدود" if p["ai_quota"] is None else f"{p['ai_quota']} تحلیل در ماه"),
+            "original_price": p.get("original_price"), "desc_fa": p.get("desc_fa", ""),
+            "ai_quota": q, "ai_period": p.get("ai_period", "month"),
+            "ai_quota_label": q_label,
             "exclusive": p["exclusive"], "weekly_report": p["weekly_report"],
             "support": p["support"], "direct_manager": p["direct_manager"],
             "purchase_url": PURCHASE_URL,
