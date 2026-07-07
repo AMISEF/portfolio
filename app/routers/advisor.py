@@ -246,31 +246,96 @@ async def channel_signals(x_advisor_key: str | None = Header(default=None),
     base = settings.public_base_url.rstrip("/")
     rows = db.list_active_signals(limit=limit, tag=tag)
     posts: list[dict[str, Any]] = []
+    by_asset: dict[str, Any] = {}
     for r in rows:
         try:
             tags = json.loads(r.get("hashtags") or "[]")
         except Exception:  # noqa: BLE001
             tags = []
-        has_image = bool(r.get("image_path"))
-        posts.append({
-            "message_id": r.get("message_id"),
+        mid = r.get("message_id")
+        n_imgs = len(r.get("image_list") or [])
+        images = [f"{base}/api/advisor/signal-image/{mid}?i={k}" for k in range(1, n_imgs + 1)]
+        text = r.get("text") or ""
+        post = {
+            "message_id": mid,
             "date": r.get("ts"),
-            "text": r.get("text"),
+            "text": text,
             "hashtags": tags,
-            "has_image": has_image,
-            "image_url": f"{base}/api/advisor/signal-image/{r.get('message_id')}" if has_image else None,
+            "has_image": bool(images),
+            "image_url": images[0] if images else None,
+            "images": images,
+            "levels": _extract_levels(text),
             "expires_at": r.get("expires_at"),
-        })
+        }
+        posts.append(post)
+        # نگاشتِ «هر دارایی ← جدیدترین تحلیلِ کانالِ آن» (rows از پیش newest-first است)
+        for a in {_canon_asset(t) for t in tags}:
+            if a and a not in by_asset:
+                by_asset[a] = {
+                    "asset": a,
+                    "hashtags": tags,
+                    "text": text,
+                    "levels": post["levels"],
+                    "date": r.get("ts"),
+                    "expires_at": r.get("expires_at"),
+                    "message_id": mid,
+                    "image_url": post["image_url"],
+                    "images": images,
+                }
     return JSONResponse({
         "channel": settings.signals_channel_url,
         "count": len(posts),
         "posts": posts,
-        "note": ("تحلیل‌های کانال پورتفولیو با نقاط خرید/فروش و وین‌ریت بالا؛ "
-                 "اعتبار هر تحلیل تا تاریخ expires_at. هشتگ‌ها مثل #btc #eth #طلا."),
+        "by_asset": by_asset,
+        "note": ("تحلیل‌های کانال پورتفولیو با نقاط خرید/فروش و وین‌ریت بالا؛ اعتبار "
+                 "هر تحلیل ۷ روز (پس از آن حذف می‌شود تا تحلیل تازه جایگزین شود). "
+                 "by_asset = جدیدترین تحلیلِ کانال برای هر دارایی (تتر، طلا، دلار، "
+                 "BTC، ETH و همهٔ آلت‌کوین‌ها) با levels = قیمت‌های اعلامیِ متن. "
+                 "برای هر دارایی، اگر در by_asset تحلیلِ کانال وجود دارد، نقاط "
+                 "خرید/فروش/حد ضررِ همان را مبنای پیشنهاد قرار بده."),
     })
 
 
 # ───────────────────────── کمکی‌ها ─────────────────────────
+# نگاشتِ هشتگ‌های کانال به «کلیدِ داراییِ» یکتا (برای by_asset در سبدچینیِ AI).
+_ASSET_ALIASES: dict[str, set[str]] = {
+    "tether": {"تتر", "usdt", "tether"},
+    "dollar": {"دلار", "usd", "dollar"},
+    "gold": {"طلا", "طلای", "سکه", "gold", "gold18", "xau", "xauusd", "انس"},
+    "silver": {"نقره", "silver", "xag", "xagusd"},
+    "oil": {"نفت", "oil", "wti", "brent"},
+    "BTC": {"btc", "bitcoin", "بیتکوین", "btcusdt"},
+    "ETH": {"eth", "ethereum", "اتریوم", "ethusdt"},
+}
+_FA_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٫٬", "0123456789.,")
+_LEVEL_RE = re.compile(r"[0-9][0-9,\.]{2,}")
+
+
+def _canon_asset(tag: str) -> str:
+    """کلیدِ داراییِ یکتا از یک هشتگ (مثلاً «تتر»/«usdt» → tether؛ «stg» → STG)."""
+    t = str(tag).lstrip("#").strip().lower()
+    if not t:
+        return ""
+    for key, aliases in _ASSET_ALIASES.items():
+        if t in aliases:
+            return key
+    return t.upper() if t.isascii() else t
+
+
+def _extract_levels(text: str) -> list[str]:
+    """قیمت‌های اعلامیِ متنِ تحلیل را استخراج می‌کند (ارقام فارسی/انگلیسی، بدونِ
+    جداکنندهٔ هزارگان). برای استفادهٔ مدل به‌عنوان نقاطِ خرید/فروشِ همان دارایی."""
+    norm = (text or "").translate(_FA_DIGITS)
+    out: list[str] = []
+    seen: set[str] = set()
+    for m in _LEVEL_RE.findall(norm):
+        v = m.replace(",", "").rstrip(".")
+        if v and v not in seen:
+            seen.add(v)
+            out.append(v)
+    return out[:12]
+
+
 def _resolve_risk(payload: dict, uid: str) -> dict[str, Any]:
     if payload.get("risk_percent") is not None:
         pct = _num(payload.get("risk_percent"))
