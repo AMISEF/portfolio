@@ -281,6 +281,8 @@ async def channel_signals(x_advisor_key: str | None = Header(default=None),
                     "message_id": mid,
                     "image_url": post["image_url"],
                     "images": images,
+                    "allow_mid": bool(r.get("allow_mid")),
+                    "allow_long": bool(r.get("allow_long")),
                 }
     return JSONResponse({
         "channel": settings.signals_channel_url,

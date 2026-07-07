@@ -474,14 +474,15 @@ async def ai_allocation(request: Request):
         return _401()
 
     from app.services import plans
-    month = plans.tehran_month_key()
+    month = plans.usage_key(user)
     ai_used = db.ai_used_count(int(user["id"]), month)
     info = plans.tier_info(user, ai_used)
     quota = info["ai_quota"]
     remaining = info["ai_remaining"]
+    per_fa = "امسال" if info.get("ai_period") == "year" else "این ماه"
     if remaining is not None and remaining <= 0:
         return JSONResponse(
-            {"error": "سهمیهٔ تحلیل هوش مصنوعی این ماه شما تمام شده است.",
+            {"error": f"سهمیهٔ سبدچینی هوش مصنوعی {per_fa} شما تمام شده است.",
              "quota_exhausted": True, "ai_quota": quota, "ai_used": ai_used,
              "tier": info["tier"], "tier_name_fa": info["tier_name_fa"]},
             status_code=403,
@@ -503,6 +504,28 @@ async def ai_allocation(request: Request):
         f"{it.get('name') or it.get('symbol')}: {it.get('amount')}"
         for it in valued.get("items", [])
     ) or "بدون دارایی"
+
+    # قواعد افق زمانی برای هر دارایی (کوتاه/میان/بلندمدت).
+    user_coins = [
+        (it.get("symbol") or "").upper()
+        for it in valued.get("items", [])
+        if (it.get("kind") or "") == "crypto"
+    ]
+    user_coins = [c for c in user_coins if c]
+    hz = db.active_horizon_tags()
+    mid_ok = "، ".join(hz.get("mid") or []) or "—"
+    long_ok = "، ".join(hz.get("long") or []) or "—"
+    horizon_rules = (
+        "قواعد افق زمانی (بسیار مهم): "
+        f"۱) ارزهای موجود در سبد کاربر ({'، '.join(user_coins) or '—'}) فقط در سبد "
+        "کوتاه‌مدت پیشنهاد شوند، نه میان‌مدت و نه بلندمدت. "
+        "۲) تتر و طلا در هر سه افق (کوتاه‌مدت، میان‌مدت، بلندمدت) مجاز و توصیه‌شده‌اند. "
+        f"۳) این ارزها با تأیید ادمین برای میان‌مدت هم مجازند: {mid_ok}. و برای "
+        f"بلندمدت: {long_ok}. "
+        "۴) برای سایر ارزهایی که قید نشده‌اند، خودِ هوش مصنوعی تصمیم بگیرد در کدام "
+        "افق‌ها (کوتاه/میان/بلند) بیایند."
+    )
+
     inputs = {
         "uid": uid,
         "risk_percent": str(round(risk_pct)),
@@ -514,6 +537,7 @@ async def ai_allocation(request: Request):
         "total_toman": str(valued.get("total_toman") or 0),
         "holdings": holdings,
         "channel": channel["name"],
+        "horizon_rules": horizon_rules,
     }
 
     result = await algo_allocation.run_workflow(inputs, uid)

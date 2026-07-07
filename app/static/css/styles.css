@@ -168,6 +168,18 @@ a { color: inherit; text-decoration: none; }
 .nav__item.is-active .nav__icon svg { width: 28px; height: 28px; }
 .nav__item.is-active .nav__label { color: var(--brand-dark); font-weight: 800; }
 
+/* موبایل/تبلت: نوار پایین تمام‌عرض و چسبیده به کف (مثل اپ)، با احترام به safe-area.
+   محتوای صفحه با padding-bottom بالای نوار می‌ماند و زیر آن گیر نمی‌کند. */
+@media (max-width: 1023px) {
+  .nav--bottom { inset: auto 0 0 0; height: auto; }
+  .nav__bar {
+    margin: 0; width: 100%; max-width: none; border-radius: 0; gap: 2px;
+    justify-content: space-around; padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+    border-left: 0; border-right: 0; border-bottom: 0;
+  }
+  .app { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
+}
+
 @media (min-width: 1024px) {
   .app { padding: 0 var(--nav-w) 0 0; }
   .nav--bottom { display: none; }
@@ -554,6 +566,14 @@ a { color: inherit; text-decoration: none; }
 .pf-head__title { font-size: 1.6rem; font-weight: 900; color: var(--heading); }
 .pf-head__title .accent { color: var(--brand); }
 .pf-head__sub { color: var(--text-soft); margin: 6px 0 0; font-size: .92rem; }
+/* سربرگ با دکمه‌های اقدام سمت چپِ عنوان (آزمون مجدد + مدیریت اشتراک) */
+.pf-head--row { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.pf-head__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.pf-head__actions .btn { font-size: .82rem; }
+@media (max-width: 640px) {
+  .pf-head__actions { width: 100%; }
+  .pf-head__actions .btn { flex: 1; justify-content: center; }
+}
 
 /* ==========================================================================
    مدیریت سرمایه — ردیاب سبد (CryptoRank-style)
@@ -574,7 +594,7 @@ a { color: inherit; text-decoration: none; }
 .pf2-summary__actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 /* گرید نمودار + تخصیص */
-.pf2-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; align-items: start; }
+.pf2-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
 @media (max-width: 900px) { .pf2-grid { grid-template-columns: 1fr; } }
 .pf2-tf { display: inline-flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: var(--radius-pill); }
 .pf2-tf button { border: none; background: none; color: var(--text-soft); font-family: var(--font);
@@ -896,8 +916,11 @@ a { color: inherit; text-decoration: none; }
 .adm-count { font-size: .8rem; color: var(--text-dim); font-weight: 700; }
 
 /* ---------- جدول ---------- */
-.adm-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-lg);
+/* overflow visible روی دسکتاپ تا تولتیپِ آیکون‌ها روی جدول دیده شود (نه زیرِ آن)؛
+   روی موبایل اسکرول افقی فعال می‌شود. */
+.adm-table-wrap { overflow: visible; border: 1px solid var(--border); border-radius: var(--radius-lg);
   background: var(--surface-solid); box-shadow: var(--shadow-soft); }
+@media (max-width: 900px) { .adm-table-wrap { overflow-x: auto; } }
 .adm-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .84rem; white-space: nowrap; }
 .adm-table th, .adm-table td { padding: 13px 14px; text-align: right; vertical-align: middle; }
 .adm-table tbody td { border-top: 1px solid var(--border); }
@@ -1040,7 +1063,7 @@ a { color: inherit; text-decoration: none; }
 /* ---------- tooltip سفارشی ---------- */
 .tip { position: relative; }
 .tip::after, .tip::before { position: absolute; bottom: calc(100% + 9px); right: 50%; transform: translateX(50%) translateY(4px);
-  opacity: 0; pointer-events: none; transition: opacity .16s ease, transform .16s ease; z-index: 90; }
+  opacity: 0; pointer-events: none; transition: opacity .16s ease, transform .16s ease; z-index: 200; }
 .tip::after { content: attr(data-tip); white-space: nowrap; padding: 6px 11px; border-radius: 9px;
   background: var(--blue-900); color: #fff; font-size: .74rem; font-weight: 700;
   box-shadow: var(--shadow-pop); }
@@ -1222,6 +1245,7 @@ a { color: inherit; text-decoration: none; }
 .pricecard__amount { font-size: 1.6rem; font-weight: 900; color: var(--heading); line-height: 1.2; }
 .pricecard__period { font-size: .78rem; color: var(--text-dim); font-weight: 600; }
 .pricecard__bestfor { display: block; margin-top: 8px; font-size: .8rem; color: var(--brand-dark, var(--brand)); font-weight: 700; }
+.pricecard__desc { margin: 8px 0 0; font-size: .78rem; line-height: 1.8; color: var(--text-soft); }
 
 .pricecard__benefits { list-style: none; padding: 18px 0; margin: 0; display: flex; flex-direction: column; gap: 11px; flex: 1; }
 .pricecard__benefit { display: flex; align-items: flex-start; gap: 9px; font-size: .83rem; line-height: 1.6; color: var(--text-soft); }
@@ -1509,6 +1533,11 @@ a.auth-account__sub:hover { color: var(--brand); }
 .mng__gremove:hover { background: var(--down); }
 .mng__gempty { color: var(--text-dim); font-size: .78rem; align-self: center; padding: 14px; }
 .mng__filehint { font-size: .74rem; color: var(--text-dim); line-height: 1.7; }
+.mng__hz { display: flex; flex-direction: column; gap: 8px; padding-top: 4px; }
+.mng__hz-opts { display: flex; gap: 16px; flex-wrap: wrap; }
+.mng__hz-chk { display: flex; align-items: center; gap: 7px; font-size: .84rem; font-weight: 700;
+  color: var(--text); cursor: pointer; }
+.mng__hz-chk input { width: 16px; height: 16px; accent-color: var(--brand); }
 .mng__file { font-size: .78rem; color: var(--text-soft); }
 .mng__msg { font-size: .84rem; color: var(--down); font-weight: 700; }
 .mng__actions { display: flex; gap: 10px; justify-content: flex-start; margin-top: 4px; }

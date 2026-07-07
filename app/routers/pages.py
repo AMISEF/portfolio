@@ -57,7 +57,7 @@ async def home(request: Request):
 async def subscription_page(request: Request):
     """صفحهٔ خرید/مدیریت اشتراک — چهار پلن + وضعیت اشتراک جاری کاربر."""
     user = current_user(request)
-    ai_used = db.ai_used_count(int(user["id"]), plans.tehran_month_key()) if user else 0
+    ai_used = db.ai_used_count(int(user["id"]), plans.usage_key(user)) if user else 0
     ctx = _ctx(request, "subscription")
     ctx["title_fa"] = "اشتراک"
     ctx["subtitle_fa"] = "مدیریت اشتراک"
@@ -133,5 +133,5 @@ async def subscription_plans(request: Request):
     user = current_user(request)
     ai_used = 0
     if user:
-        ai_used = db.ai_used_count(int(user["id"]), plans.tehran_month_key())
+        ai_used = db.ai_used_count(int(user["id"]), plans.usage_key(user))
     return JSONResponse(plans.plans_payload(user, ai_used))

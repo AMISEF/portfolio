@@ -37,11 +37,14 @@
           {% if p.period == 'year' %}<span class="pricecard__period">در سال</span>{% endif %}
         </div>
         <span class="pricecard__bestfor">{{ p.best_for }}</span>
+        {% if p.desc_fa %}<p class="pricecard__desc">{{ p.desc_fa }}</p>{% endif %}
       </header>
 
       <ul class="pricecard__benefits">
-        <li class="pricecard__benefit is-on"><span class="pricecard__ic">✓</span>افزودن دارایی به داشبورد + سود/زیان لحظه‌ای</li>
-        <li class="pricecard__benefit is-on"><span class="pricecard__ic">✓</span>{{ p.ai_quota_label }} با هوش مصنوعی</li>
+        <li class="pricecard__benefit is-on"><span class="pricecard__ic">✓</span>ثبت و مدیریت دارایی در داشبورد + سود/زیان لحظه‌ای</li>
+        <li class="pricecard__benefit {{ 'is-on' if p.ai_quota != 0 else 'is-off' }}">
+          <span class="pricecard__ic">{{ '✓' if p.ai_quota != 0 else '✕' }}</span>{{ p.ai_quota_label }}
+        </li>
         <li class="pricecard__benefit {{ 'is-on' if p.exclusive else 'is-off' }}">
           <span class="pricecard__ic">{{ '✓' if p.exclusive else '✕' }}</span>تحلیل‌های اختصاصی بازار داخلی و خارجی
         </li>

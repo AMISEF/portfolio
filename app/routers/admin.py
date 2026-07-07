@@ -267,6 +267,11 @@ async def admin_user_portfolio_page(request: Request, user_id: int):
         "account_name": account_display_name(request),
         "admin_user_id": user_id,
         "admin_user_name": target.get("name") or target.get("email") or f"کاربر {user_id}",
+        # ادمین وارد شده است؛ گیتِ «ابتدا وارد شوید» نباید نمایش داده شود و
+        # دسترسیِ کامل (اشتراک) برای نمایش سبد فرض می‌شود.
+        "is_authed": True,
+        "has_sub": True,
+        "tier_info": None,
     }
     return templates.TemplateResponse("portfolio_assistant.html", ctx)
 
@@ -405,6 +410,8 @@ def _signal_row(s: dict[str, Any]) -> dict[str, Any]:
         "hashtags": s.get("tags") or [],
         "images": images,
         "source": s.get("source") or "channel",
+        "allow_mid": bool(s.get("allow_mid")),
+        "allow_long": bool(s.get("allow_long")),
     }
 
 
@@ -426,13 +433,19 @@ async def _save_uploads(files: list[UploadFile]) -> list[str]:
     return saved
 
 
+def _truthy(v: str) -> bool:
+    return str(v).strip().lower() in ("1", "true", "on", "yes")
+
+
 @router.post("/api/admin/signals")
 async def admin_signals_create(
     request: Request,
     text: str = Form(""),
     images: list[UploadFile] = File(default=[]),
+    allow_mid: str = Form(""),
+    allow_long: str = Form(""),
 ):
-    """افزودن یک تحلیلِ دستی با کپشن و n تصویر (گالری) — ادمین/پشتیبان."""
+    """افزودن یک تحلیلِ دستی با کپشن، n تصویر و پرچم‌های افق — ادمین/پشتیبان."""
     if not _staff(request):
         return _deny()
     text = (text or "").strip()
@@ -447,6 +460,8 @@ async def admin_signals_create(
         images=saved,
         ttl_days=settings.signals_ttl_days,
         ts=int(time.time()),
+        allow_mid=_truthy(allow_mid),
+        allow_long=_truthy(allow_long),
     )
     return JSONResponse({"ok": True, "id": mid})
 
@@ -458,9 +473,11 @@ async def admin_signals_update(
     text: str = Form(""),
     keep_images: str = Form(""),
     images: list[UploadFile] = File(default=[]),
+    allow_mid: str = Form(""),
+    allow_long: str = Form(""),
 ):
-    """ویرایشِ یک تحلیل: کپشن، نگه‌داشتنِ گزینشیِ تصاویرِ فعلی (keep_images = آرایهٔ
-    JSON از اندیس‌های ۰-محور) و افزودنِ تصاویرِ جدید — ادمین/پشتیبان."""
+    """ویرایشِ یک تحلیل: کپشن، تصاویر (keep_images = اندیس‌های نگه‌داشته‌شده) و
+    پرچم‌های افق میان/بلندمدت — ادمین/پشتیبان."""
     if not _staff(request):
         return _deny()
     sig = db.get_signal(message_id)
@@ -483,6 +500,8 @@ async def admin_signals_update(
         text=(text or "").strip(),
         hashtags_json=json.dumps(_extract_tags(text), ensure_ascii=False),
         images=final,
+        allow_mid=_truthy(allow_mid),
+        allow_long=_truthy(allow_long),
     )
     for p in removed:
         _unlink_quiet(p)

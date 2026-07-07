@@ -109,7 +109,7 @@ def _public_user(user: dict[str, Any]) -> dict[str, Any]:
     ) or None
     # اطلاعات پلن مؤثر (با شمارش سهمیهٔ ماه جاری)
     from app.services import plans
-    ai_used = db.ai_used_count(int(user["id"]), plans.tehran_month_key())
+    ai_used = db.ai_used_count(int(user["id"]), plans.usage_key(user))
     info = plans.tier_info(user, ai_used)
     data: dict[str, Any] = {
         "id": user["id"],
