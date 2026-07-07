@@ -99,11 +99,8 @@ async def exclusive_signals(request: Request, filter: str = "all", page: int = 1
     posts = []
     for r in data["items"]:
         mid = r.get("message_id")
-        images = []
-        if r.get("image_path"):
-            images.append(f"/api/advisor/signal-image/{mid}?i=1")
-        if r.get("image_path2"):
-            images.append(f"/api/advisor/signal-image/{mid}?i=2")
+        n = len(r.get("image_list") or [])
+        images = [f"/api/advisor/signal-image/{mid}?i={k}" for k in range(1, n + 1)]
         posts.append({
             "id": mid,
             "ts": r.get("ts"),

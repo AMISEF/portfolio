@@ -48,8 +48,12 @@
     const imgs = p.images && p.images.length ? p.images : (p.image_url ? [p.image_url] : []);
     let media = "";
     if (imgs.length) {
-      media = `<div class="tgc__media ${imgs.length > 1 ? "tgc__media--multi" : ""}">` +
-        imgs.map((u) => `<img loading="lazy" class="tgc__mediaimg" data-full="${esc(u)}" src="${esc(u)}" alt="تحلیل">`).join("") +
+      // گالریِ آلبوم: همهٔ تصاویر در یک پست، پشتِ سرِ هم (n تصویر). data-gallery =
+      // فهرستِ کاملِ آلبوم تا نمایشگرِ بزرگ بتواند بینِ آن‌ها جابه‌جا شود.
+      const gal = esc(JSON.stringify(imgs));
+      const cls = imgs.length > 1 ? "tgc__media--gallery" : "";
+      media = `<div class="tgc__media ${cls}" data-count="${imgs.length}">` +
+        imgs.map((u, i) => `<img loading="lazy" class="tgc__mediaimg" data-gallery="${gal}" data-idx="${i}" src="${esc(u)}" alt="تحلیل">`).join("") +
         `</div>`;
     }
     const caption = p.text ? `<div class="tgc__caption">${renderCaption(p.text)}</div>` : "";
@@ -122,10 +126,14 @@
   prevBtn.addEventListener("click", () => { if (state.page > 1) { state.page--; load(); window.scrollTo({ top: 0, behavior: "smooth" }); } });
   nextBtn.addEventListener("click", () => { if (state.page < state.totalPages) { state.page++; load(); window.scrollTo({ top: 0, behavior: "smooth" }); } });
 
-  // کلیک روی تصویرِ تحلیل → نمایشگرِ بزرگ
+  // کلیک روی تصویرِ تحلیل → نمایشگرِ بزرگ (با امکانِ مرورِ آلبوم)
   feedEl.addEventListener("click", (ev) => {
     const img = ev.target.closest(".tgc__mediaimg");
-    if (img) Lightbox.open(img.getAttribute("data-full"));
+    if (!img) return;
+    let gallery;
+    try { gallery = JSON.parse(img.getAttribute("data-gallery") || "[]"); } catch (e) { gallery = []; }
+    if (!gallery.length) gallery = [img.getAttribute("src")];
+    Lightbox.open(gallery, parseInt(img.getAttribute("data-idx") || "0", 10));
   });
 
   // ─────────────────────────────────────────────────────────────
@@ -136,8 +144,12 @@
     if (!box) return { open: function () {} };
     const img = d.getElementById("lbxImg");
     const stage = d.getElementById("lbxStage");
+    const counterEl = d.getElementById("lbxCounter");
+    const prevNav = d.getElementById("lbxPrev");
+    const nextNav = d.getElementById("lbxNext");
     let scale = 1, tx = 0, ty = 0;
     let drag = null; const pointers = new Map(); let pinch = null;
+    let album = []; let cur = 0;
 
     function apply() { img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; }
     function reset() { scale = 1; tx = 0; ty = 0; apply(); }
@@ -154,14 +166,32 @@
       if (scale === 1) { tx = 0; ty = 0; }
       apply();
     }
-    function open(src) {
-      if (!src) return;
-      img.src = src; reset();
+    function show(i) {
+      if (!album.length) return;
+      cur = (i + album.length) % album.length;
+      img.src = album[cur]; reset();
+      const multi = album.length > 1;
+      counterEl.hidden = !multi;
+      prevNav.hidden = !multi;
+      nextNav.hidden = !multi;
+      if (multi) counterEl.textContent = CS.toFa(cur + 1) + " / " + CS.toFa(album.length);
+    }
+    function open(list, idx) {
+      album = Array.isArray(list) ? list.filter(Boolean) : [list];
+      if (!album.length) return;
+      show(idx || 0);
       box.hidden = false;
       d.body.style.overflow = "hidden";
     }
-    function close() { box.hidden = true; img.src = ""; d.body.style.overflow = ""; }
+    function close() { box.hidden = true; img.src = ""; album = []; d.body.style.overflow = ""; }
 
+    prevNav.addEventListener("click", (e) => { e.stopPropagation(); show(cur - 1); });
+    nextNav.addEventListener("click", (e) => { e.stopPropagation(); show(cur + 1); });
+    d.addEventListener("keydown", (ev) => {
+      if (box.hidden) return;
+      if (ev.key === "ArrowLeft") show(cur + (d.dir === "rtl" ? -1 : 1));
+      else if (ev.key === "ArrowRight") show(cur + (d.dir === "rtl" ? 1 : -1));
+    });
     d.getElementById("lbxClose").addEventListener("click", close);
     d.getElementById("lbxIn").addEventListener("click", () => { const r = stage.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1.4); });
     d.getElementById("lbxOut").addEventListener("click", () => { const r = stage.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, 1 / 1.4); });
@@ -216,15 +246,11 @@
     const tableWrap = d.getElementById("mngTableWrap");
     const fId = d.getElementById("mngId");
     const fText = d.getElementById("mngText");
-    const fImg1 = d.getElementById("mngImg1");
-    const fImg2 = d.getElementById("mngImg2");
-    const prev1 = d.getElementById("mngPrev1");
-    const prev2 = d.getElementById("mngPrev2");
-    const rm1Wrap = d.getElementById("mngRm1Wrap");
-    const rm2Wrap = d.getElementById("mngRm2Wrap");
-    const rm1 = d.getElementById("mngRm1");
-    const rm2 = d.getElementById("mngRm2");
+    const fImgs = d.getElementById("mngImgs");
+    const galleryEl = d.getElementById("mngGallery");
     const msg = d.getElementById("mngMsg");
+    // تصاویرِ فعلیِ تحلیلِ در حالِ ویرایش: {url, idx, keep}
+    let existingImgs = [];
 
     function openModal() { modal.hidden = false; d.body.style.overflow = "hidden"; showList(); }
     function closeModal() { modal.hidden = true; d.body.style.overflow = ""; }
@@ -285,28 +311,46 @@
     d.getElementById("mngAddBtn").addEventListener("click", () => openForm(null));
     d.getElementById("mngCancel").addEventListener("click", showList);
 
+    function renderGallery() {
+      // تصاویرِ موجود (با دکمهٔ حذف) + تصاویرِ تازه‌انتخاب‌شده (پیش‌نمایش)
+      let html = existingImgs.filter((x) => x.keep).map((x) =>
+        `<div class="mng__gitem"><img src="${esc(x.url)}" alt="">
+          <button type="button" class="mng__gremove" data-rm="${x.idx}" title="حذف">×</button></div>`).join("");
+      const files = fImgs.files ? Array.from(fImgs.files) : [];
+      html += files.map((f) => `<div class="mng__gitem mng__gitem--new"><span class="mng__gnew">${esc(f.name)}</span></div>`).join("");
+      galleryEl.innerHTML = html || `<div class="mng__gempty">بدون تصویر</div>`;
+    }
+
     function openForm(r) {
       fId.value = r ? r.id : "";
       fText.value = r ? (r.text || "") : "";
-      fImg1.value = ""; fImg2.value = "";
-      rm1.checked = false; rm2.checked = false;
-      const imgs = (r && r.images) || [];
-      prev1.innerHTML = imgs[0] ? `<img src="${esc(imgs[0])}" alt="">` : "";
-      prev2.innerHTML = imgs[1] ? `<img src="${esc(imgs[1])}" alt="">` : "";
-      rm1Wrap.hidden = !imgs[0];
-      rm2Wrap.hidden = !imgs[1];
+      fImgs.value = "";
+      existingImgs = ((r && r.images) || []).map((u, i) => ({ url: u, idx: i, keep: true }));
+      renderGallery();
       showForm();
     }
+
+    galleryEl.addEventListener("click", (ev) => {
+      const rm = ev.target.closest("[data-rm]");
+      if (!rm) return;
+      const idx = parseInt(rm.getAttribute("data-rm"), 10);
+      const it = existingImgs.find((x) => x.idx === idx);
+      if (it) it.keep = false;
+      renderGallery();
+    });
+    fImgs.addEventListener("change", renderGallery);
 
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const fd = new FormData();
       fd.append("text", fText.value || "");
-      if (fImg1.files[0]) fd.append("image1", fImg1.files[0]);
-      if (fImg2.files[0]) fd.append("image2", fImg2.files[0]);
-      if (rm1.checked) fd.append("remove_image1", "1");
-      if (rm2.checked) fd.append("remove_image2", "1");
       const id = fId.value;
+      if (id) {
+        const keep = existingImgs.filter((x) => x.keep).map((x) => x.idx);
+        fd.append("keep_images", JSON.stringify(keep));
+      }
+      const files = fImgs.files ? Array.from(fImgs.files) : [];
+      files.forEach((f) => fd.append("images", f));
       const url = id ? "/api/admin/signals/" + id : "/api/admin/signals";
       msg.hidden = true;
       try {
