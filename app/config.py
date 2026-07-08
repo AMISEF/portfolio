@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # ---- برند ----
     app_name: str = "CryptoSmart Hub"
-    app_brand_fa: str = "کریپتو اسمارت"
+    app_brand_fa: str = "Algo Hub"
     app_title_fa: str = "پنل مدیریت سرمایه"
     app_subtitle_fa: str = "مدیریت هوشمند پورتفولیو"
     debug: bool = False
