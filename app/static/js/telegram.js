@@ -18,34 +18,6 @@
   if (w.__csTelegramNavInit) return;
   w.__csTelegramNavInit = true;
 
-  // ⚠️ بنرِ موقتِ دیباگ -- روی صفحه ثابت می‌ماند (نه alert، چون تلگرام گاهی
-  // دیالوگ‌های بومی را غیرفعال می‌کند) تا خطای واقعی را ببینیم. بعد از رفعِ
-  // باگ حذف می‌شود.
-  function debugBanner(msg) {
-    try {
-      var el = d.getElementById("csNavDebug");
-      if (!el) {
-        el = d.createElement("div");
-        el.id = "csNavDebug";
-        el.style.cssText = "position:fixed;inset:auto 8px 8px 8px;z-index:99999;background:#c0392b;color:#fff;" +
-          "font:12px/1.5 monospace;padding:10px 12px;border-radius:10px;max-height:40vh;overflow:auto;" +
-          "white-space:pre-wrap;direction:ltr;text-align:left;box-shadow:0 8px 24px rgba(0,0,0,.4)";
-        el.addEventListener("click", function () { el.remove(); });
-        (d.body || d.documentElement).appendChild(el);
-      }
-      el.textContent += (el.textContent ? "\n---\n" : "") + msg;
-      var tg = w.Telegram && w.Telegram.WebApp;
-      if (tg && tg.showAlert) { try { tg.showAlert(msg); } catch (e3) {} }
-    } catch (e4) {}
-  }
-  w.addEventListener("error", function (e) {
-    debugBanner("window.onerror: " + (e && e.message) + " @ " + (e && e.filename) + ":" + (e && e.lineno));
-  });
-  w.addEventListener("unhandledrejection", function (e) {
-    var r = e && e.reason;
-    debugBanner("unhandledrejection: " + (r && r.message ? r.message : String(r)));
-  });
-
   var path = location.pathname + location.search;
   var isHome = location.pathname === "/" || location.pathname === "";
 
@@ -78,27 +50,39 @@
   saveRoute(path);
 
   // ── ناوبریِ بدونِ رفرشِ کامل (فقط داخلِ تلگرام فعال می‌شود) ──
-  function isEligibleHref(hrefAttr) {
+  // «داخلیِ هم‌مبدأ»: هر لینکی که به همین دامنه اشاره کند (شاملِ /journal و
+  // /admin). این‌ها همه باید neutralize شوند تا لایهٔ بومیِ تلگرام تپِ روی
+  // <a href> را نگیرد (که همان «Failed to load» را می‌ساخت).
+  function isSameOriginInternal(hrefAttr) {
     if (!hrefAttr) return false;
     if (hrefAttr.charAt(0) === "#") return false;
     if (/^(javascript|mailto|tel):/i.test(hrefAttr)) return false;
     var url;
     try { url = new URL(hrefAttr, location.href); } catch (e) { return false; }
-    if (url.origin !== location.origin) return false;
-    if (url.pathname.indexOf("/journal") === 0) return false; // اپِ جداگانه است
-    if (url.pathname.indexOf("/admin") === 0) return false; // پنلِ پیچیده -- ناوبریِ عادی
+    return url.origin === location.origin;
+  }
+  // «قابلِ سواپ»: زیرمجموعهٔ داخلی‌ها که می‌توان با fetch+جایگزینیِ بدنه بدونِ
+  // ناوبری نمایش داد. /journal یک اپِ Next مجزاست و /admin پنلِ پیچیده -- این‌ها
+  // را با ناوبریِ کاملِ JS-driven (location.assign) باز می‌کنیم، نه سواپ.
+  function isSpaSwappable(hrefAttr) {
+    if (!isSameOriginInternal(hrefAttr)) return false;
+    var url = new URL(hrefAttr, location.href);
+    if (url.pathname.indexOf("/journal") === 0) return false;
+    if (url.pathname.indexOf("/admin") === 0) return false;
     return true;
   }
-  function isEligibleLink(a) {
+  function linkRaw(a) {
+    return a && a.dataset && a.dataset.csHref ? a.dataset.csHref : (a ? a.getAttribute("href") : null);
+  }
+  function isNavLink(a) {
     if (!a) return false;
     if (a.target && a.target !== "" && a.target !== "_self") return false;
     if (a.hasAttribute("download")) return false;
     if (a.dataset && "noSpa" in a.dataset) return false;
-    var raw = a.dataset && a.dataset.csHref ? a.dataset.csHref : a.getAttribute("href");
-    return isEligibleHref(raw);
+    return isSameOriginInternal(linkRaw(a));
   }
 
-  /** href هایِ داخلیِ واجدشرایط را از خودِ <a> برمی‌دارد (در data-cs-href نگه
+  /** href هایِ داخلیِ هم‌مبدأ را از خودِ <a> برمی‌دارد (در data-cs-href نگه
    *  می‌دارد) تا لایهٔ بومیِ تلگرام آن‌ها را به‌عنوانِ «لینک» تشخیص و مدیریت
    *  نکند -- که باعثِ رفرشِ کامل و شکستِ ناوبری می‌شد، حتی با وجودِ
    *  e.preventDefault() در کلیک‌هندلرِ جاوااسکریپت. */
@@ -107,7 +91,7 @@
     for (var i = 0; i < links.length; i++) {
       var a = links[i];
       var href = a.getAttribute("href");
-      if (isEligibleHref(href) && !(a.dataset && "noSpa" in a.dataset) &&
+      if (isSameOriginInternal(href) && !(a.dataset && "noSpa" in a.dataset) &&
           !(a.target && a.target !== "" && a.target !== "_self")) {
         a.dataset.csHref = href;
         a.removeAttribute("href");
@@ -161,8 +145,7 @@
         neutralizeLinks(d.body);
         runScripts(d.body);
       })
-      .catch(function (err) {
-        debugBanner("swapTo(" + url + ") failed: " + (err && err.message ? err.message : String(err)));
+      .catch(function () {
         // اگر ناوبریِ بدونِ رفرش شکست خورد، به روشِ معمولیِ مرورگر برو.
         location.href = url;
       });
@@ -174,20 +157,27 @@
       try {
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         var a = e.target && e.target.closest ? e.target.closest("a") : null;
-        if (!isEligibleLink(a)) return;
-        var raw = a.dataset && a.dataset.csHref ? a.dataset.csHref : a.getAttribute("href");
+        if (!isNavLink(a)) return;
+        var raw = linkRaw(a);
         var url;
         try { url = new URL(raw, location.href).href; } catch (e2) { return; }
         if (url === location.href) return;
         e.preventDefault();
-        swapTo(url, true);
-      } catch (err) {
-        debugBanner("click handler failed: " + (err && err.message ? err.message : String(err)));
-      }
+        if (isSpaSwappable(raw)) {
+          // پورتفولیو: بدونِ ناوبری، فقط بدنه را سواپ کن.
+          swapTo(url, true);
+        } else {
+          // /journal یا /admin: ناوبریِ کاملِ JS-driven. چون تپِ روی <a href>
+          // نیست (href را برداشتیم)، لایهٔ بومیِ تلگرام آن را نمی‌گیرد و این
+          // بارگذاریِ کامل درونِ همان وب‌ویو انجام می‌شود (مثلِ بارگذاریِ اول).
+          w.location.assign(url);
+        }
+      } catch (err) { /* ignore -- اجازه بده رفتارِ پیش‌فرض ادامه یابد */ }
     });
 
     w.addEventListener("popstate", function () {
-      swapTo(location.href, false);
+      if (isSpaSwappable(location.href)) swapTo(location.href, false);
+      else w.location.reload();
     });
   }
 
@@ -198,7 +188,6 @@
     try { tg.expand(); } catch (e) {}
     d.documentElement.classList.add("in-telegram");
     enableSpaNav();
-    debugBanner("cs-nav ready (v2, href-neutralized). path=" + path + " ua=" + (navigator.userAgent || "").slice(0, 60));
 
     // بازگردانیِ آخرین مسیر: فقط وقتی روی خانه هستیم و بارگذاری از نوعِ رفرش/باز
     // شدنِ مجدد است (بدون referrer). کلیک روی «خانه» referrer دارد و بازگردانی
@@ -207,7 +196,8 @@
       if (isHome && !d.referrer) {
         var last = localStorage.getItem("cs_route");
         if (last && last !== "/" && last.charAt(0) === "/") {
-          swapTo(last, true);
+          if (isSpaSwappable(last)) swapTo(last, true);
+          else w.location.replace(last); // مثلاً /journal -- ناوبریِ کامل
           return;
         }
       }
