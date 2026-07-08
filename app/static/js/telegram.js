@@ -18,6 +18,34 @@
   if (w.__csTelegramNavInit) return;
   w.__csTelegramNavInit = true;
 
+  // ⚠️ بنرِ موقتِ دیباگ -- روی صفحه ثابت می‌ماند (نه alert، چون تلگرام گاهی
+  // دیالوگ‌های بومی را غیرفعال می‌کند) تا خطای واقعی را ببینیم. بعد از رفعِ
+  // باگ حذف می‌شود.
+  function debugBanner(msg) {
+    try {
+      var el = d.getElementById("csNavDebug");
+      if (!el) {
+        el = d.createElement("div");
+        el.id = "csNavDebug";
+        el.style.cssText = "position:fixed;inset:auto 8px 8px 8px;z-index:99999;background:#c0392b;color:#fff;" +
+          "font:12px/1.5 monospace;padding:10px 12px;border-radius:10px;max-height:40vh;overflow:auto;" +
+          "white-space:pre-wrap;direction:ltr;text-align:left;box-shadow:0 8px 24px rgba(0,0,0,.4)";
+        el.addEventListener("click", function () { el.remove(); });
+        (d.body || d.documentElement).appendChild(el);
+      }
+      el.textContent += (el.textContent ? "\n---\n" : "") + msg;
+      var tg = w.Telegram && w.Telegram.WebApp;
+      if (tg && tg.showAlert) { try { tg.showAlert(msg); } catch (e3) {} }
+    } catch (e4) {}
+  }
+  w.addEventListener("error", function (e) {
+    debugBanner("window.onerror: " + (e && e.message) + " @ " + (e && e.filename) + ":" + (e && e.lineno));
+  });
+  w.addEventListener("unhandledrejection", function (e) {
+    var r = e && e.reason;
+    debugBanner("unhandledrejection: " + (r && r.message ? r.message : String(r)));
+  });
+
   var path = location.pathname + location.search;
   var isHome = location.pathname === "/" || location.pathname === "";
 
@@ -107,7 +135,8 @@
         w.scrollTo(0, 0);
         runScripts(d.body);
       })
-      .catch(function () {
+      .catch(function (err) {
+        debugBanner("swapTo(" + url + ") failed: " + (err && err.message ? err.message : String(err)));
         // اگر ناوبریِ بدونِ رفرش شکست خورد، به روشِ معمولیِ مرورگر برو.
         location.href = url;
       });
@@ -115,13 +144,17 @@
 
   function enableSpaNav() {
     d.addEventListener("click", function (e) {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-      var a = e.target && e.target.closest ? e.target.closest("a") : null;
-      if (!isEligibleLink(a)) return;
-      var url = a.href;
-      if (url === location.href) return;
-      e.preventDefault();
-      swapTo(url, true);
+      try {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        var a = e.target && e.target.closest ? e.target.closest("a") : null;
+        if (!isEligibleLink(a)) return;
+        var url = a.href;
+        if (url === location.href) return;
+        e.preventDefault();
+        swapTo(url, true);
+      } catch (err) {
+        debugBanner("click handler failed: " + (err && err.message ? err.message : String(err)));
+      }
     });
 
     w.addEventListener("popstate", function () {
@@ -136,6 +169,7 @@
     try { tg.expand(); } catch (e) {}
     d.documentElement.classList.add("in-telegram");
     enableSpaNav();
+    debugBanner("cs-nav ready. path=" + path + " ua=" + (navigator.userAgent || "").slice(0, 60));
 
     // بازگردانیِ آخرین مسیر: فقط وقتی روی خانه هستیم و بارگذاری از نوعِ رفرش/باز
     // شدنِ مجدد است (بدون referrer). کلیک روی «خانه» referrer دارد و بازگردانی
