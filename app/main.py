@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 import asyncio
@@ -15,6 +16,9 @@ from app.routers import admin, advisor, auth, market, pages, portfolio
 from app.services import market_card_job, telegram_signals
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
+
+# پشتیبانِ فشرده‌سازی برای زمانی که uvicorn مستقیم (بدونِ gzipِ nginx) پاسخ می‌دهد.
+app.add_middleware(GZipMiddleware, minimum_size=512)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(pages.router)
