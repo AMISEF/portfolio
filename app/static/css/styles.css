@@ -17,8 +17,6 @@
   --font: "Vazirmatn", "B Nazanin", Tahoma, system-ui, -apple-system, "Segoe UI", sans-serif;
   /* اعداد هم با همان فونت نرم وزیرمتن (ارقام جدول‌بندی‌شده) — نه فونت مونوی سیستمی */
   --font-mono: "Vazirmatn", "B Nazanin", Tahoma, sans-serif;
-  /* فونت «تحلیل اختصاصی»: B Koodak (اگر فایل قلم موجود باشد)، با پس‌گَردِ وزیرمتن */
-  --font-koodak: "B Koodak", "BKoodak", "Vazirmatn", Tahoma, sans-serif;
 
   --radius-lg: 22px; --radius-md: 16px; --radius-sm: 10px; --radius-pill: 999px; --radius-nav: 26px;
   --shadow-soft: 0 10px 30px -12px rgba(22,47,85,.25);
@@ -1092,28 +1090,40 @@ a { color: inherit; text-decoration: none; }
    ========================================================================== */
 .cs-footer {
   border-top: 1px solid var(--border); background: var(--surface-solid);
-  padding: 20px 0; margin-top: 18px;
+  margin-top: 18px;
 }
 .cs-footer__inner {
-  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 44px 0 36px;
 }
-.cs-footer__brand {
-  display: flex; align-items: center; gap: 10px;
+.cs-footer__logo { width: 56px; height: 56px; border-radius: 16px; object-fit: contain; }
+.cs-footer__wordmark {
+  margin-top: 14px; font-size: 1.15rem; font-weight: 900; letter-spacing: .08em; color: var(--heading);
 }
-.cs-footer__logo { width: 36px; height: 36px; border-radius: 10px; object-fit: contain; }
-.cs-footer__name { font-weight: 900; font-size: .95rem; color: var(--heading); }
-.cs-footer__links {
-  display: flex; align-items: center; gap: 18px;
+.cs-footer__accent { color: var(--brand); }
+.cs-footer__tagline { margin-top: 8px; font-size: .85rem; color: var(--text-soft); }
+.cs-footer__tagline-en { margin-top: 2px; font-size: .85rem; font-weight: 700; color: var(--text); }
+.cs-footer__contact {
+  margin-top: 26px; display: inline-flex; align-items: center; gap: 6px;
+  font-size: .85rem; color: var(--text-soft); transition: var(--trans);
 }
-.cs-footer__link {
-  display: inline-flex; align-items: center; gap: 7px; font-size: .85rem; font-weight: 700;
-  color: var(--text-soft); transition: var(--trans);
+.cs-footer__contact:hover { color: var(--brand-dark); }
+.cs-footer__contact svg { color: var(--brand); flex-shrink: 0; }
+.cs-footer__follow-label { margin-top: 26px; font-size: .85rem; color: var(--text-dim); }
+.cs-footer__social { margin-top: 10px; display: flex; align-items: center; gap: 10px; }
+.cs-footer__social-link {
+  display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-soft);
+  transition: var(--trans);
 }
-.cs-footer__link:hover { color: var(--brand-dark); }
-.cs-footer__link svg { color: currentColor; }
-@media (max-width: 560px) {
-  .cs-footer__inner { justify-content: center; text-align: center; }
-  .cs-footer__links { flex-wrap: wrap; justify-content: center; }
+.cs-footer__social-link:hover { color: var(--on-brand); background: var(--brand); border-color: var(--brand); transform: translateY(-2px); }
+.cs-footer__bottom { border-top: 1px solid var(--border); }
+.cs-footer__bottom-inner {
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: 6px;
+  padding: 16px 18px; font-size: .75rem; color: var(--text-dim);
+}
+@media (min-width: 560px) {
+  .cs-footer__bottom-inner { flex-direction: row; }
 }
 
 /* ==========================================================================
@@ -1312,23 +1322,6 @@ a.auth-account__sub:hover { color: var(--brand); }
 [data-theme="dark"] .adm-tier--diamond { color:#67e8f9; }
 
 /* ============================================================
-   فونت B Koodak — برای بخش «تحلیل اختصاصی»
-   فایل قلم را در app/static/fonts/BKoodak.woff2 (یا .ttf) قرار دهید؛
-   تا زمانِ افزوده‌شدن، به‌صورت خودکار به «وزیرمتن» پس‌گَرد می‌کند.
-   ============================================================ */
-@font-face {
-  font-family: "B Koodak";
-  src: url("/static/fonts/BKoodak.woff2") format("woff2"),
-       url("/static/fonts/BKoodak.woff") format("woff"),
-       url("/static/fonts/BKoodak.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-.font-koodak, .font-koodak .tgc__author, .font-koodak .tgc__caption,
-.font-koodak .tgc__tab, .font-koodak .tgc__channame { font-family: var(--font-koodak); }
-
-/* ============================================================
    «تحلیل اختصاصی» — کانالِ نمایشیِ سبکِ تلگرام
    ============================================================ */
 .tgc { display: flex; flex-direction: column; gap: 16px; }
@@ -1355,7 +1348,7 @@ a.auth-account__sub:hover { color: var(--brand); }
 .tgc__tab { flex-shrink: 0; font-size: .84rem; font-weight: 800; padding: 9px 16px;
   border-radius: var(--radius-pill); border: 1px solid var(--border);
   background: var(--surface); color: var(--text-soft); cursor: pointer;
-  transition: var(--trans); white-space: nowrap; font-family: var(--font-koodak); }
+  transition: var(--trans); white-space: nowrap; font-family: var(--font); }
 .tgc__tab:hover { border-color: var(--brand); color: var(--brand-dark); }
 .tgc__tab.is-active { color: var(--on-brand); border-color: transparent;
   background: linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 100%);
@@ -1514,7 +1507,7 @@ a.auth-account__sub:hover { color: var(--brand); }
 .mng__label b { color: var(--brand-dark); font-weight: 900; }
 .mng__input { width: 100%; padding: 11px 13px; border-radius: var(--radius-md);
   border: 1px solid var(--border); background: var(--surface); color: var(--text);
-  font-family: var(--font-koodak); font-size: .92rem; line-height: 2; resize: vertical; }
+  font-family: var(--font); font-size: .92rem; line-height: 2; resize: vertical; }
 .mng__input:focus { outline: none; border-color: var(--brand); }
 .mng__imgblock { display: flex; flex-direction: column; gap: 8px; }
 .mng__gallery { display: flex; flex-wrap: wrap; gap: 8px; min-height: 54px;
