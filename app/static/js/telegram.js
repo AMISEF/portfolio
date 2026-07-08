@@ -78,17 +78,42 @@
   saveRoute(path);
 
   // ── ناوبریِ بدونِ رفرشِ کامل (فقط داخلِ تلگرام فعال می‌شود) ──
-  function isEligibleLink(a) {
-    if (!a || !a.href) return false;
-    if (a.target && a.target !== "" && a.target !== "_self") return false;
-    if (a.hasAttribute("download")) return false;
-    if (a.dataset && "noSpa" in a.dataset) return false;
+  function isEligibleHref(hrefAttr) {
+    if (!hrefAttr) return false;
+    if (hrefAttr.charAt(0) === "#") return false;
+    if (/^(javascript|mailto|tel):/i.test(hrefAttr)) return false;
     var url;
-    try { url = new URL(a.href, location.href); } catch (e) { return false; }
+    try { url = new URL(hrefAttr, location.href); } catch (e) { return false; }
     if (url.origin !== location.origin) return false;
     if (url.pathname.indexOf("/journal") === 0) return false; // اپِ جداگانه است
     if (url.pathname.indexOf("/admin") === 0) return false; // پنلِ پیچیده -- ناوبریِ عادی
     return true;
+  }
+  function isEligibleLink(a) {
+    if (!a) return false;
+    if (a.target && a.target !== "" && a.target !== "_self") return false;
+    if (a.hasAttribute("download")) return false;
+    if (a.dataset && "noSpa" in a.dataset) return false;
+    var raw = a.dataset && a.dataset.csHref ? a.dataset.csHref : a.getAttribute("href");
+    return isEligibleHref(raw);
+  }
+
+  /** href هایِ داخلیِ واجدشرایط را از خودِ <a> برمی‌دارد (در data-cs-href نگه
+   *  می‌دارد) تا لایهٔ بومیِ تلگرام آن‌ها را به‌عنوانِ «لینک» تشخیص و مدیریت
+   *  نکند -- که باعثِ رفرشِ کامل و شکستِ ناوبری می‌شد، حتی با وجودِ
+   *  e.preventDefault() در کلیک‌هندلرِ جاوااسکریپت. */
+  function neutralizeLinks(root) {
+    var links = (root || d).querySelectorAll("a[href]");
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i];
+      var href = a.getAttribute("href");
+      if (isEligibleHref(href) && !(a.dataset && "noSpa" in a.dataset) &&
+          !(a.target && a.target !== "" && a.target !== "_self")) {
+        a.dataset.csHref = href;
+        a.removeAttribute("href");
+        a.style.cursor = "pointer";
+      }
+    }
   }
 
   /** اسکریپت‌های داخلِ کانتینر را دوباره می‌سازد تا واقعاً اجرا شوند
@@ -133,6 +158,7 @@
         }
         saveRoute(u ? u.pathname + u.search : url);
         w.scrollTo(0, 0);
+        neutralizeLinks(d.body);
         runScripts(d.body);
       })
       .catch(function (err) {
@@ -143,12 +169,15 @@
   }
 
   function enableSpaNav() {
+    neutralizeLinks(d);
     d.addEventListener("click", function (e) {
       try {
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         var a = e.target && e.target.closest ? e.target.closest("a") : null;
         if (!isEligibleLink(a)) return;
-        var url = a.href;
+        var raw = a.dataset && a.dataset.csHref ? a.dataset.csHref : a.getAttribute("href");
+        var url;
+        try { url = new URL(raw, location.href).href; } catch (e2) { return; }
         if (url === location.href) return;
         e.preventDefault();
         swapTo(url, true);
@@ -169,7 +198,7 @@
     try { tg.expand(); } catch (e) {}
     d.documentElement.classList.add("in-telegram");
     enableSpaNav();
-    debugBanner("cs-nav ready. path=" + path + " ua=" + (navigator.userAgent || "").slice(0, 60));
+    debugBanner("cs-nav ready (v2, href-neutralized). path=" + path + " ua=" + (navigator.userAgent || "").slice(0, 60));
 
     // بازگردانیِ آخرین مسیر: فقط وقتی روی خانه هستیم و بارگذاری از نوعِ رفرش/باز
     // شدنِ مجدد است (بدون referrer). کلیک روی «خانه» referrer دارد و بازگردانی
