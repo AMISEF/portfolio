@@ -9,23 +9,13 @@
 
   function show(el) { [introCard, quizCard, resultCard].forEach(c => c.hidden = (c !== el)); }
 
-  async function init() {
+  function init() {
     // اگر کاربر وارد نشده، گیت سرور‌سایدی نمایش داده شده — API نیازی نیست
     if (!window.IS_AUTHED) return;
-    // آزمون مجدد: با ?retake=1 از تغییرمسیرِ خودکار صرف‌نظر کن و مستقیم آزمون را شروع کن
+    // هدایتِ «قبلاً آزمون داده → مدیریت سرمایه» سمتِ سرور انجام می‌شود (بدون فلش)؛
+    // پس اگر به این صفحه رسیدیم یعنی یا آزمون نداده‌ایم یا ?retake=1 است.
     const retake = new URLSearchParams(window.location.search).has("retake");
-    if (retake) {
-      startTest();
-      return;
-    }
-    // اگر کاربر قبلاً آزمون داده، مستقیم به مدیریت سرمایه برو
-    try {
-      const r = await CS.fetchJSON("/api/portfolio/risk");
-      if (r && r.profile) {
-        window.location.replace("/portfolio/assistant");
-        return;
-      }
-    } catch (e) { /* ادامه با معرفی */ }
+    if (retake) { startTest(); return; }
     show(introCard);
   }
 
@@ -92,6 +82,8 @@
     }
   }
 
+  function setText(id, val) { const el = $(id); if (el) el.textContent = val || "—"; }
+
   function renderResult(d) {
     show(resultCard);
     const priv = $("pfPrivacy");
@@ -99,6 +91,26 @@
     const pct = d.percent || 0;
     $("riskLabel").textContent = d.label || "—";
     $("riskDesc").textContent = d.desc || descFor(pct);
+
+    // تیپ شخصیتی
+    if (d.personality) {
+      const p = $("pfPersona"); if (p) p.hidden = false;
+      setText("personaLabel", d.personality.label);
+      setText("personaDesc", d.personality.desc);
+    }
+
+    // ابعاد IPS
+    const dims = $("pfDims");
+    if (dims) dims.hidden = false;
+    const tol = d.tolerance_pct != null ? CS.toFa(Math.round(d.tolerance_pct)) + "٪" : "—";
+    const cap = d.capacity_pct != null ? CS.toFa(Math.round(d.capacity_pct)) + "٪" : "—";
+    setText("dimTolerance", tol);
+    setText("dimCapacity", cap);
+    setText("dimReturn", d.target_return);
+    setText("dimLoss", d.max_loss);
+    setText("dimMoney", d.money_mgmt);
+    setText("dimHorizon", d.horizon);
+    setText("dimArea", d.area);
     // حلقهٔ درصد
     const ring = $("riskRingFg");
     const C = 2 * Math.PI * 52;

@@ -141,6 +141,14 @@ def init_db() -> None:
         )
         _migrate_users(conn)
         _migrate_signals(conn)
+        _migrate_risk(conn)
+
+
+def _migrate_risk(conn: sqlite3.Connection) -> None:
+    """افزودن ستونِ result (JSON کاملِ نتیجهٔ IPS) به risk_profiles (idempotent)."""
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(risk_profiles)").fetchall()}
+    if "result" not in cols:
+        conn.execute("ALTER TABLE risk_profiles ADD COLUMN result TEXT")
 
 
 def _migrate_users(conn: sqlite3.Connection) -> None:
@@ -202,23 +210,37 @@ def assign_user_code(user_id: int) -> str:
 
 # ---- پروفایل ریسک ----
 def save_risk(uid: str, result: dict[str, Any], answers_json: str) -> None:
+    import json as _json
+    result_json = _json.dumps(result, ensure_ascii=False)
     with _LOCK, _conn() as conn:
         conn.execute(
             """
-            INSERT INTO risk_profiles (uid, raw, percent, category, label, answers)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO risk_profiles (uid, raw, percent, category, label, answers, result)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(uid) DO UPDATE SET
                 raw=excluded.raw, percent=excluded.percent, category=excluded.category,
-                label=excluded.label, answers=excluded.answers, updated_at=datetime('now')
+                label=excluded.label, answers=excluded.answers, result=excluded.result,
+                updated_at=datetime('now')
             """,
-            (uid, result["raw"], result["percent"], result["key"], result["label"], answers_json),
+            (uid, result["raw"], result["percent"], result["key"], result["label"],
+             answers_json, result_json),
         )
 
 
 def get_risk(uid: str) -> dict[str, Any] | None:
+    import json as _json
     with _LOCK, _conn() as conn:
         row = conn.execute("SELECT * FROM risk_profiles WHERE uid = ?", (uid,)).fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        d = dict(row)
+        # نتیجهٔ کاملِ IPS (شخصیت، ابعاد و …) اگر ذخیره شده باشد، پارس می‌شود.
+        if d.get("result"):
+            try:
+                d["result"] = _json.loads(d["result"])
+            except Exception:
+                d["result"] = None
+        return d
 
 
 # ---- دارایی‌ها ----
@@ -817,6 +839,16 @@ def list_users() -> list[dict[str, Any]]:
             "FROM users u ORDER BY u.id"
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+def get_risk_for_user(user_id: int) -> dict[str, Any] | None:
+    """پروفایل ریسکِ کاملِ یک کاربر (برای پنل ادمین) — با همان منطقِ uid که
+    هنگام ذخیره استفاده می‌شود: uidِ ثبت‌شده، وگرنه u{id}."""
+    u = get_user_by_id(user_id)
+    if not u:
+        return None
+    uid = u.get("uid") or f"u{user_id}"
+    return get_risk(uid)
 
 
 def admin_update_user(user_id: int, fields: dict[str, Any]) -> None:
