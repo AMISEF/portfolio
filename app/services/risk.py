@@ -208,10 +208,102 @@ QUESTIONS: list[dict[str, Any]] = [
             ("متنوع و تهاجمی؛ آلت‌کوین‌های کوچک، پروژه‌های نوظهور و بازارهای پرریسک", 4),
         ],
     },
+    # ───────── بخش ۵: مدیریت ریسک و مدیریت سرمایه (تخصصی) ─────────
+    # این بخش «نظم و انضباط» در مدیریت ریسک/سرمایه را می‌سنجد (نه اشتهای ریسک).
+    # امتیاز ۴ = منضبط‌ترین/سیستماتیک‌ترین. این گروه در درصدِ ریسکِ کلی لحاظ
+    # نمی‌شود؛ یک زیرشاخصِ جداگانه (نظم) می‌سازد.
+    {
+        "q": "آیا برای معاملاتتان حدِ ضرر (Stop-Loss) تعیین می‌کنید؟",
+        "group": "discipline",
+        "out": "stop_loss",
+        "options": [
+            ("هرگز؛ باور دارم بازار در نهایت برمی‌گردد", 1),
+            ("گاهی و به‌صورت ذهنی، بدون ثبتِ دقیق", 2),
+            ("معمولاً حدِ ضررِ مشخص می‌گذارم", 3),
+            ("همیشه؛ پیش از ورود، حدِ ضرر و حجم را دقیق تعیین می‌کنم", 4),
+        ],
+    },
+    {
+        "q": "در هر معامله، حداکثر چند درصد از کلِ سرمایه‌تان را در معرضِ ضرر قرار می‌دهید؟",
+        "group": "discipline",
+        "out": "risk_per_trade",
+        "options": [
+            ("محدودیتی ندارم؛ به شهودم عمل می‌کنم", 1),
+            ("بیش از ۱۰٪ در یک معامله", 2),
+            ("بین ۳٪ تا ۱۰٪", 3),
+            ("حداکثر ۱ تا ۲٪ (قانونِ کلاسیکِ مدیریت ریسک)", 4),
+        ],
+    },
+    {
+        "q": "نسبتِ ریسک به ریوارد (Risk/Reward) را پیش از ورود به معامله بررسی می‌کنید؟",
+        "group": "discipline",
+        "options": [
+            ("این مفهوم را نمی‌شناسم یا به آن توجه نمی‌کنم", 1),
+            ("به‌صورت ذهنی و تقریبی", 2),
+            ("معمولاً حساب می‌کنم و کمتر از حدی وارد نمی‌شوم", 3),
+            ("همیشه؛ فقط با نسبتِ ریسک‌به‌ریواردِ مطلوب وارد می‌شوم", 4),
+        ],
+    },
+    {
+        "q": "دیدگاهتان دربارهٔ تنوع‌بخشی سبد چیست؟",
+        "group": "discipline",
+        "options": [
+            ("همه را روی یک دارایی که به آن ایمان دارم می‌گذارم", 1),
+            ("چند دارایی می‌خرم، ولی به همبستگی‌شان توجه نمی‌کنم", 2),
+            ("سبد را بین چند دارایی پخش می‌کنم", 3),
+            ("سبد را با توجه به همبستگی و وزن‌دهیِ حساب‌شده متنوع می‌کنم", 4),
+        ],
+    },
+    {
+        "q": "برای خروج و ذخیرهٔ سود چه رویکردی دارید؟",
+        "group": "discipline",
+        "options": [
+            ("برنامه‌ای ندارم؛ احساسی و لحظه‌ای خارج می‌شوم", 1),
+            ("همه را یک‌جا در یک نقطه می‌فروشم", 2),
+            ("حدِ سودِ مشخص دارم", 3),
+            ("خروجِ پله‌ای با اهدافِ قیمتیِ ازپیش‌تعیین‌شده دارم", 4),
+        ],
+    },
+    {
+        "q": "هر چند وقت یک‌بار سبد خود را بازتوازن (Rebalance) می‌کنید؟",
+        "group": "discipline",
+        "options": [
+            ("اصلاً؛ یا فقط هیجانی جابه‌جا می‌کنم", 1),
+            ("فقط وقتی بازار شدیداً می‌ریزد", 2),
+            ("هرازگاهی و بر اساس تغییراتِ مهم", 3),
+            ("طبق یک برنامهٔ منظم (مثلاً ماهانه یا فصلی)", 4),
+        ],
+    },
+    {
+        "q": "پس از چند معاملهٔ سودده پشتِ‌سرِ‌هم، معمولاً چه می‌کنید؟",
+        "group": "discipline",
+        "options": [
+            ("حجم را زیاد می‌کنم؛ حس می‌کنم بازار را کامل فهمیده‌ام", 1),
+            ("کمی جسورتر و بی‌احتیاط‌تر می‌شوم", 2),
+            ("به برنامه و قوانینِ خودم پایبند می‌مانم", 3),
+            ("محتاط‌تر می‌شوم؛ می‌دانم رگهٔ برد همیشگی نیست", 4),
+        ],
+    },
+    {
+        "q": "معاملات و تصمیم‌هایتان را ثبت و بازبینی (ژورنال) می‌کنید؟",
+        "group": "discipline",
+        "options": [
+            ("نه؛ چیزی یادداشت نمی‌کنم", 1),
+            ("گاهی و به‌صورت پراکنده", 2),
+            ("بیشترِ معاملاتِ مهم را ثبت می‌کنم", 3),
+            ("همه را در ژورنال ثبت و مرتب تحلیل می‌کنم تا اشتباهاتم را کم کنم", 4),
+        ],
+    },
 ]
 
-MIN_SCORE = sum(min(p for _, p in q["options"]) for q in QUESTIONS)
-MAX_SCORE = sum(max(p for _, p in q["options"]) for q in QUESTIONS)
+# گروه‌هایی که در «درصدِ ریسکِ کلی» (اشتهای ریسک) لحاظ می‌شوند. گروهِ discipline
+# جداست و فقط زیرشاخصِ «نظم در مدیریت ریسک» را می‌سازد.
+RISK_GROUPS = ("capacity", "tolerance", "behavior")
+
+MIN_SCORE = sum(min(p for _, p in q["options"])
+                for q in QUESTIONS if q.get("group") in RISK_GROUPS)
+MAX_SCORE = sum(max(p for _, p in q["options"])
+                for q in QUESTIONS if q.get("group") in RISK_GROUPS)
 
 
 def questions_payload() -> list[dict[str, Any]]:
@@ -273,6 +365,28 @@ def _personality(behavior_pct: float, tolerance_pct: float) -> dict[str, str]:
                     "هستید؛ مدیریت ریسکِ منضبط برای شما حیاتی است."}
 
 
+def _discipline(pct: float) -> dict[str, str]:
+    """طبقهٔ «نظم و انضباط در مدیریت ریسک/سرمایه» بر پایهٔ زیرشاخصِ ۰–۱۰۰."""
+    if pct < 30:
+        return {"key": "impulsive", "label": "هیجانی و بدون‌قاعده",
+                "desc": "بیشتر بر پایهٔ احساس و شهود عمل می‌کنید و ابزارهای مدیریت ریسک "
+                        "(حدِ ضرر، اندازهٔ پوزیشن، ثبت معاملات) را کمتر به‌کار می‌گیرید. "
+                        "تقویتِ نظم می‌تواند بازدهیِ بلندمدت‌تان را به‌شکلِ چشمگیر بهتر کند."}
+    if pct < 55:
+        return {"key": "developing", "label": "در حالِ شکل‌گیری",
+                "desc": "پایه‌های مدیریت ریسک را می‌شناسید ولی هنوز آن را سیستماتیک "
+                        "به‌کار نمی‌گیرید. با قاعده‌مندکردنِ حدِ ضرر و اندازهٔ پوزیشن، "
+                        "به یک معامله‌گرِ منضبط تبدیل می‌شوید."}
+    if pct < 78:
+        return {"key": "disciplined", "label": "منضبط",
+                "desc": "چارچوبِ روشنی برای مدیریت ریسک و سرمایه دارید و معمولاً به آن "
+                        "پایبندید. تداومِ این نظم، مهم‌ترین مزیتِ شماست."}
+    return {"key": "systematic", "label": "کاملاً سیستماتیک",
+            "desc": "با انضباطِ بالا و بر پایهٔ قواعدِ مشخص معامله می‌کنید: حدِ ضرر، "
+                    "اندازهٔ پوزیشن، نسبتِ ریسک‌به‌ریوارد و ثبتِ معاملات. این سطح از "
+                    "نظم، مشخصهٔ سرمایه‌گذارانِ حرفه‌ای است."}
+
+
 def _group_pct(answers: list[int], group: str) -> float:
     """درصدِ نرمال‌شدهٔ یک گروه از پرسش‌ها (۰ تا ۱۰۰)."""
     lo = hi = raw = 0
@@ -295,12 +409,16 @@ def score_answers(answers: list[int]) -> dict[str, Any]:
     تحمل، هدف بازدهی، حداکثر ضرر، مدیریت سرمایه، حوزهٔ علاقه، افق)."""
     if len(answers) != len(QUESTIONS):
         raise ValueError(f"تعداد پاسخ‌ها باید {len(QUESTIONS)} باشد")
-    raw = 0
     for qi, choice in enumerate(answers):
         opts = QUESTIONS[qi]["options"]
         if not isinstance(choice, int) or choice < 0 or choice >= len(opts):
             raise ValueError(f"گزینهٔ نامعتبر برای پرسش {qi}")
-        raw += opts[choice][1]
+
+    # درصدِ ریسکِ کلی فقط از گروه‌های اشتهای ریسک (نه discipline) محاسبه می‌شود
+    # تا نظم/انضباطِ بالا به‌اشتباه به‌معنای ریسک‌پذیریِ بالا تعبیر نشود.
+    raw = sum(QUESTIONS[qi]["options"][choice][1]
+              for qi, choice in enumerate(answers)
+              if QUESTIONS[qi].get("group") in RISK_GROUPS)
 
     pct = round((raw - MIN_SCORE) / (MAX_SCORE - MIN_SCORE) * 100, 1)
     cat = _category(pct)
@@ -308,7 +426,9 @@ def score_answers(answers: list[int]) -> dict[str, Any]:
     capacity_pct = _group_pct(answers, "capacity")
     tolerance_pct = _group_pct(answers, "tolerance")
     behavior_pct = _group_pct(answers, "behavior")
+    discipline_pct = _group_pct(answers, "discipline")
     personality = _personality(behavior_pct, tolerance_pct)
+    discipline = _discipline(discipline_pct)
 
     # خروجی‌های نام‌دار: متنِ گزینهٔ انتخابی برای پرسش‌های دارای out
     named: dict[str, str] = {}
@@ -322,10 +442,14 @@ def score_answers(answers: list[int]) -> dict[str, Any]:
         "capacity_pct": capacity_pct,
         "tolerance_pct": tolerance_pct,
         "behavior_pct": behavior_pct,
+        "discipline_pct": discipline_pct,
         "personality": personality,
+        "discipline": discipline,
         "horizon": named.get("horizon", ""),
         "target_return": named.get("target_return", ""),
         "max_loss": named.get("max_loss", ""),
         "money_mgmt": named.get("money_mgmt", ""),
+        "risk_per_trade": named.get("risk_per_trade", ""),
+        "stop_loss": named.get("stop_loss", ""),
         "area": named.get("area", ""),
     }
