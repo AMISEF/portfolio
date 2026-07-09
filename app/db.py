@@ -834,8 +834,8 @@ def list_users() -> list[dict[str, Any]]:
         rows = conn.execute(
             "SELECT u.*, "
             "(SELECT COUNT(*) FROM assets a WHERE a.uid = u.uid OR a.uid = 'u' || u.id) AS asset_count, "
-            "(SELECT rp.percent FROM risk_profiles rp WHERE rp.uid = u.uid) AS risk_percent, "
-            "(SELECT rp.label FROM risk_profiles rp WHERE rp.uid = u.uid) AS risk_label "
+            "(SELECT rp.percent FROM risk_profiles rp WHERE rp.uid = u.uid OR rp.uid = 'u' || u.id) AS risk_percent, "
+            "(SELECT rp.label FROM risk_profiles rp WHERE rp.uid = u.uid OR rp.uid = 'u' || u.id) AS risk_label "
             "FROM users u ORDER BY u.id"
         ).fetchall()
         return [dict(r) for r in rows]

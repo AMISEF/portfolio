@@ -316,6 +316,22 @@ def questions_payload() -> list[dict[str, Any]]:
     ]
 
 
+def answers_detail(answers: list[int]) -> list[dict[str, Any]]:
+    """متنِ کاملِ هر پرسش + گزینه‌ای که کاربر انتخاب کرده (برای نمایش به ادمین)."""
+    out = []
+    for i, q in enumerate(QUESTIONS):
+        choice = answers[i] if i < len(answers) else None
+        opts = q["options"]
+        answer_text = None
+        if isinstance(choice, int) and 0 <= choice < len(opts):
+            answer_text = opts[choice][0]
+        out.append({
+            "id": i, "q": q["q"], "group": q.get("group", ""),
+            "choice": choice, "answer": answer_text,
+        })
+    return out
+
+
 def _category(pct: float) -> dict[str, str]:
     """طبقهٔ ریسک کلی + توضیح + پیشنهاد چینش سبد + رنگ برند، بر پایهٔ درصد ۰–۱۰۰."""
     if pct < 20:

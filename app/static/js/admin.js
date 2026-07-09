@@ -376,6 +376,7 @@
     $("admRiskModal").hidden = false;
     const r = await api("/api/admin/users/" + id + "/risk");
     const p = r.ok && r.data ? r.data.profile : null;
+    const answersDetail = (r.ok && r.data ? r.data.answers_detail : null) || [];
     if (!p) { box.innerHTML = '<p class="adm-empty">این کاربر هنوز آزمون را نداده است.</p>'; return; }
     const res = p.result || {};
     const persona = res.personality || {};
@@ -404,7 +405,14 @@
         riskRow("حدِ ضرر", res.stop_loss) +
         riskRow("افق سرمایه‌گذاری", res.horizon) +
         riskRow("حوزهٔ موردعلاقه", res.area) +
-      "</div>";
+      "</div>" +
+      (answersDetail.length ? '<h3 class="adm-risk__qtitle">تمامِ پاسخ‌های آزمون (' +
+        answersDetail.length + ' پرسش)</h3><div class="adm-risk__qa">' +
+        answersDetail.map(function (a, i) {
+          return '<div class="adm-risk__qa-item"><div class="adm-risk__qa-q">' +
+            (i + 1) + ". " + esc(a.q) + '</div><div class="adm-risk__qa-a">' +
+            (a.answer ? esc(a.answer) : '<em>بدون پاسخ</em>') + "</div></div>";
+        }).join("") + "</div>" : "");
   }
 
   // ---------- خروجی اکسل ----------
