@@ -129,6 +129,15 @@ async def user_assets(request: Request, user_id: int):
     return JSONResponse({"assets": assets, "count": len(assets)})
 
 
+@router.get("/api/admin/users/{user_id}/risk")
+async def user_risk(request: Request, user_id: int):
+    """نتیجهٔ کاملِ آزمون ریسک‌پذیری/IPS یک کاربر (برای پنل ادمین)."""
+    if not _staff(request):
+        return _deny()
+    profile = db.get_risk_for_user(user_id)
+    return JSONResponse({"profile": profile})
+
+
 # ───────────────────────── ویرایش کاربر (ادمین) ─────────────────────────
 @router.post("/api/admin/users/{user_id}")
 async def edit_user(request: Request, user_id: int, payload: dict[str, Any] = Body(...)):

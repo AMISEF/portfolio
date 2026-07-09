@@ -26,7 +26,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Body, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app import db
@@ -75,6 +75,13 @@ def _ctx(request: Request, active: str, is_authed: bool = False) -> dict:
 @router.get("/portfolio", response_class=HTMLResponse)
 async def portfolio_page(request: Request):
     user = current_user(request)
+    # اگر کاربر واردشده و قبلاً آزمون را داده، همین‌جا (سمتِ سرور) به مدیریت
+    # سرمایه هدایت می‌شود تا صفحهٔ آزمون اصلاً رندر و «فلش» نشود — مگر اینکه
+    # صریحاً آزمونِ مجدد خواسته باشد (?retake=1).
+    if user and "retake" not in request.query_params:
+        uid = _auth_uid(request)
+        if uid and db.get_risk(uid):
+            return RedirectResponse("/portfolio/assistant", status_code=303)
     return templates.TemplateResponse("portfolio.html", _ctx(request, "portfolio", bool(user)))
 
 

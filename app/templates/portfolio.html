@@ -6,6 +6,10 @@
 <!-- گیت احراز هویت: تمام‌صفحه، هنگامی که کاربر وارد نشده -->
 <div class="pf-gate" id="pfGate">
   <div class="pf-gate__inner">
+    <!-- بستن و بازگشت به نمای بازار (به‌کارِ مینی‌اپ تلگرام می‌آید) -->
+    <a class="pf-gate__close" href="/" aria-label="بستن و بازگشت به نمای بازار" title="بستن">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </a>
     <div class="pf-gate__icon">
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     </div>
@@ -37,11 +41,14 @@
     <div class="pf-intro__icon">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
     </div>
-    <h2 class="pf-intro__h">آزمون ریسک‌پذیری سرمایه‌گذاری</h2>
+    <h2 class="pf-intro__h">آزمون ریسک‌پذیری و بیانیهٔ سیاست سرمایه‌گذاری</h2>
     <p class="pf-intro__p">
-      این آزمون بر پایهٔ معتبرترین پرسش‌نامهٔ علمی سنجش تحمل ریسک مالی
-      (Grable &amp; Lytton) طراحی شده است. ۱۳ پرسش کوتاه که کمتر از ۳ دقیقه
-      زمان می‌برد و نتیجهٔ آن برای شما ذخیره می‌شود.
+      این آزمون بر پایهٔ ابزارهای استانداردِ جهانی — پرسش‌نامهٔ سنجش تحمل ریسک
+      <span dir="ltr">Grable &amp; Lytton</span> و چارچوب
+      <span dir="ltr">IPS</span> — طراحی شده و همهٔ بازارها (کریپتو، طلا، دلار و …)
+      را پوشش می‌دهد. ۱۷ پرسش کوتاه که کمتر از ۴ دقیقه زمان می‌برد و نتیجه‌اش —
+      شاملِ تیپ شخصیتیِ سرمایه‌گذاری، میزان ریسک‌پذیری، مدیریت سرمایه، هدف بازدهی
+      و حوزهٔ موردعلاقهٔ شما — برایتان ذخیره می‌شود.
     </p>
     <button class="btn btn--brand" id="startTestBtn">شروع آزمون</button>
   </div>
@@ -76,6 +83,24 @@
     </div>
     <h2 class="pf-result__label" id="riskLabel">—</h2>
     <p class="pf-result__desc" id="riskDesc"></p>
+
+    <!-- تیپ شخصیتیِ سرمایه‌گذار -->
+    <div class="pf-persona" id="pfPersona" hidden>
+      <div class="pf-persona__badge" id="personaLabel">—</div>
+      <p class="pf-persona__desc" id="personaDesc"></p>
+    </div>
+
+    <!-- ابعادِ پروفایل (IPS) -->
+    <div class="pf-dims" id="pfDims" hidden>
+      <div class="pf-dim"><span class="pf-dim__k">تحمل ریسک</span><span class="pf-dim__v" id="dimTolerance">—</span></div>
+      <div class="pf-dim"><span class="pf-dim__k">ظرفیت ریسک</span><span class="pf-dim__v" id="dimCapacity">—</span></div>
+      <div class="pf-dim"><span class="pf-dim__k">هدف بازدهی</span><span class="pf-dim__v" id="dimReturn">—</span></div>
+      <div class="pf-dim"><span class="pf-dim__k">حداکثر ضررِ قابل‌تحمل</span><span class="pf-dim__v" id="dimLoss">—</span></div>
+      <div class="pf-dim"><span class="pf-dim__k">مدیریت سرمایه</span><span class="pf-dim__v" id="dimMoney">—</span></div>
+      <div class="pf-dim"><span class="pf-dim__k">افق سرمایه‌گذاری</span><span class="pf-dim__v" id="dimHorizon">—</span></div>
+      <div class="pf-dim pf-dim--wide"><span class="pf-dim__k">حوزهٔ موردعلاقه</span><span class="pf-dim__v" id="dimArea">—</span></div>
+    </div>
+
     <div class="pf-result__actions">
       <a class="btn btn--brand btn--lg" href="/portfolio/assistant" id="startMgmtBtn">شروع مدیریت سرمایه</a>
       <button class="btn btn--ghost" id="retakeBtn">آزمون مجدد</button>

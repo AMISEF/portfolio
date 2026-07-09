@@ -115,7 +115,9 @@
     if (u.risk_percent == null) return '<span class="adm-badge">—</span>';
     const pct = Math.round(u.risk_percent);
     const cls = pct < 40 ? "adm-badge--ok" : pct < 70 ? "adm-badge--pending" : "adm-badge--danger";
-    return '<span class="adm-badge ' + cls + '">' + pct + '٪ · ' + esc(u.risk_label || "") + "</span>";
+    // قابل‌کلیک: نمایشِ نتیجهٔ کاملِ آزمون
+    return '<button class="adm-badge adm-badge--btn ' + cls + '" data-act="risk" data-id="' + u.id +
+      '" title="مشاهدهٔ نتیجهٔ کامل">' + pct + '٪ · ' + esc(u.risk_label || "") + "</button>";
   }
 
   function renderTable() {
@@ -172,6 +174,7 @@
     else if (act === "del") delUser(id);
     else if (act === "sub") openSub(id);
     else if (act === "assets") openAssets(id);
+    else if (act === "risk") openRisk(id);
     else if (act === "pf") openPortfolio(id);
   });
 
@@ -360,6 +363,43 @@
     $("admAssetsModal").hidden = false;
   }
 
+  // ---------- نتیجهٔ آزمون ریسک‌پذیری ----------
+  function riskRow(k, v) {
+    if (!v) return "";
+    return '<div class="adm-risk__row"><span class="adm-risk__k">' + esc(k) +
+      '</span><span class="adm-risk__v">' + esc(v) + "</span></div>";
+  }
+  async function openRisk(id) {
+    const u = findUser(id);
+    const box = $("admRiskBody");
+    box.innerHTML = '<p class="adm-empty">در حال دریافت…</p>';
+    $("admRiskModal").hidden = false;
+    const r = await api("/api/admin/users/" + id + "/risk");
+    const p = r.ok && r.data ? r.data.profile : null;
+    if (!p) { box.innerHTML = '<p class="adm-empty">این کاربر هنوز آزمون را نداده است.</p>'; return; }
+    const res = p.result || {};
+    const persona = res.personality || {};
+    const pct = Math.round(p.percent != null ? p.percent : (res.percent || 0));
+    box.innerHTML =
+      '<p class="modal__sub">' + esc(u ? (u.full_name || u.email) : "") + "</p>" +
+      '<div class="adm-risk__head">' +
+        '<div class="adm-risk__pct">' + pct + '<i>٪</i></div>' +
+        '<div><div class="adm-risk__label">' + esc(p.label || res.label || "—") + "</div>" +
+        (persona.label ? '<div class="adm-risk__persona">' + esc(persona.label) + "</div>" : "") +
+        "</div></div>" +
+      (res.desc ? '<p class="adm-risk__desc">' + esc(res.desc) + "</p>" : "") +
+      (persona.desc ? '<p class="adm-risk__desc">' + esc(persona.desc) + "</p>" : "") +
+      '<div class="adm-risk__grid">' +
+        riskRow("تحمل ریسک", res.tolerance_pct != null ? Math.round(res.tolerance_pct) + "٪" : "") +
+        riskRow("ظرفیت ریسک", res.capacity_pct != null ? Math.round(res.capacity_pct) + "٪" : "") +
+        riskRow("هدف بازدهی", res.target_return) +
+        riskRow("حداکثر ضرر", res.max_loss) +
+        riskRow("مدیریت سرمایه", res.money_mgmt) +
+        riskRow("افق سرمایه‌گذاری", res.horizon) +
+        riskRow("حوزهٔ موردعلاقه", res.area) +
+      "</div>";
+  }
+
   // ---------- خروجی اکسل ----------
   async function exportXlsx() {
     const ids = Array.from(selected);
@@ -415,6 +455,7 @@
   closer("admEditModal", "admEditClose");
   closer("admSubModal", "admSubClose");
   closer("admAssetsModal", "admAssetsClose");
+  closer("admRiskModal", "admRiskClose");
 
   $("admExportXlsx").addEventListener("click", exportXlsx);
   $("admExportPdf").addEventListener("click", exportPdf);
