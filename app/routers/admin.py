@@ -37,6 +37,7 @@ from app.config import settings
 from app.routers.auth import account_display_name, current_user
 from app.services import auth as auth_svc
 from app.services import crypto_box, portfolio_valuation, xlsx
+from app.services import risk as risk_svc
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -131,11 +132,18 @@ async def user_assets(request: Request, user_id: int):
 
 @router.get("/api/admin/users/{user_id}/risk")
 async def user_risk(request: Request, user_id: int):
-    """نتیجهٔ کاملِ آزمون ریسک‌پذیری/IPS یک کاربر (برای پنل ادمین)."""
+    """نتیجهٔ کاملِ آزمون ریسک‌پذیری/IPS یک کاربر + تمامِ پاسخ‌ها (برای پنل ادمین)."""
     if not _staff(request):
         return _deny()
     profile = db.get_risk_for_user(user_id)
-    return JSONResponse({"profile": profile})
+    answers_detail: list[dict[str, Any]] = []
+    if profile and profile.get("answers"):
+        try:
+            answers = json.loads(profile["answers"])
+            answers_detail = risk_svc.answers_detail([int(x) for x in answers])
+        except Exception:  # noqa: BLE001
+            answers_detail = []
+    return JSONResponse({"profile": profile, "answers_detail": answers_detail})
 
 
 # ───────────────────────── ویرایش کاربر (ادمین) ─────────────────────────

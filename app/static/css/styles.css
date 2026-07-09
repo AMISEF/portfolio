@@ -1012,6 +1012,12 @@ a { color: inherit; text-decoration: none; }
 .adm-risk__k { display: block; font-size: .68rem; color: var(--text-dim); margin-bottom: 2px; }
 .adm-risk__v { display: block; font-size: .82rem; font-weight: 800; color: var(--heading); line-height: 1.45; }
 @media (max-width: 520px) { .adm-risk__grid { grid-template-columns: 1fr; } }
+.adm-risk__qtitle { font-size: .88rem; font-weight: 800; color: var(--heading); margin: 18px 0 8px; }
+.adm-risk__qa { display: flex; flex-direction: column; gap: 6px; max-height: 360px; overflow-y: auto; }
+.adm-risk__qa-item { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; }
+.adm-risk__qa-q { font-size: .78rem; color: var(--text-soft); line-height: 1.6; margin-bottom: 4px; }
+.adm-risk__qa-a { font-size: .84rem; font-weight: 700; color: var(--brand-dark); line-height: 1.5; }
+.adm-risk__qa-a em { color: var(--text-dim); font-style: normal; }
 .adm-badge--ok { background: rgba(22,199,132,.14); color: var(--up); border-color: rgba(22,199,132,.3); }
 .adm-badge--pending { background: rgba(245,158,11,.12); color: var(--warn); border-color: rgba(245,158,11,.28); }
 
