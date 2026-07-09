@@ -46,9 +46,10 @@
       این آزمون بر پایهٔ ابزارهای استانداردِ جهانی — پرسش‌نامهٔ سنجش تحمل ریسک
       <span dir="ltr">Grable &amp; Lytton</span> و چارچوب
       <span dir="ltr">IPS</span> — طراحی شده و همهٔ بازارها (کریپتو، طلا، دلار و …)
-      را پوشش می‌دهد. ۱۷ پرسش کوتاه که کمتر از ۴ دقیقه زمان می‌برد و نتیجه‌اش —
-      شاملِ تیپ شخصیتیِ سرمایه‌گذاری، میزان ریسک‌پذیری، مدیریت سرمایه، هدف بازدهی
-      و حوزهٔ موردعلاقهٔ شما — برایتان ذخیره می‌شود.
+      را پوشش می‌دهد. ۲۵ پرسش که بخشِ پایانیِ آن تخصصی و در حوزهٔ مدیریت ریسک و
+      مدیریت سرمایه است. نتیجه‌اش — شاملِ تیپ شخصیتیِ سرمایه‌گذاری، میزان
+      ریسک‌پذیری، نظم در مدیریت ریسک، مدیریت سرمایه، هدف بازدهی و حوزهٔ موردعلاقهٔ
+      شما — برایتان ذخیره می‌شود.
     </p>
     <button class="btn btn--brand" id="startTestBtn">شروع آزمون</button>
   </div>
@@ -90,13 +91,23 @@
       <p class="pf-persona__desc" id="personaDesc"></p>
     </div>
 
+    <!-- نظم در مدیریت ریسک (بخشِ تخصصی) -->
+    <div class="pf-persona pf-persona--disc" id="pfDiscipline" hidden>
+      <div class="pf-persona__k">نظم در مدیریت ریسک و سرمایه</div>
+      <div class="pf-persona__badge pf-persona__badge--disc" id="disciplineLabel">—</div>
+      <p class="pf-persona__desc" id="disciplineDesc"></p>
+    </div>
+
     <!-- ابعادِ پروفایل (IPS) -->
     <div class="pf-dims" id="pfDims" hidden>
       <div class="pf-dim"><span class="pf-dim__k">تحمل ریسک</span><span class="pf-dim__v" id="dimTolerance">—</span></div>
       <div class="pf-dim"><span class="pf-dim__k">ظرفیت ریسک</span><span class="pf-dim__v" id="dimCapacity">—</span></div>
+      <div class="pf-dim"><span class="pf-dim__k">نظم در مدیریت ریسک</span><span class="pf-dim__v" id="dimDiscipline">—</span></div>
       <div class="pf-dim"><span class="pf-dim__k">هدف بازدهی</span><span class="pf-dim__v" id="dimReturn">—</span></div>
       <div class="pf-dim"><span class="pf-dim__k">حداکثر ضررِ قابل‌تحمل</span><span class="pf-dim__v" id="dimLoss">—</span></div>
-      <div class="pf-dim"><span class="pf-dim__k">مدیریت سرمایه</span><span class="pf-dim__v" id="dimMoney">—</span></div>
+      <div class="pf-dim"><span class="pf-dim__k">مدیریت سرمایه (اندازهٔ پوزیشن)</span><span class="pf-dim__v" id="dimMoney">—</span></div>
+      <div class="pf-dim"><span class="pf-dim__k">ریسکِ هر معامله</span><span class="pf-dim__v" id="dimRiskPerTrade">—</span></div>
+      <div class="pf-dim"><span class="pf-dim__k">حدِ ضرر (Stop-Loss)</span><span class="pf-dim__v" id="dimStopLoss">—</span></div>
       <div class="pf-dim"><span class="pf-dim__k">افق سرمایه‌گذاری</span><span class="pf-dim__v" id="dimHorizon">—</span></div>
       <div class="pf-dim pf-dim--wide"><span class="pf-dim__k">حوزهٔ موردعلاقه</span><span class="pf-dim__v" id="dimArea">—</span></div>
     </div>

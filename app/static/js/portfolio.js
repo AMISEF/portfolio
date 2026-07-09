@@ -99,16 +99,25 @@
       setText("personaDesc", d.personality.desc);
     }
 
+    // نظم در مدیریت ریسک
+    if (d.discipline) {
+      const dc = $("pfDiscipline"); if (dc) dc.hidden = false;
+      setText("disciplineLabel", d.discipline.label);
+      setText("disciplineDesc", d.discipline.desc);
+    }
+
     // ابعاد IPS
     const dims = $("pfDims");
     if (dims) dims.hidden = false;
-    const tol = d.tolerance_pct != null ? CS.toFa(Math.round(d.tolerance_pct)) + "٪" : "—";
-    const cap = d.capacity_pct != null ? CS.toFa(Math.round(d.capacity_pct)) + "٪" : "—";
-    setText("dimTolerance", tol);
-    setText("dimCapacity", cap);
+    const asPct = (v) => (v != null ? CS.toFa(Math.round(v)) + "٪" : "—");
+    setText("dimTolerance", asPct(d.tolerance_pct));
+    setText("dimCapacity", asPct(d.capacity_pct));
+    setText("dimDiscipline", asPct(d.discipline_pct));
     setText("dimReturn", d.target_return);
     setText("dimLoss", d.max_loss);
     setText("dimMoney", d.money_mgmt);
+    setText("dimRiskPerTrade", d.risk_per_trade);
+    setText("dimStopLoss", d.stop_loss);
     setText("dimHorizon", d.horizon);
     setText("dimArea", d.area);
     // حلقهٔ درصد

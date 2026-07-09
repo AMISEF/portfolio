@@ -379,22 +379,29 @@
     if (!p) { box.innerHTML = '<p class="adm-empty">این کاربر هنوز آزمون را نداده است.</p>'; return; }
     const res = p.result || {};
     const persona = res.personality || {};
+    const disc = res.discipline || {};
     const pct = Math.round(p.percent != null ? p.percent : (res.percent || 0));
+    const pctStr = function (v) { return v != null ? Math.round(v) + "٪" : ""; };
     box.innerHTML =
       '<p class="modal__sub">' + esc(u ? (u.full_name || u.email) : "") + "</p>" +
       '<div class="adm-risk__head">' +
         '<div class="adm-risk__pct">' + pct + '<i>٪</i></div>' +
         '<div><div class="adm-risk__label">' + esc(p.label || res.label || "—") + "</div>" +
-        (persona.label ? '<div class="adm-risk__persona">' + esc(persona.label) + "</div>" : "") +
+        (persona.label ? '<div class="adm-risk__persona">' + esc(persona.label) +
+          (disc.label ? " · نظم: " + esc(disc.label) : "") + "</div>" : "") +
         "</div></div>" +
       (res.desc ? '<p class="adm-risk__desc">' + esc(res.desc) + "</p>" : "") +
       (persona.desc ? '<p class="adm-risk__desc">' + esc(persona.desc) + "</p>" : "") +
+      (disc.desc ? '<p class="adm-risk__desc">' + esc(disc.desc) + "</p>" : "") +
       '<div class="adm-risk__grid">' +
-        riskRow("تحمل ریسک", res.tolerance_pct != null ? Math.round(res.tolerance_pct) + "٪" : "") +
-        riskRow("ظرفیت ریسک", res.capacity_pct != null ? Math.round(res.capacity_pct) + "٪" : "") +
+        riskRow("تحمل ریسک", pctStr(res.tolerance_pct)) +
+        riskRow("ظرفیت ریسک", pctStr(res.capacity_pct)) +
+        riskRow("نظم در مدیریت ریسک", pctStr(res.discipline_pct)) +
         riskRow("هدف بازدهی", res.target_return) +
         riskRow("حداکثر ضرر", res.max_loss) +
         riskRow("مدیریت سرمایه", res.money_mgmt) +
+        riskRow("ریسکِ هر معامله", res.risk_per_trade) +
+        riskRow("حدِ ضرر", res.stop_loss) +
         riskRow("افق سرمایه‌گذاری", res.horizon) +
         riskRow("حوزهٔ موردعلاقه", res.area) +
       "</div>";
