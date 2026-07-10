@@ -105,6 +105,9 @@ def _user_row(u: dict[str, Any], can_see_pw: bool) -> dict[str, Any]:
         "sub_expires_at": u.get("sub_expires_at"),
         "verified": bool(u.get("verified")),
         "asset_count": u.get("asset_count", 0),
+        # نتیجهٔ آزمون ریسک برای بَجِ ستونِ «ریسک» (list_users آن را محاسبه می‌کند)
+        "risk_percent": u.get("risk_percent"),
+        "risk_label": u.get("risk_label"),
         "created_at": u.get("created_at"),
         # رمز فقط برای ادمین؛ اگر کاربر پیش از فعال‌سازی این قابلیت ساخته شده باشد None است
         "password": pw if can_see_pw else None,
