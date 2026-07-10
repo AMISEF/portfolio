@@ -935,9 +935,15 @@ a { color: inherit; text-decoration: none; }
 /* ---------- جدول ---------- */
 /* overflow visible روی دسکتاپ تا تولتیپِ آیکون‌ها روی جدول دیده شود (نه زیرِ آن)؛
    روی موبایل اسکرول افقی فعال می‌شود. */
-.adm-table-wrap { overflow: visible; border: 1px solid var(--border); border-radius: var(--radius-lg);
-  background: var(--surface-solid); box-shadow: var(--shadow-soft); }
-@media (max-width: 900px) { .adm-table-wrap { overflow-x: auto; } }
+.adm-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface-solid); box-shadow: var(--shadow-soft); -webkit-overflow-scrolling: touch; }
+.adm-pager { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+.adm-pager__btn { padding: 8px 18px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--heading); font-family: inherit; font-size: .82rem;
+  font-weight: 700; cursor: pointer; transition: var(--trans); }
+.adm-pager__btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+.adm-pager__btn:disabled { opacity: .45; cursor: not-allowed; }
+.adm-pager__info { font-size: .8rem; color: var(--text-soft); font-weight: 700; }
 .adm-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .84rem; white-space: nowrap; }
 .adm-table th, .adm-table td { padding: 13px 14px; text-align: right; vertical-align: middle; }
 .adm-table tbody td { border-top: 1px solid var(--border); }

@@ -14,6 +14,15 @@
   let filtered = [];
   const selected = new Set();
 
+  // ---------- صفحه‌بندی ----------
+  const PAGE_SIZE = 50;
+  let page = 1;
+  function pageCount() { return Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)); }
+  function pageRows() {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }
+
   // ---------- ابزارها ----------
   const $ = (id) => document.getElementById(id);
   function esc(v) {
@@ -58,6 +67,7 @@
       return [u.user_code, u.username, u.full_name, u.email, u.phone]
         .some(function (v) { return (v || "").toString().toLowerCase().indexOf(q) !== -1; });
     });
+    page = 1;
     renderTable();
   }
 
@@ -124,10 +134,12 @@
     const body = $("admBody");
     if (!filtered.length) {
       body.innerHTML = '<tr><td colspan="11" class="adm-empty">کاربری یافت نشد.</td></tr>';
+      renderPager();
       updateSelCount();
       return;
     }
-    body.innerHTML = filtered.map(function (u) {
+    if (page > pageCount()) page = pageCount();
+    body.innerHTML = pageRows().map(function (u) {
       const checked = selected.has(u.id) ? " checked" : "";
       const sel = selected.has(u.id) ? " is-selected" : "";
       return '<tr data-id="' + u.id + '" class="adm-row' + sel + '">' +
@@ -144,12 +156,30 @@
         '<td class="adm-col-actions">' + actionsCell(u) + "</td>" +
         "</tr>";
     }).join("");
+    renderPager();
     updateSelCount();
+  }
+
+  function renderPager() {
+    const pager = $("admPager");
+    if (!pager) return;
+    const pc = pageCount();
+    if (filtered.length <= PAGE_SIZE) { pager.hidden = true; pager.innerHTML = ""; return; }
+    pager.hidden = false;
+    const fa = function (n) { return Number(n).toLocaleString("fa-IR"); };
+    const start = (page - 1) * PAGE_SIZE + 1;
+    const end = Math.min(page * PAGE_SIZE, filtered.length);
+    pager.innerHTML =
+      '<button class="adm-pager__btn" data-pg="prev"' + (page <= 1 ? " disabled" : "") + ">قبلی</button>" +
+      '<span class="adm-pager__info">' + fa(start) + "–" + fa(end) + " از " + fa(filtered.length) +
+        " (صفحهٔ " + fa(page) + " از " + fa(pc) + ")</span>" +
+      '<button class="adm-pager__btn" data-pg="next"' + (page >= pc ? " disabled" : "") + ">بعدی</button>";
   }
 
   function updateSelCount() {
     $("admSelCount").textContent = selected.size + " کاربر انتخاب شده";
-    const all = filtered.length && filtered.every(function (u) { return selected.has(u.id); });
+    const rows = pageRows();
+    const all = rows.length && rows.every(function (u) { return selected.has(u.id); });
     $("admSelectAll").checked = !!all;
   }
 
@@ -185,9 +215,21 @@
   });
 
   $("admSelectAll").addEventListener("change", function () {
-    if (this.checked) filtered.forEach(function (u) { selected.add(u.id); });
-    else filtered.forEach(function (u) { selected.delete(u.id); });
+    // انتخاب/لغوِ همهٔ کاربرانِ همین صفحه
+    if (this.checked) pageRows().forEach(function (u) { selected.add(u.id); });
+    else pageRows().forEach(function (u) { selected.delete(u.id); });
     renderTable();
+  });
+
+  $("admPager").addEventListener("click", function (e) {
+    const btn = e.target.closest("[data-pg]");
+    if (!btn || btn.disabled) return;
+    if (btn.dataset.pg === "prev" && page > 1) page--;
+    else if (btn.dataset.pg === "next" && page < pageCount()) page++;
+    renderTable();
+    // بازگشت به بالای جدول برای دیدِ بهتر
+    const wrap = document.querySelector(".adm-table-wrap");
+    if (wrap) wrap.scrollTop = 0;
   });
 
   $("admSearch").addEventListener("input", applyFilter);
