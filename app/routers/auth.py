@@ -145,9 +145,11 @@ def _login_response(user: dict[str, Any], request: Request, body: dict | None = 
         user["role"] = desired_role
 
     target_uid = user.get("uid") or f"u{user['id']}"
-    # انتقال داده‌های ناشناسِ این دستگاه به شناسهٔ کاربر
+    # انتقال داده‌های ناشناسِ این دستگاه به شناسهٔ کاربر — فقط اگر uidِ فعلیِ کوکی
+    # واقعاً ناشناس باشد و به کاربرِ ثبت‌شدهٔ دیگری تعلق نداشته باشد (وگرنه داراییِ
+    # آن کاربر به این حساب منتقل می‌شد؛ نشتِ داده بین کاربران).
     current_uid = request.cookies.get(_UID_COOKIE)
-    if current_uid and current_uid != target_uid:
+    if current_uid and current_uid != target_uid and not db.uid_owner(current_uid):
         try:
             db.reassign_assets(current_uid, target_uid)
         except Exception:  # noqa: BLE001
@@ -230,6 +232,11 @@ async def register(request: Request, payload: dict[str, Any] = Body(...)):
         )
     else:
         anon_uid = request.cookies.get(_UID_COOKIE)
+        # فقط uidِ واقعاً ناشناس را «اتخاذ» کن؛ اگر کوکیِ cs_uid از کاربرِ
+        # قبلی (مثلاً ادمین که خروج زده اما کوکی‌اش مانده) باقی مانده باشد،
+        # نباید حسابِ جدید به داراییِ آن کاربر وصل شود.
+        if anon_uid and db.uid_owner(anon_uid):
+            anon_uid = None
         db.create_user(
             email, pw_hash, first_name=first_name, last_name=last_name,
             username=username, phone=phone, password_enc=pw_enc,
@@ -362,6 +369,9 @@ async def logout(request: Request):
         db.delete_session(token)
     resp = JSONResponse({"ok": True})
     resp.delete_cookie(_SESSION_COOKIE)
+    # کوکیِ uid را هم پاک کن تا شناسهٔ کاربرِ خارج‌شده در نشستِ بعدی (مثلاً ثبت‌نامِ
+    # حسابِ جدید روی همین مرورگر) به حسابِ دیگری نشت نکند.
+    resp.delete_cookie(_UID_COOKIE)
     return resp
 
 
