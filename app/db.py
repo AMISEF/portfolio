@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import re
 import sqlite3
 import threading
 from pathlib import Path
@@ -745,6 +746,24 @@ def get_user_by_id(user_id: int) -> dict[str, Any] | None:
     with _LOCK, _conn() as conn:
         row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         return dict(row) if row else None
+
+
+def uid_owner(uid: str | None) -> dict[str, Any] | None:
+    """کاربرِ صاحبِ یک uid را برمی‌گرداند (اگر وجود داشته باشد) — چه به‌صورتِ uidِ
+    ذخیره‌شده در جدولِ users و چه به‌صورتِ fallbackِ u{id}. برای جلوگیری از
+    «اتخاذِ» uidِ یک کاربرِ ثبت‌شده توسط حسابِ دیگر (نشتِ داده بین کاربران)."""
+    if not uid:
+        return None
+    with _LOCK, _conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE uid = ?", (uid,)).fetchone()
+        if row:
+            return dict(row)
+        m = re.fullmatch(r"u(\d+)", uid)
+        if m:
+            row = conn.execute("SELECT * FROM users WHERE id = ?", (int(m.group(1)),)).fetchone()
+            if row:
+                return dict(row)
+    return None
 
 
 def get_user_by_username(username: str) -> dict[str, Any] | None:
