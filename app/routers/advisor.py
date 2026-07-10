@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import hmac
 import os
 import re
 from typing import Any
@@ -31,6 +32,19 @@ from app.services import portfolio_valuation, risk, sourcearena, ta, tabdeal, to
 from app.services import chart_svg, telegram_signals
 
 router = APIRouter(prefix="/api/advisor", tags=["advisor"])
+
+
+def _advisor_authorized(provided: str | None) -> bool:
+    """احراز «شکست‌بسته» برای اندپوینت‌های سرور-به-سرورِ مشاور.
+
+    این اندپوینت‌ها با uidِ دلخواه در بدنه، دادهٔ مالیِ هر کاربری را برمی‌گردانند؛
+    پس هرگز نباید باز باشند. اگر ADVISOR_API_KEY تنظیم نشده باشد دسترسی رد می‌شود
+    (نه اینکه باز بماند)، و مقایسه با زمان‌ثابت انجام می‌شود تا نشتِ زمانی ندهد.
+    """
+    key = settings.advisor_api_key
+    if not key or not provided:
+        return False
+    return hmac.compare_digest(provided, key)
 
 # جهان نمادهای کاندید بر اساس سطح ریسک (نماد ⇒ جفت USDT روی Toobit).
 _CORE = ["BTC", "ETH"]
@@ -124,8 +138,9 @@ async def context(request: Request,
     if not isinstance(payload, dict):
         payload = {}
 
-    # ۱) احراز کلید مشاور (در صورت تنظیم)
-    if settings.advisor_api_key and x_advisor_key != settings.advisor_api_key:
+    # ۱) احراز کلید مشاور — شکست‌بسته (اگر کلید تنظیم نشده باشد، دسترسی رد می‌شود؛
+    #    وگرنه با uidِ دلخواهِ بدنه می‌شد دارایی هر کاربری را بی‌اجازه خواند)
+    if not _advisor_authorized(x_advisor_key):
         return JSONResponse({"error": "unauthorized"}, status_code=401)
 
     uid = (payload.get("uid") or request.cookies.get("cs_uid") or "").strip()
@@ -206,7 +221,9 @@ async def telegram_webhook(request: Request,
     setWebhook دادیم می‌فرستد؛ اگر نخواند، درخواست را رد می‌کنیم. همیشه ۲۰۰
     برمی‌گردانیم تا تلگرام پیام را دوباره صف نکند (خطاها داخلی نادیده گرفته می‌شوند).
     """
-    if x_telegram_bot_api_secret_token != settings.signals_webhook_secret_effective:
+    expected = settings.signals_webhook_secret_effective
+    if not (x_telegram_bot_api_secret_token
+            and hmac.compare_digest(x_telegram_bot_api_secret_token, expected)):
         return JSONResponse({"ok": False}, status_code=403)
     try:
         update = await request.json()
@@ -239,7 +256,7 @@ async def channel_signals(x_advisor_key: str | None = Header(default=None),
     چارت می‌فرستد؛ این‌جا تحلیل‌های منقضی‌نشده برگردانده می‌شوند تا ورک‌فلوِ
     سبدچینی Dify آن‌ها را در پیشنهاد لحاظ کند. فیلتر اختیاری: ?tag=btc.
     """
-    if settings.advisor_api_key and x_advisor_key != settings.advisor_api_key:
+    if not _advisor_authorized(x_advisor_key):
         return JSONResponse({"error": "unauthorized"}, status_code=401)
 
     telegram_signals.purge_expired()
