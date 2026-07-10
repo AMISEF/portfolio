@@ -18,15 +18,15 @@
   // سطل‌های رنگ به‌سبک CryptoRank — پالت اشباع‌شده و یکدست (-12/-7/-3/<0/0/>0/+3/+7/+12)
   function colorFor(ch) {
     ch = ch || 0;
-    if (ch <= -12) return { bg: "#7f1d1d", fg: "#fff" };
-    if (ch <= -7) return { bg: "#b42318", fg: "#fff" };
-    if (ch <= -3) return { bg: "#e04f3d", fg: "#fff" };
-    if (ch < 0) return { bg: "#efa79e", fg: "#6b1810" };
-    if (ch === 0) return { bg: "#475569", fg: "#e2e8f0" };
-    if (ch < 3) return { bg: "#9fdcb7", fg: "#0b3f25" };
-    if (ch < 7) return { bg: "#43bd80", fg: "#04301c" };
-    if (ch < 12) return { bg: "#1f9d5b", fg: "#fff" };
-    return { bg: "#15803d", fg: "#fff" };
+    if (ch <= -12) return { bg: "#7a271a", fg: "#fff" };
+    if (ch <= -7) return { bg: "#d92d20", fg: "#fff" };
+    if (ch <= -3) return { bg: "#ef6351", fg: "#fff" };
+    if (ch < 0) return { bg: "#f5bcb4", fg: "#8a1c11" };
+    if (ch === 0) return { bg: "#9aa7b6", fg: "#1e293b" };
+    if (ch < 3) return { bg: "#b4e5c9", fg: "#14603a" };
+    if (ch < 7) return { bg: "#4ecb8d", fg: "#0b3f25" };
+    if (ch < 12) return { bg: "#1fa864", fg: "#fff" };
+    return { bg: "#127a45", fg: "#fff" };
   }
 
   // ---- treemap مربعی (squarified) ----
@@ -48,9 +48,10 @@
       const row = [items[i].area];
       const refs = [items[i]];
       while (i + row.length < items.length) {
-        const nextArea = items[i + row.length].area;
+        const j = i + row.length;              // اندیس را قبل از push ثابت نگه دار
+        const nextArea = items[j].area;
         if (worstRatio(row.concat(nextArea), side) > worstRatio(row, side)) break;
-        row.push(nextArea); refs.push(items[i + row.length]);
+        row.push(nextArea); refs.push(items[j]);
       }
       const rowArea = row.reduce((s, a) => s + a, 0);
       if (rw >= rh) {
@@ -70,9 +71,13 @@
   }
 
   function valueOf(it) {
-    if (state.size === "volume") return it.volume || it.market_cap || 0;
-    if (state.size === "equal") return 1;
-    return it.market_cap || 0;
+    // فشرده‌سازی توانی (√) مثل CryptoRank تا BTC/ETH کل نقشه را نبلعند و
+    // ارزهای کوچک هم دیده شوند؛ نسبت‌ها حفظ ولی اختلاف‌ها ملایم می‌شود.
+    let v;
+    if (state.size === "volume") v = it.volume || it.market_cap || 0;
+    else if (state.size === "equal") return 1;
+    else v = it.market_cap || 0;
+    return v > 0 ? Math.sqrt(v) : 0;
   }
   function filtered() {
     let list = _items.filter((it) => {
@@ -93,13 +98,18 @@
   function tileHTML(it, rc) {
     const ch = chOf(it);
     const c = colorFor(ch);
-    const fs = Math.max(8, Math.min(38, Math.min((rc.w * 1.6) / Math.max(3, it.symbol.length), rc.h * 0.4)));
-    const showPct = rc.h > 30 && rc.w > 38;
-    const showPrice = rc.h > 58 && rc.w > 56;
-    const inner =
+    // اندازهٔ فونت بر پایهٔ فضای واقعیِ داخلی (منهای حاشیه) تا متن هرگز بیرون نزند
+    const iw = Math.max(0, rc.w - 10), ih = Math.max(0, rc.h - 8);
+    const showPct = rc.h > 36 && rc.w > 48;
+    const showPrice = rc.h > 64 && rc.w > 74;
+    const lines = 1 + (showPct ? 0.62 : 0) + (showPrice ? 0.55 : 0);
+    let fs = Math.min((iw * 1.32) / Math.max(3, it.symbol.length), (ih / lines) * 0.86, 40);
+    const showSym = rc.w > 24 && rc.h > 14 && fs >= 7;
+    fs = Math.max(7, fs);
+    const inner = !showSym ? "" :
       '<span class="hm__sym" style="font-size:' + fs.toFixed(0) + 'px">' + it.symbol + '</span>' +
-      (showPct ? '<span class="hm__pct" style="font-size:' + Math.max(8, fs * 0.4).toFixed(0) + 'px">' + CS.faPct(ch) + '</span>' : "") +
-      (showPrice ? '<span class="hm__nm">' + CS.faPriceUsd(it.price) + '</span>' : "");
+      (showPct ? '<span class="hm__pct" style="font-size:' + Math.max(8, Math.min(20, fs * 0.48)).toFixed(0) + 'px">' + CS.faPct(ch) + '</span>' : "") +
+      (showPrice ? '<span class="hm__nm" style="font-size:' + Math.max(8, Math.min(14, fs * 0.34)).toFixed(0) + 'px">' + CS.faPriceUsd(it.price) + '</span>' : "");
     return '<div class="hm" data-sym="' + it.symbol + '" data-cat="' + it.category + '"' +
       ' style="left:' + rc.x.toFixed(1) + 'px;top:' + rc.y.toFixed(1) + 'px;width:' + rc.w.toFixed(1) + 'px;height:' + rc.h.toFixed(1) +
       'px;background:' + c.bg + ';color:' + c.fg + '">' + inner + "</div>";

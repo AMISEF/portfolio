@@ -397,20 +397,20 @@ a { color: inherit; text-decoration: none; }
 .heatmap { position: relative; width: 100%; overflow: hidden; border-radius: 12px;
   background: var(--bg, #0b1220); }
 /* کادر هر دستهٔ بازار — مرز ظریف و برچسب در گوشهٔ بالا (مثل CryptoRank) */
-.hm-cat { position: absolute; overflow: hidden; border: 1px solid rgba(148,163,184,.22);
-  border-radius: 8px; background: rgba(148,163,184,.04); }
-.hm-cat__lbl { position: absolute; top: 0; left: 0; right: 0; height: 17px; padding: 0 8px;
-  font-size: .64rem; font-weight: 800; letter-spacing: .3px; line-height: 17px; text-transform: capitalize;
-  color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 2; }
-.hm { position: absolute; box-sizing: border-box; border: 1.5px solid var(--bg, #0b1220); border-radius: 6px;
+.hm-cat { position: absolute; overflow: hidden; }
+.hm-cat__lbl { position: absolute; top: 0; left: 2px; right: 2px; height: 17px; padding: 0 2px;
+  direction: ltr; text-align: left; font-size: .66rem; font-weight: 700; letter-spacing: .2px;
+  line-height: 17px; text-transform: capitalize; color: var(--text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 2; }
+.hm { position: absolute; box-sizing: border-box; border: 1px solid var(--bg, #0b1220); border-radius: 4px;
   overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  cursor: pointer; line-height: 1.06; text-align: center; padding: 1px;
-  transition: filter .12s ease, transform .12s ease, box-shadow .12s ease; }
-.hm:hover { filter: brightness(1.13); z-index: 6; transform: scale(1.02);
-  box-shadow: 0 6px 20px rgba(0,0,0,.4); outline: 1.5px solid rgba(255,255,255,.7); }
-.hm__sym { font-weight: 900; letter-spacing: -.3px; text-shadow: 0 1px 2px rgba(0,0,0,.2); }
-.hm__pct { font-weight: 800; font-family: var(--font-mono); opacity: .97; margin-top: 1px; }
-.hm__nm { font-size: 9px; opacity: .8; font-family: var(--font-mono); margin-top: 2px; }
+  cursor: pointer; line-height: 1.05; text-align: center; padding: 2px; direction: ltr;
+  transition: background-color .5s ease, color .5s ease, filter .12s ease, box-shadow .12s ease; }
+.hm:hover { filter: brightness(1.1); z-index: 6;
+  box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.75), 0 4px 16px rgba(0,0,0,.35); }
+.hm__sym { font-weight: 900; letter-spacing: -.3px; max-width: 100%; overflow: hidden; }
+.hm__pct { font-weight: 800; font-family: var(--font-mono); opacity: .95; margin-top: 2px; }
+.hm__nm { opacity: .78; font-family: var(--font-mono); margin-top: 2px; }
 
 /* تول‌تیپ شناورِ دسته — کارت تیره با فهرست ارزها */
 .hm-tip { position: absolute; z-index: 20; min-width: 188px; max-width: 240px; pointer-events: none;
