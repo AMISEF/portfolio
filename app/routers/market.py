@@ -14,10 +14,12 @@ import asyncio
 import datetime as _dt
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 from app.cache import cache, cmc_budget, credit_budget
 from app.config import settings
+from app.routers.auth import current_user
 from app.services import coinmarketcap, mock_data, sourcearena, tabdeal, toobit
 from app.services import commodities as commodities_svc
 
@@ -235,8 +237,15 @@ async def _raw_get(url: str, params: dict | None = None) -> dict:
 
 
 @router.get("/debug")
-async def debug():
-    """پاسخ خام + پارس‌شدهٔ هر منبع + وضعیت کلیدها، برای تثبیت نگاشت فیلدها."""
+async def debug(request: Request):
+    """پاسخ خام + پارس‌شدهٔ هر منبع + وضعیت کلیدها، برای تثبیت نگاشت فیلدها.
+
+    فقط ادمین — این خروجی وضعیتِ کلیدها و پاسخِ خامِ منابعِ بالادستی را افشا می‌کند
+    و نباید عمومی باشد.
+    """
+    u = current_user(request)
+    if not (u and (u.get("role") or "member") == "admin"):
+        return JSONResponse({"error": "forbidden"}, status_code=403)
     keys = {
         "cmc_api_key_set": bool(settings.cmc_api_key),
         "cryptorank_api_key_set": bool(settings.cryptorank_api_key),
