@@ -148,12 +148,32 @@
     const prevNav = d.getElementById("lbxPrev");
     const nextNav = d.getElementById("lbxNext");
     let scale = 1, tx = 0, ty = 0;
+    let baseW = 0, baseH = 0, maxScale = 6;
     let drag = null; const pointers = new Map(); let pinch = null;
     let album = []; let cur = 0;
 
-    function apply() { img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; }
+    // Zoom by RESIZING the element (not CSS transform:scale) so the browser
+    // re-rasterizes from the full-resolution source — the image keeps its
+    // original quality when zoomed instead of upscaling a low-res snapshot.
+    function computeBase() {
+      const nw = img.naturalWidth || 0, nh = img.naturalHeight || 0;
+      img.style.maxWidth = "none";
+      img.style.maxHeight = "none";
+      if (!nw || !nh) { baseW = img.clientWidth || 0; baseH = img.clientHeight || 0; maxScale = 6; return; }
+      // Fit the image inside the viewport at scale 1 (never upscale at base).
+      const fit = Math.min(window.innerWidth * 0.92 / nw, window.innerHeight * 0.86 / nh, 1);
+      baseW = Math.round(nw * fit);
+      baseH = Math.round(nh * fit);
+      // Allow zooming a bit past 1:1 native pixels for readability.
+      maxScale = Math.max(6, (nw / baseW) * 2);
+    }
+    function apply() {
+      img.style.width = (baseW * scale) + "px";
+      img.style.height = (baseH * scale) + "px";
+      img.style.transform = `translate(${tx}px, ${ty}px)`;
+    }
     function reset() { scale = 1; tx = 0; ty = 0; apply(); }
-    function clampScale(s) { return Math.max(1, Math.min(6, s)); }
+    function clampScale(s) { return Math.max(1, Math.min(maxScale, s)); }
     function zoomAt(cx, cy, factor) {
       const rect = stage.getBoundingClientRect();
       const ox = cx - rect.left - rect.width / 2;
@@ -169,7 +189,10 @@
     function show(i) {
       if (!album.length) return;
       cur = (i + album.length) % album.length;
-      img.src = album[cur]; reset();
+      img.src = album[cur];
+      // Recompute the fitted base size once the full image has decoded, then reset.
+      if (img.complete && img.naturalWidth) { computeBase(); reset(); }
+      else { img.onload = function () { computeBase(); reset(); }; }
       const multi = album.length > 1;
       counterEl.hidden = !multi;
       prevNav.hidden = !multi;
