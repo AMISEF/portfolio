@@ -2,13 +2,18 @@
 {% set journal_svg = '<path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M8 8h7M8 12h7M8 16h4"/>' %}
 {% set home_svg = '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>' %}
 {% set exclusive_svg = '<path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/>' %}
+{% set bot_svg = '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/>' %}
 
-<!-- موبایل: نوار پایین (نمای بازار در وسط) -->
+<!-- موبایل: نوار پایین. چیدمانِ متقارن: «نمای بازار» در وسط، دو آیتم در هر طرف -->
 <nav class="nav nav--bottom">
   <div class="nav__bar">
     <a class="nav__item {% if active=='journal' %}is-active{% endif %}" href="/journal/" data-nav="journal" aria-label="تریدینگ ژورنال">
       <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ journal_svg|safe }}</svg></span>
       <span class="nav__label">تریدینگ ژورنال</span>
+    </a>
+    <a class="nav__item {% if active=='bot' %}is-active{% endif %}" href="/journal/bot" data-nav="bot" aria-label="برایند ربات">
+      <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ bot_svg|safe }}</svg></span>
+      <span class="nav__label">برایند ربات</span>
     </a>
     <a class="nav__item nav__item--home {% if active=='home' %}is-active{% endif %}" href="/" data-nav="home" aria-label="نمای بازار">
       <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">{{ home_svg|safe }}</svg></span>
@@ -39,6 +44,10 @@
   <a class="nav__item {% if active=='exclusive' %}is-active{% endif %}" href="/exclusive" data-nav="exclusive" aria-label="تحلیل اختصاصی">
     <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ exclusive_svg|safe }}</svg></span>
     <span class="nav__label">تحلیل اختصاصی</span>
+  </a>
+  <a class="nav__item {% if active=='bot' %}is-active{% endif %}" href="/journal/bot" data-nav="bot" aria-label="برایند ربات">
+    <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ bot_svg|safe }}</svg></span>
+    <span class="nav__label">برایند ربات</span>
   </a>
   <a class="nav__item {% if active=='journal' %}is-active{% endif %}" href="/journal/" data-nav="journal" aria-label="تریدینگ ژورنال">
     <span class="nav__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{{ journal_svg|safe }}</svg></span>
