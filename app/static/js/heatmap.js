@@ -98,14 +98,18 @@
   function tileHTML(it, rc) {
     const ch = chOf(it);
     const c = colorFor(ch);
-    // اندازهٔ فونت بر پایهٔ فضای واقعیِ داخلی (منهای حاشیه) تا متن هرگز بیرون نزند
-    const iw = Math.max(0, rc.w - 10), ih = Math.max(0, rc.h - 8);
+    // حاشیهٔ داخلی تطبیقی: کاشی‌های کوچک حاشیهٔ کمتری می‌گیرند تا نامِ ارز جا شود
+    const padW = rc.w > 44 ? 10 : (rc.w > 26 ? 4 : 2);
+    const padH = rc.h > 40 ? 8 : (rc.h > 22 ? 4 : 2);
+    const iw = Math.max(0, rc.w - padW), ih = Math.max(0, rc.h - padH);
     const showPct = rc.h > 36 && rc.w > 48;
     const showPrice = rc.h > 64 && rc.w > 74;
     const lines = 1 + (showPct ? 0.62 : 0) + (showPrice ? 0.55 : 0);
     let fs = Math.min((iw * 1.32) / Math.max(3, it.symbol.length), (ih / lines) * 0.86, 40);
-    const showSym = rc.w > 24 && rc.h > 14 && fs >= 7;
-    fs = Math.max(7, fs);
+    // نام ارز تا جای ممکن نمایش داده شود؛ فقط کاشی‌های واقعاً ریز خالی می‌مانند
+    // (آن‌ها با لمس/هاور، تول‌تیپِ دسته را با نام و قیمت نشان می‌دهند).
+    const showSym = rc.w > 15 && rc.h > 9 && fs >= 5;
+    fs = Math.max(6, Math.min(fs, rc.h - 2));
     const inner = !showSym ? "" :
       '<span class="hm__sym" style="font-size:' + fs.toFixed(0) + 'px">' + it.symbol + '</span>' +
       (showPct ? '<span class="hm__pct" style="font-size:' + Math.max(8, Math.min(20, fs * 0.48)).toFixed(0) + 'px">' + CS.faPct(ch) + '</span>' : "") +
@@ -123,7 +127,8 @@
     if (!list.length) { el.innerHTML = '<span class="src-tag">داده‌ای موجود نیست</span>'; return; }
 
     const W = el.clientWidth || 900;
-    const H = W < 600 ? 560 : Math.min(660, Math.round(W * 0.58));
+    // موبایل: نقشهٔ بلندتر تا کاشی‌ها بزرگ‌تر شوند و نامِ ارزهای بیشتری جا شود
+    const H = W < 600 ? 700 : Math.min(660, Math.round(W * 0.58));
     el.style.height = H + "px";
 
     // امضای چیدمان: اگر فقط رنگ/قیمت عوض شده، بازچینش نمی‌کنیم (بدون پرش)
@@ -186,7 +191,13 @@
   }
 
   function tipHTML(catName, hoverSym) {
-    const arr = (_cats[catName] || []).slice(0, 12);
+    const all = _cats[catName] || [];
+    let arr = all.slice(0, 12);
+    // اگر ارزِ انتخاب‌شده جزو ۱۲ تای اول نبود، حتماً به فهرست اضافه شود
+    if (hoverSym && !arr.some((it) => it.symbol === hoverSym)) {
+      const hit = all.find((it) => it.symbol === hoverSym);
+      if (hit) arr = arr.slice(0, 11).concat(hit);
+    }
     if (!arr.length) return "";
     const rows = arr.map((it) => {
       const ch = chOf(it);
@@ -240,6 +251,15 @@
       showTip(el, cat.getAttribute("data-cat"), tile ? tile.getAttribute("data-sym") : null, e);
     });
     el.addEventListener("mouseleave", () => { if (_tip) _tip.hidden = true; });
+
+    // لمس/کلیک روی کاشی (موبایل هاور ندارد): تول‌تیپِ دسته با نام، قیمت و درصدِ
+    // همان ارز هایلایت‌شده نشان داده می‌شود — برای کاشی‌های ریزِ بدون برچسب.
+    el.addEventListener("click", (e) => {
+      const tile = e.target.closest(".hm");
+      const cat = e.target.closest(".hm-cat");
+      if (!tile || !cat) { if (_tip) _tip.hidden = true; return; }
+      showTip(el, cat.getAttribute("data-cat"), tile.getAttribute("data-sym"), e);
+    });
 
     const seg = (id, attr, key, after) => {
       const box = document.getElementById(id);
