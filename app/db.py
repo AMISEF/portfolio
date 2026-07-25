@@ -185,6 +185,22 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_picks_user ON ai_picks(user_id);
 
             -- کلیدهای API صرافی توبیت (اسپات) برای هر کاربر — رمزگذاری‌شده.
+            -- ادمین‌های پنلِ داخلِ ربات تلگرام (شناسهٔ عددیِ تلگرام).
+            CREATE TABLE IF NOT EXISTS bot_admins (
+                tg_id      TEXT PRIMARY KEY,
+                username   TEXT,
+                added_by   TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            -- وضعیتِ گفتگوی چندمرحله‌ایِ ربات برای هر چت (افزودن ادمین،
+            -- فعال‌سازی اشتراک، پیام همگانی و …).
+            CREATE TABLE IF NOT EXISTS bot_state (
+                chat_id    TEXT PRIMARY KEY,
+                state      TEXT NOT NULL DEFAULT '{}',
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
             CREATE TABLE IF NOT EXISTS toobit_keys (
                 user_id     INTEGER PRIMARY KEY,
                 api_key_enc TEXT NOT NULL,
@@ -1323,6 +1339,180 @@ def toobit_mark_sync(user_id: int, error: str | None = None) -> None:
             "WHERE user_id = ?",
             (error, int(user_id)),
         )
+
+
+# ───────────────────────── ادمین‌های ربات تلگرام ─────────────────────────
+def bot_admin_add(tg_id: str, username: str | None = None,
+                  added_by: str | None = None) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "INSERT INTO bot_admins (tg_id, username, added_by) VALUES (?, ?, ?) "
+            "ON CONFLICT(tg_id) DO UPDATE SET username = COALESCE(excluded.username, bot_admins.username)",
+            (str(tg_id), username, added_by),
+        )
+
+
+def bot_admin_remove(tg_id: str) -> bool:
+    with _LOCK, _conn() as conn:
+        cur = conn.execute("DELETE FROM bot_admins WHERE tg_id = ?", (str(tg_id),))
+        return cur.rowcount > 0
+
+
+def bot_admin_remove_by_username(username: str) -> str | None:
+    """حذف با نام کاربری (@user). شناسهٔ حذف‌شده را برمی‌گرداند."""
+    uname = str(username or "").lstrip("@").lower()
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT tg_id FROM bot_admins WHERE lower(replace(username,'@','')) = ?",
+            (uname,),
+        ).fetchone()
+        if not row:
+            return None
+        conn.execute("DELETE FROM bot_admins WHERE tg_id = ?", (row["tg_id"],))
+        return str(row["tg_id"])
+
+
+def bot_admins() -> list[dict[str, Any]]:
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM bot_admins ORDER BY created_at"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def is_bot_admin(tg_id: str | int | None) -> bool:
+    if tg_id is None:
+        return False
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM bot_admins WHERE tg_id = ?", (str(tg_id),)
+        ).fetchone()
+        return row is not None
+
+
+# ───────────────────────── وضعیتِ گفتگوی ربات ─────────────────────────
+def bot_state_get(chat_id: str | int) -> dict[str, Any]:
+    import json as _json
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT state FROM bot_state WHERE chat_id = ?", (str(chat_id),)
+        ).fetchone()
+    if not row:
+        return {}
+    try:
+        return _json.loads(row["state"]) or {}
+    except (ValueError, TypeError):
+        return {}
+
+
+def bot_state_set(chat_id: str | int, state: dict[str, Any] | None) -> None:
+    import json as _json
+    with _LOCK, _conn() as conn:
+        if not state:
+            conn.execute("DELETE FROM bot_state WHERE chat_id = ?", (str(chat_id),))
+            return
+        conn.execute(
+            "INSERT INTO bot_state (chat_id, state, updated_at) "
+            "VALUES (?, ?, datetime('now')) "
+            "ON CONFLICT(chat_id) DO UPDATE SET state = excluded.state, "
+            "  updated_at = datetime('now')",
+            (str(chat_id), _json.dumps(state, ensure_ascii=False)),
+        )
+
+
+def bot_known_chats() -> list[str]:
+    """همهٔ چت‌هایی که حساب‌شان به ربات وصل است — مقصدِ پیام همگانی."""
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT chat_id FROM tg_links WHERE chat_id <> ''"
+        ).fetchall()
+        return [str(r["chat_id"]) for r in rows]
+
+
+# ───────────────────────── گزارشِ عملکردِ پنل مدیریت سرمایه ─────────────────────────
+def portfolio_stats(days: int) -> dict[str, Any]:
+    """آمارِ عملکردِ سایتِ مدیریت سرمایه برای گزارشِ ادمین.
+
+    شمارشِ مشترکان «وضعیتِ فعلی» است (به تفکیک پلن و مدتِ باقی‌مانده) و شمارشِ
+    فعالیت‌ها مربوط به بازهٔ خواسته‌شده.
+    """
+    from app.services import plans as _plans
+    since = f"-{int(days)} days"
+    with _LOCK, _conn() as conn:
+        def one(sql: str, args: tuple = ()) -> int:
+            row = conn.execute(sql, args).fetchone()
+            return int(row[0]) if row and row[0] is not None else 0
+
+        total_users = one("SELECT COUNT(*) FROM users")
+        new_users = one(
+            "SELECT COUNT(*) FROM users WHERE created_at >= datetime('now', ?)", (since,))
+        users = [dict(r) for r in conn.execute("SELECT * FROM users").fetchall()]
+
+        new_assets = one(
+            "SELECT COUNT(*) FROM assets WHERE created_at >= datetime('now', ?)", (since,))
+        total_assets = one("SELECT COUNT(*) FROM assets")
+        risk_done = one("SELECT COUNT(*) FROM risk_profiles")
+        alerts_active = one("SELECT COUNT(*) FROM price_alerts WHERE active = 1")
+        alerts_fired = one(
+            "SELECT COUNT(*) FROM price_alerts WHERE triggered_at >= datetime('now', ?)", (since,))
+        tg_linked = one("SELECT COUNT(*) FROM tg_links WHERE chat_id <> ''")
+        toobit_linked = one("SELECT COUNT(*) FROM toobit_keys")
+        picks_saved = one("SELECT COUNT(DISTINCT user_id) FROM ai_picks")
+
+    # سبدچینیِ هوش مصنوعی در بازه: ai_usage ماهانه/سالانه است، پس فقط دوره‌های
+    # جاری شمرده می‌شوند؛ برای گزارشِ روزانه/هفتگی «این ماه» گزارش می‌شود.
+    month_key = _plans.tehran_month_key()
+    year_key = _plans.tehran_year_key()
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(used), 0) FROM ai_usage WHERE month IN (?, ?)",
+            (month_key, year_key),
+        ).fetchone()
+        ai_used = int(row[0]) if row and row[0] is not None else 0
+
+    by_tier: dict[str, int] = {}
+    by_duration = {"۱ ماهه": 0, "۳ ماهه": 0, "۶ ماهه": 0, "سالانه": 0, "نامحدود": 0}
+    paid = 0
+    import datetime as _dt
+    now = _dt.datetime.now(_dt.timezone.utc)
+    for u in users:
+        tier = _plans.tier_of(u)
+        by_tier[tier] = by_tier.get(tier, 0) + 1
+        if tier == "bronze":
+            continue
+        paid += 1
+        exp = u.get("sub_expires_at")
+        if not exp:
+            by_duration["نامحدود"] += 1
+            continue
+        try:
+            dt = _dt.datetime.fromisoformat(str(exp).replace(" ", "T"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=_dt.timezone.utc)
+            left = (dt - now).days
+        except (ValueError, TypeError):
+            by_duration["نامحدود"] += 1
+            continue
+        if left <= 31:
+            by_duration["۱ ماهه"] += 1
+        elif left <= 93:
+            by_duration["۳ ماهه"] += 1
+        elif left <= 186:
+            by_duration["۶ ماهه"] += 1
+        else:
+            by_duration["سالانه"] += 1
+
+    return {
+        "days": days,
+        "users": {"total": total_users, "new": new_users, "paid": paid},
+        "by_tier": by_tier,
+        "by_duration": by_duration,
+        "assets": {"new": new_assets, "total": total_assets},
+        "risk_profiles": risk_done,
+        "ai_allocations": ai_used,
+        "alerts": {"active": alerts_active, "fired": alerts_fired},
+        "links": {"telegram": tg_linked, "toobit": toobit_linked, "picks": picks_saved},
+    }
 
 
 # تضمین وجود جداول حتی بدون رویداد startup (idempotent).
