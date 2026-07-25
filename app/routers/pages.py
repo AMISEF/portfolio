@@ -53,6 +53,16 @@ async def home(request: Request):
     return templates.TemplateResponse("home.html", _ctx(request, "home"))
 
 
+@router.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    """تنظیماتِ حساب: تغییر رمز عبور و اتصال به API اسپاتِ توبیت."""
+    ctx = _ctx(request, "settings")
+    user = current_user(request)
+    ctx["is_authed"] = bool(user)
+    ctx["user_email"] = (user or {}).get("email") or ""
+    return templates.TemplateResponse("settings.html", ctx)
+
+
 @router.get("/subscription", response_class=HTMLResponse)
 async def subscription_page(request: Request):
     """صفحهٔ خرید/مدیریت اشتراک — چهار پلن + وضعیت اشتراک جاری کاربر."""

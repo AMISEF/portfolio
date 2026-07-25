@@ -175,6 +175,7 @@
         meta +
         subLine +
         '</div>' +
+        '<a class="btn-primary" href="/settings">تنظیمات حساب</a>' +
         '<a class="btn-primary" href="/subscription">مدیریت / خرید اشتراک</a>' +
         (u.is_staff ? '<a class="btn-primary btn-admin" href="/admin">ورود به پنل مدیریت</a>' : '') +
         '<button class="btn-primary btn-danger" id="btnLogout">خروج از حساب</button>';

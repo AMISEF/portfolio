@@ -39,9 +39,13 @@ async def check_once() -> dict[str, int]:
         target = float(a.get("target_price") or 0)
         if price is None or target <= 0:
             continue
-        if price > target:
-            continue  # هنوز به قیمتِ خرید نرسیده
-        text = algohub_bot.buy_alert_message(
+        kind = str(a.get("kind") or "buy")
+        # خرید ⇒ قیمت تا هدف پایین بیاید. فروش ⇒ قیمت تا هدف بالا برود.
+        reached = (price >= target) if kind == "sell" else (price <= target)
+        if not reached:
+            continue
+        text = algohub_bot.alert_message(
+            kind=kind,
             symbol=sym,
             name=a.get("name"),
             target=target,

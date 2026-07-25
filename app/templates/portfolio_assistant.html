@@ -176,6 +176,53 @@
   </div>
 </div>
 
+<!-- سبد پیشنهادی هوش مصنوعی (ماندگار) + هشدار قیمت خرید و فروش -->
+<div class="card pf2-card picks-card rise" id="picksCard" hidden>
+  <div class="card__head">
+    <span class="card__title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>
+      سبد پیشنهادی هوش مصنوعی
+    </span>
+    <span class="live-badge live-badge--brand"><span class="live-dot live-dot--brand"></span> ذخیره‌شده</span>
+  </div>
+  <div class="card__body">
+    <p class="picks__sub">
+      آخرین سبدِ پیشنهادیِ شما به تفکیک افق سرمایه‌گذاری، همراه با قیمت خرید و قیمت فروش.
+      این فهرست ذخیره می‌شود و با خروج از صفحه از بین نمی‌رود. با فعال‌کردن هشدار،
+      به‌محض رسیدن قیمت به هدف، در ربات تلگرام الگو هاب به شما اطلاع داده می‌شود.
+    </p>
+
+    <div class="picks__link" id="picksCardLink" hidden>
+      <span class="picks__link-txt">
+        برای دریافت هشدارها، ابتدا حساب خود را به ربات تلگرام الگو هاب وصل کنید.
+      </span>
+      <a class="btn btn--brand picks__link-btn" id="picksCardLinkBtn" target="_blank" rel="noopener">
+        اتصال به ربات تلگرام
+      </a>
+    </div>
+    <div class="picks__linked" id="picksCardLinked" hidden>
+      ✅ حساب شما به ربات تلگرام متصل است — هشدارها ارسال می‌شوند.
+    </div>
+
+    <div class="picks__tablewrap">
+      <table class="picks__table picks__table--full">
+        <thead>
+          <tr>
+            <th>ارز</th>
+            <th>افق</th>
+            <th>قیمت خرید (دلار)</th>
+            <th>هشدار خرید</th>
+            <th>قیمت فروش (دلار)</th>
+            <th>هشدار فروش</th>
+          </tr>
+        </thead>
+        <tbody id="picksCardBody"></tbody>
+      </table>
+    </div>
+    <p class="picks__msg" id="picksCardMsg" hidden></p>
+  </div>
+</div>
+
 <!-- مودال افزودن دارایی -->
 <div class="modal-overlay" id="addAssetModal" hidden>
   <div class="modal modal--wide" role="dialog" aria-modal="true">

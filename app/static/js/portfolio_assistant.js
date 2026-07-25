@@ -1127,7 +1127,11 @@
         renderText(d.ok ? d.text : "", d.error);
         renderChannel(d.channel);
         // ارزهای پیشنهادی + هشدار قیمت خرید (وضعیتِ هشدارهای ذخیره‌شده اول خوانده می‌شود)
-        if (d.ok && d.text) { await loadAlertState(); renderPicks(d.text); }
+        if (d.ok && d.text) {
+          await loadAlertState();
+          renderPicks(d.text);
+          picksCard.load();          // کارتِ ماندگارِ پایینِ صفحه هم تازه شود
+        }
         else { const s = $("algoPicks"); if (s) s.hidden = true; }
         show(elResult);
       } catch (e) {
@@ -1140,6 +1144,133 @@
 
     $("algoRun").addEventListener("click", run);
     $("algoAgain").addEventListener("click", () => show(elIntro));
+  })();
+
+
+  // ───────────── سبد پیشنهادی ذخیره‌شده (کارت پایینِ صفحه) ─────────────
+  // مودالِ سبدچینی با خروج از صفحه پاک می‌شود، پس پیشنهادها روی سرور ذخیره‌اند و
+  // اینجا با قیمتِ خرید/فروش و هشدارِ هر دو سمت نمایش داده می‌شوند.
+  const picksCard = (function () {
+    const HZ_FA = { short: "کوتاه‌مدت", mid: "میان‌مدت", long: "بلندمدت" };
+    let linked = false;
+
+    function msg(text, ok) {
+      const el = $("picksCardMsg");
+      if (!el) return;
+      if (!text) { el.hidden = true; return; }
+      el.textContent = text;
+      el.className = "picks__msg" + (ok ? " picks__msg--ok" : " picks__msg--err");
+      el.hidden = false;
+    }
+
+    async function linkBanner() {
+      const bLink = $("picksCardLink"), bOk = $("picksCardLinked");
+      if (!bLink || !bOk) return;
+      if (linked) { bLink.hidden = true; bOk.hidden = false; return; }
+      bOk.hidden = true;
+      try {
+        const r = await fetch("/api/bot/link");
+        if (r.ok) {
+          const d = await r.json();
+          if (d.linked) { linked = true; bLink.hidden = true; bOk.hidden = false; return; }
+          const btn = $("picksCardLinkBtn");
+          if (btn) btn.href = d.link_url || d.bot_url || "#";
+        }
+      } catch (e) { /* بی‌صدا */ }
+      bLink.hidden = false;
+    }
+
+    function cell(kind, sym, hz, price, on) {
+      return '<td><input class="picks__price" data-kind="' + kind + '" type="number" ' +
+        'step="any" min="0" inputmode="decimal" placeholder="—" value="' +
+        (price == null ? "" : esc(price)) + '"></td>' +
+        '<td class="picks__cell-chk"><label class="picks__chk"><input type="checkbox" ' +
+        'class="picks__toggle" data-kind="' + kind + '"' + (on ? " checked" : "") +
+        '><span></span></label></td>';
+    }
+
+    async function load() {
+      const card = $("picksCard"), body = $("picksCardBody");
+      if (!card || !body) return;
+      let d;
+      try {
+        const r = await fetch("/api/picks");
+        if (!r.ok) { card.hidden = true; return; }
+        d = await r.json();
+      } catch (e) { card.hidden = true; return; }
+
+      const picks = d.picks || [];
+      if (!picks.length) { card.hidden = true; return; }
+      linked = !!d.linked;
+
+      const byKey = {};
+      (d.alerts || []).forEach((a) => { byKey[a.symbol + "|" + a.horizon + "|" + (a.kind || "buy")] = a; });
+
+      body.innerHTML = picks.map((p) => {
+        const k = p.symbol + "|" + p.horizon + "|";
+        const ab = byKey[k + "buy"], as = byKey[k + "sell"];
+        const buyPrice = ab ? ab.target_price : p.buy_price;
+        const sellPrice = as ? as.target_price : p.sell_price;
+        return '<tr data-sym="' + esc(p.symbol) + '" data-hz="' + esc(p.horizon) + '">' +
+          '<td class="picks__sym">' + esc(p.symbol) + "</td>" +
+          '<td><span class="picks__hz picks__hz--' + p.horizon + '">' +
+          (HZ_FA[p.horizon] || p.horizon) + "</span></td>" +
+          cell("buy", p.symbol, p.horizon, buyPrice, ab && ab.active) +
+          cell("sell", p.symbol, p.horizon, sellPrice, as && as.active) +
+          "</tr>";
+      }).join("");
+
+      card.hidden = false;
+      msg("", true);
+      linkBanner();
+    }
+
+    async function save(tr, kind, active) {
+      const priceEl = tr.querySelector('.picks__price[data-kind="' + kind + '"]');
+      const chk = tr.querySelector('.picks__toggle[data-kind="' + kind + '"]');
+      const target = parseFloat(priceEl.value);
+      const label = kind === "sell" ? "فروش" : "خرید";
+      if (active && !(target > 0)) {
+        msg("برای فعال‌سازی هشدارِ " + label + "، ابتدا قیمت هدف را وارد کنید.", false);
+        chk.checked = false;
+        priceEl.focus();
+        return;
+      }
+      try {
+        const r = await fetch("/api/alerts", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ symbol: tr.getAttribute("data-sym"),
+                                 horizon: tr.getAttribute("data-hz"),
+                                 kind: kind, target_price: target, active: active }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { msg(d.error || "ثبت هشدار ممکن نشد.", false); chk.checked = !active; return; }
+        linked = !!d.linked;
+        if (!active) msg("هشدارِ " + label + " غیرفعال شد.", true);
+        else if (!linked) msg("هشدار ثبت شد. برای دریافت پیام، حساب خود را به ربات تلگرام وصل کنید.", false);
+        else msg("✅ هشدارِ " + label + " فعال شد؛ به‌محض رسیدن قیمت به هدف، در تلگرام اطلاع می‌دهیم.", true);
+        linkBanner();
+      } catch (e) {
+        msg("خطای شبکه در ثبت هشدار.", false);
+        chk.checked = !active;
+      }
+    }
+
+    const body = $("picksCardBody");
+    if (body) {
+      body.addEventListener("change", (e) => {
+        const tr = e.target.closest("tr");
+        if (!tr) return;
+        const kind = e.target.getAttribute("data-kind") || "buy";
+        if (e.target.classList.contains("picks__toggle")) save(tr, kind, e.target.checked);
+        else if (e.target.classList.contains("picks__price")) {
+          const chk = tr.querySelector('.picks__toggle[data-kind="' + kind + '"]');
+          if (chk && chk.checked) save(tr, kind, true);
+        }
+      });
+    }
+
+    return { load: load };
   })();
 
   // ───────────────────────── راه‌اندازی ─────────────────────────
@@ -1157,7 +1288,7 @@
     }
     loadPortfolio();
     loadHistory(30);
-    if (!ADMIN_UID) loadCatalog();
+    if (!ADMIN_UID) { loadCatalog(); picksCard.load(); }
     setInterval(loadPortfolio, 20000);
   }
 })(window);

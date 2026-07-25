@@ -551,6 +551,16 @@ async def ai_allocation(request: Request):
     # شمارش یک تحلیلِ موفق در سهمیهٔ ماه جاری (نامحدودها بی‌تأثیر است).
     if result.get("ok") and quota is not None:
         db.ai_increment(int(user["id"]), month)
+    # ذخیرهٔ ارزهای پیشنهادی تا با بستنِ مودالِ سبدچینی از بین نروند و پایینِ
+    # صفحهٔ مدیریت سرمایه (با قیمت خرید/فروش و هشدار) نمایش داده شوند.
+    if result.get("ok") and result.get("text"):
+        try:
+            from app.services import picks_parser
+            picks = picks_parser.parse(result["text"])
+            if picks:
+                db.picks_replace(int(user["id"]), picks)
+        except Exception:  # noqa: BLE001 — ذخیره‌نشدنِ پیشنهادها نباید پاسخ را خراب کند
+            pass
     return JSONResponse({
         "ok": result["ok"],
         "text": result["text"],

@@ -119,12 +119,35 @@ async def save_alert(request: Request):
         return JSONResponse({"error": "قیمت هدف باید عددی بزرگ‌تر از صفر باشد."},
                             status_code=400)
 
+    kind = str(body.get("kind") or "buy").strip()
+    if kind not in ("buy", "sell"):
+        kind = "buy"
     active = bool(body.get("active", True))
     name = (body.get("name") or None)
     uid = int(user["id"])
-    db.alert_upsert(uid, symbol, horizon, target, name=name, active=active)
+    db.alert_upsert(uid, symbol, horizon, target, name=name, active=active, kind=kind)
+    # قیمتِ اصلاح‌شده در سبدِ پیشنهادی هم ذخیره شود تا دفعهٔ بعد همان دیده شود.
+    db.pick_set_price(uid, symbol, horizon,
+                      buy_price=target if kind == "buy" else None,
+                      sell_price=target if kind == "sell" else None)
     return JSONResponse({"ok": True, "alerts": db.alerts_list(uid),
                          "linked": bool(db.tg_chat_id(uid))})
+
+
+# ───────────────────────── سبدِ پیشنهادیِ ذخیره‌شده ─────────────────────────
+@router.get("/api/picks")
+async def list_picks(request: Request):
+    """آخرین سبدِ پیشنهادیِ هوش مصنوعی + وضعیتِ هشدارها (برای صفحهٔ مدیریت سرمایه)."""
+    user = current_user(request)
+    if not user:
+        return _401()
+    uid = int(user["id"])
+    return JSONResponse({
+        "picks": db.picks_list(uid),
+        "alerts": db.alerts_list(uid),
+        "linked": bool(db.tg_chat_id(uid)),
+        "enabled": algohub_bot.is_enabled(),
+    })
 
 
 @router.delete("/api/alerts/{alert_id}")
