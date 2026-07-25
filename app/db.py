@@ -138,6 +138,34 @@ def init_db() -> None:
                 expires_at  TEXT NOT NULL           -- پس از این زمان از پیشنهادها حذف می‌شود
             );
             CREATE INDEX IF NOT EXISTS idx_signals_exp ON channel_signals(expires_at);
+
+            -- اتصالِ حسابِ پنل به چتِ ربات تلگرام «الگو هاب».
+            -- کاربر در پنل دکمهٔ اتصال را می‌زند، لینکِ /start=<token> باز می‌شود و
+            -- ربات chat_id او را اینجا ثبت می‌کند تا هشدارها ارسال شوند.
+            CREATE TABLE IF NOT EXISTS tg_links (
+                user_id    INTEGER PRIMARY KEY,
+                chat_id    TEXT NOT NULL,
+                username   TEXT,
+                token      TEXT,          -- توکنِ یک‌بارمصرفِ اتصال (تا وصل شدن)
+                linked_at  TEXT
+            );
+            CREATE INDEX IF NOT EXISTS idx_tglinks_token ON tg_links(token);
+
+            -- هشدارِ قیمتِ خرید برای ارزهای پیشنهادیِ سبدچینی هوش مصنوعی.
+            -- هر ردیف = یک ارز در یک افقِ زمانی با قیمتِ هدفِ خرید.
+            CREATE TABLE IF NOT EXISTS price_alerts (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id      INTEGER NOT NULL,
+                symbol       TEXT NOT NULL,          -- نماد ارز (BTC, ETH, …)
+                name         TEXT,                   -- نام نمایشی
+                horizon      TEXT NOT NULL DEFAULT 'short',  -- short | mid | long
+                target_price REAL NOT NULL,          -- قیمت هدفِ خرید (دلار)
+                active       INTEGER NOT NULL DEFAULT 1,
+                triggered_at TEXT,                   -- زمانِ آخرین شلیکِ هشدار
+                created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE (user_id, symbol, horizon)
+            );
+            CREATE INDEX IF NOT EXISTS idx_alerts_active ON price_alerts(active, symbol);
             """
         )
         _migrate_users(conn)
@@ -1040,6 +1068,107 @@ def ai_increment(user_id: int, month: str) -> int:
             (int(user_id), month),
         ).fetchone()
         return int(row["used"]) if row else 1
+
+
+# ───────────────────────── اتصالِ تلگرام (ربات الگو هاب) ─────────────────────────
+def tg_set_link_token(user_id: int, token: str) -> None:
+    """ثبتِ توکنِ یک‌بارمصرفِ اتصال برای کاربر (تا وقتی /start را در ربات بزند)."""
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "INSERT INTO tg_links (user_id, chat_id, token) VALUES (?, '', ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET token = excluded.token",
+            (int(user_id), token),
+        )
+
+
+def tg_link_by_token(token: str) -> dict[str, Any] | None:
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM tg_links WHERE token = ?", (token,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def tg_complete_link(user_id: int, chat_id: str, username: str | None = None) -> None:
+    """اتصالِ نهایی: ذخیرهٔ chat_id و مصرف‌کردنِ توکن."""
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "INSERT INTO tg_links (user_id, chat_id, username, token, linked_at) "
+            "VALUES (?, ?, ?, NULL, datetime('now')) "
+            "ON CONFLICT(user_id) DO UPDATE SET chat_id = excluded.chat_id, "
+            "username = excluded.username, token = NULL, linked_at = datetime('now')",
+            (int(user_id), str(chat_id), username),
+        )
+
+
+def tg_chat_id(user_id: int) -> str | None:
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT chat_id FROM tg_links WHERE user_id = ?", (int(user_id),)
+        ).fetchone()
+        cid = (row["chat_id"] if row else "") or ""
+        return cid or None
+
+
+def tg_unlink(user_id: int) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute("DELETE FROM tg_links WHERE user_id = ?", (int(user_id),))
+
+
+# ───────────────────────── هشدارهای قیمتِ خرید ─────────────────────────
+def alerts_list(user_id: int) -> list[dict[str, Any]]:
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM price_alerts WHERE user_id = ? ORDER BY horizon, symbol",
+            (int(user_id),),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def alert_upsert(user_id: int, symbol: str, horizon: str, target_price: float,
+                 name: str | None = None, active: bool = True) -> None:
+    """ثبت/به‌روزرسانیِ هشدارِ یک ارز در یک افق. تغییرِ قیمت یا فعال‌سازیِ دوباره،
+    وضعیتِ شلیکِ قبلی را پاک می‌کند تا هشدار دوباره قابل ارسال باشد."""
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "INSERT INTO price_alerts (user_id, symbol, name, horizon, target_price, active) "
+            "VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(user_id, symbol, horizon) DO UPDATE SET "
+            "  target_price = excluded.target_price, name = excluded.name, "
+            "  active = excluded.active, "
+            "  triggered_at = CASE WHEN excluded.target_price <> price_alerts.target_price "
+            "                      OR excluded.active = 1 AND price_alerts.active = 0 "
+            "                 THEN NULL ELSE price_alerts.triggered_at END",
+            (int(user_id), symbol.upper(), name, horizon, float(target_price),
+             1 if active else 0),
+        )
+
+
+def alert_delete(user_id: int, alert_id: int) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "DELETE FROM price_alerts WHERE id = ? AND user_id = ?",
+            (int(alert_id), int(user_id)),
+        )
+
+
+def alerts_pending() -> list[dict[str, Any]]:
+    """همهٔ هشدارهای فعالِ شلیک‌نشده — خوراکِ حلقهٔ پایشِ قیمت."""
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            "SELECT a.*, t.chat_id FROM price_alerts a "
+            "JOIN tg_links t ON t.user_id = a.user_id "
+            "WHERE a.active = 1 AND a.triggered_at IS NULL AND t.chat_id <> ''"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def alert_mark_triggered(alert_id: int) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "UPDATE price_alerts SET triggered_at = datetime('now') WHERE id = ?",
+            (int(alert_id),),
+        )
 
 
 # تضمین وجود جداول حتی بدون رویداد startup (idempotent).

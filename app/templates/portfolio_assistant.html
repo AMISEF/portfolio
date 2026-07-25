@@ -336,6 +336,47 @@
     <div id="algoResult" hidden>
       <div class="algo-result__chips" id="algoChips"></div>
       <div class="algo-result__text" id="algoText"></div>
+
+      {# ── ارزهای پیشنهادی به تفکیک افق + هشدار قیمت خرید ── #}
+      <section class="picks" id="algoPicks" hidden>
+        <header class="picks__head">
+          <h3 class="picks__title">🔔 هشدار قیمت خرید</h3>
+          <p class="picks__sub">
+            ارزهای پیشنهادی به تفکیک افق سرمایه‌گذاری. برای هر ارز، قیمت هدفِ خرید را
+            بررسی (و در صورت نیاز اصلاح) کنید و تیک هشدار را بزنید؛ به‌محض رسیدن قیمت
+            به هدف، در ربات تلگرام به شما اطلاع داده می‌شود.
+          </p>
+        </header>
+
+        {# بنر اتصال به ربات — تا وقتی حساب وصل نشده #}
+        <div class="picks__link" id="picksLink" hidden>
+          <span class="picks__link-txt">
+            برای دریافت هشدارها، ابتدا حساب خود را به ربات تلگرام الگو هاب وصل کنید.
+          </span>
+          <a class="btn btn--brand picks__link-btn" id="picksLinkBtn" target="_blank" rel="noopener">
+            اتصال به ربات تلگرام
+          </a>
+        </div>
+        <div class="picks__linked" id="picksLinked" hidden>
+          ✅ حساب شما به ربات تلگرام متصل است — هشدارها ارسال می‌شوند.
+        </div>
+
+        <div class="picks__tablewrap">
+          <table class="picks__table">
+            <thead>
+              <tr>
+                <th>ارز</th>
+                <th>افق</th>
+                <th>قیمت هدف خرید (دلار)</th>
+                <th>هشدار</th>
+              </tr>
+            </thead>
+            <tbody id="picksBody"></tbody>
+          </table>
+        </div>
+        <p class="picks__msg" id="picksMsg" hidden></p>
+      </section>
+
       <div class="algo-channel" id="algoChannel"></div>
       <div class="pf2-add-actions">
         <button class="btn btn--ghost" id="algoAgain">سبدچینی مجدد</button>

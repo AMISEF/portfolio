@@ -168,6 +168,21 @@ class Settings(BaseSettings):
     # بیشتر حتماً پر شود.
     telegram_admin_ids: str = ""
 
+    # ---- ربات «الگو هاب» (Algohub_Cryptosmart_bot) ----
+    # ربات کاربریِ پنل مدیریت سرمایه: هشدارِ رسیدنِ ارز به قیمتِ خرید را به کاربر
+    # می‌فرستد و دکمه‌های خرید اشتراک را نشان می‌دهد. کاربر با زدن دکمهٔ «اتصال
+    # به تلگرام» در پنل، لینکِ /start?<token> را باز می‌کند و حسابش به این چت
+    # وصل می‌شود.
+    # ⚠️ توکن فقط در .env سرور (ALGOHUB_BOT_TOKEN) قرار می‌گیرد، هرگز در کد.
+    algohub_bot_token: str = ""
+    algohub_bot_url: str = "https://t.me/Algohub_Cryptosmart_bot"
+    # پشتیبانی، کانال و وب‌سایت — در پاورقیِ همهٔ پیام‌های ربات استفاده می‌شوند.
+    support_url: str = "https://t.me/cryptosmart_sup"
+    algohub_channel_username: str = "@ALGOHUB_ORG"
+    algohub_website_url: str = "https://algohub.cryptosmart.site/"
+    # فاصلهٔ بررسیِ قیمت‌ها برای هشدارهای خرید (ثانیه).
+    price_alert_interval: int = 120
+
     # ---- ایمیل (ارسال کد تأیید و بازیابی رمز از طریق Resend) ----
     # ارسال از طریق REST API سرویس Resend انجام می‌شود (با httpx، بدون وابستگی
     # اضافه). کلید فقط در .env سرور قرار می‌گیرد و هرگز در کد/مخزن نیست.

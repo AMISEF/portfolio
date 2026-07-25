@@ -829,6 +829,222 @@
         "</div>";
     }
 
+    // ─────────────── ارزهای پیشنهادی + هشدار قیمت خرید ───────────────
+    // متنِ سبد از ورک‌فلوِ هوش مصنوعی به‌صورت Markdown آزاد می‌آید (جدول یا
+    // فهرست). این بخش نمادِ ارز، افقِ زمانی و قیمتِ هدفِ خرید را از همان متن
+    // استخراج می‌کند تا کاربر بتواند برایشان هشدار بگذارد. اگر قیمتی پیدا نشد،
+    // ردیف با قیمتِ خالی می‌آید و کاربر خودش عدد را وارد می‌کند.
+
+    // ارزهایی که «نماد» نیستند و نباید ردیف بسازند.
+    const NOT_COIN = new Set([
+      "USD", "IRR", "IRT", "RIAL", "TOMAN", "GOLD", "XAU", "XAG", "OIL",
+      "TP", "SL", "RR", "AI", "USDT",
+    ]);
+
+    function horizonOf(heading) {
+      const h = String(heading || "");
+      if (/کوتاه|short/i.test(h)) return "short";
+      if (/میان|میان‌مدت|mid|medium/i.test(h)) return "mid";
+      if (/بلند|long/i.test(h)) return "long";
+      return null;
+    }
+
+    const HORIZON_FA = { short: "کوتاه‌مدت", mid: "میان‌مدت", long: "بلندمدت" };
+
+    /** اولین عددِ قیمت‌مانند در یک متن (با پشتیبانی از $ و جداکنندهٔ هزارگان). */
+    function firstPrice(s) {
+      const t = String(s).replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
+        .replace(/[٬،]/g, ",");
+      const m = t.match(/\$?\s*(\d[\d,]*(?:\.\d+)?)/);
+      if (!m) return null;
+      const v = parseFloat(m[1].replace(/,/g, ""));
+      return isFinite(v) && v > 0 ? v : null;
+    }
+
+    /** استخراجِ [{symbol, horizon, price}] از متنِ Markdownِ سبد. */
+    function parsePicks(text) {
+      const lines = String(text || "").replace(/\r/g, "").split("\n");
+      const found = new Map();          // symbol|horizon ⇒ ردیف
+      let hz = null;
+
+      const add = (sym, horizon, price) => {
+        sym = String(sym || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+        if (!sym || sym.length < 2 || sym.length > 8) return;
+        if (NOT_COIN.has(sym) || /^\d+$/.test(sym)) return;
+        const key = sym + "|" + horizon;
+        const prev = found.get(key);
+        if (prev) { if (prev.price == null && price != null) prev.price = price; return; }
+        found.set(key, { symbol: sym, horizon: horizon, price: price });
+      };
+
+      for (const ln of lines) {
+        const head = horizonOf(ln);
+        // عنوان/تیتر یا هر خطی که فقط نامِ افق را دارد ⇒ تغییر افقِ جاری
+        if (head && (/^\s*#{1,4}\s/.test(ln) || /^\s*\*\*/.test(ln) || ln.trim().length < 40)) {
+          hz = head;
+          continue;
+        }
+        const cur = head || hz;
+        if (!cur) continue;
+
+        // ردیفِ جدول: | نماد | ... | قیمت |
+        if (/^\s*\|.*\|\s*$/.test(ln)) {
+          const cells = ln.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map((c) => c.trim());
+          if (!cells.length) continue;
+          if (/^[\s:|-]+$/.test(cells.join(""))) continue;   // خط جداکننده
+          // نماد را از سلولی برمی‌داریم که حروفِ لاتینِ بزرگ دارد.
+          let sym = "";
+          for (const c of cells) {
+            const m = c.match(/\b([A-Za-z]{2,8})\b/);
+            if (m && !NOT_COIN.has(m[1].toUpperCase())) { sym = m[1]; break; }
+          }
+          if (!sym) continue;
+          // قیمت: نخستین سلولی که علامت $ دارد، وگرنه آخرین سلولِ عددی.
+          let price = null;
+          for (const c of cells) { if (c.includes("$")) { price = firstPrice(c); if (price) break; } }
+          if (price == null) {
+            for (let i = cells.length - 1; i >= 0; i--) {
+              if (/\d/.test(cells[i]) && !/%|٪/.test(cells[i])) { price = firstPrice(cells[i]); if (price) break; }
+            }
+          }
+          add(sym, cur, price);
+          continue;
+        }
+
+        // ردیفِ فهرست/متن: «- BTC … خرید در $95,000»
+        const li = ln.match(/^\s*(?:[-*•]|\d+[.)])\s+(.*)$/);
+        if (li) {
+          const body = li[1];
+          const m = body.match(/\b([A-Za-z]{2,8})\b/);
+          if (!m) continue;
+          // نکته: \d در جاوااسکریپت فقط ارقامِ لاتین است، پس ارقامِ فارسی هم
+          // صریحاً از کلاسِ «فاصله تا عدد» کنار گذاشته می‌شوند.
+          const buy = body.match(/(?:خرید|هدف|ورود|buy|entry)[^\d۰-۹$]{0,20}(\$?\s*[\d۰-۹][\d۰-۹,٬.]*)/i);
+          add(m[1], cur, firstPrice(buy ? buy[1] : (body.includes("$") ? body.slice(body.indexOf("$")) : "")));
+        }
+      }
+      return Array.from(found.values());
+    }
+
+    const picksState = { linked: false, enabled: false, saved: {} };
+
+    function picksMsg(text, ok) {
+      const el = $("picksMsg");
+      if (!el) return;
+      if (!text) { el.hidden = true; return; }
+      el.textContent = text;
+      el.className = "picks__msg" + (ok ? " picks__msg--ok" : " picks__msg--err");
+      el.hidden = false;
+    }
+
+    async function loadAlertState() {
+      try {
+        const r = await fetch("/api/alerts");
+        if (!r.ok) return;
+        const d = await r.json();
+        picksState.linked = !!d.linked;
+        picksState.enabled = !!d.enabled;
+        picksState.saved = {};
+        (d.alerts || []).forEach((a) => {
+          picksState.saved[a.symbol + "|" + a.horizon] = a;
+        });
+      } catch (e) { /* بی‌صدا */ }
+    }
+
+    async function renderLinkBanner() {
+      const bLink = $("picksLink"), bOk = $("picksLinked");
+      if (!bLink || !bOk) return;
+      if (picksState.linked) { bLink.hidden = true; bOk.hidden = false; return; }
+      bOk.hidden = true;
+      try {
+        const r = await fetch("/api/bot/link");
+        if (r.ok) {
+          const d = await r.json();
+          if (d.linked) { picksState.linked = true; bLink.hidden = true; bOk.hidden = false; return; }
+          const btn = $("picksLinkBtn");
+          if (btn) btn.href = d.link_url || d.bot_url || "#";
+        }
+      } catch (e) { /* بی‌صدا */ }
+      bLink.hidden = false;
+    }
+
+    function renderPicks(text) {
+      const sec = $("algoPicks"), body = $("picksBody");
+      if (!sec || !body) return;
+      const rows = parsePicks(text);
+      if (!rows.length) { sec.hidden = true; return; }
+
+      const order = { short: 0, mid: 1, long: 2 };
+      rows.sort((a, b) => (order[a.horizon] - order[b.horizon]) || a.symbol.localeCompare(b.symbol));
+
+      body.innerHTML = rows.map((r) => {
+        const saved = picksState.saved[r.symbol + "|" + r.horizon];
+        const price = saved ? saved.target_price : (r.price == null ? "" : r.price);
+        const on = saved && saved.active ? " checked" : "";
+        return '<tr data-sym="' + esc(r.symbol) + '" data-hz="' + esc(r.horizon) + '">' +
+          '<td class="picks__sym">' + esc(r.symbol) + "</td>" +
+          '<td><span class="picks__hz picks__hz--' + r.horizon + '">' + HORIZON_FA[r.horizon] + "</span></td>" +
+          '<td><input class="picks__price" type="number" step="any" min="0" inputmode="decimal" ' +
+          'placeholder="مثلاً 95000" value="' + esc(price) + '"></td>' +
+          '<td class="picks__cell-chk"><label class="picks__chk">' +
+          '<input type="checkbox" class="picks__toggle"' + on + "><span></span></label></td></tr>";
+      }).join("");
+
+      sec.hidden = false;
+      picksMsg("", true);
+      renderLinkBanner();
+    }
+
+    async function saveAlert(tr, active) {
+      const symbol = tr.getAttribute("data-sym");
+      const horizon = tr.getAttribute("data-hz");
+      const input = tr.querySelector(".picks__price");
+      const target = parseFloat(input.value);
+      const chk = tr.querySelector(".picks__toggle");
+
+      if (active && !(target > 0)) {
+        picksMsg("برای فعال‌سازی هشدار، ابتدا قیمت هدف خرید را وارد کنید.", false);
+        chk.checked = false;
+        input.focus();
+        return;
+      }
+      try {
+        const r = await fetch("/api/alerts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ symbol: symbol, horizon: horizon,
+                                 target_price: target, active: active }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { picksMsg(d.error || "ثبت هشدار ممکن نشد.", false); chk.checked = !active; return; }
+        picksState.linked = !!d.linked;
+        (d.alerts || []).forEach((a) => { picksState.saved[a.symbol + "|" + a.horizon] = a; });
+        if (!active) picksMsg("هشدار غیرفعال شد.", true);
+        else if (!d.linked) picksMsg("هشدار ثبت شد. برای دریافت پیام، حساب خود را به ربات تلگرام وصل کنید.", false);
+        else picksMsg("✅ هشدار فعال شد؛ به‌محض رسیدن قیمت به هدف، در تلگرام اطلاع می‌دهیم.", true);
+        renderLinkBanner();
+      } catch (e) {
+        picksMsg("خطای شبکه در ثبت هشدار.", false);
+        chk.checked = !active;
+      }
+    }
+
+    // واگذاریِ رویداد روی بدنهٔ جدول (ردیف‌ها پویا ساخته می‌شوند)
+    (function bindPicks() {
+      const body = $("picksBody");
+      if (!body) return;
+      body.addEventListener("change", (e) => {
+        const tr = e.target.closest("tr");
+        if (!tr) return;
+        if (e.target.classList.contains("picks__toggle")) {
+          saveAlert(tr, e.target.checked);
+        } else if (e.target.classList.contains("picks__price")) {
+          const chk = tr.querySelector(".picks__toggle");
+          if (chk && chk.checked) saveAlert(tr, true);   // قیمت عوض شد ⇒ هشدار به‌روز شود
+        }
+      });
+    })();
+
     // markdown سبک: **bold**، `code` (هم‌زمان escape می‌کند)
     function mdInline(s) {
       return esc(s)
@@ -910,8 +1126,16 @@
         renderChips(d);
         renderText(d.ok ? d.text : "", d.error);
         renderChannel(d.channel);
+        // ارزهای پیشنهادی + هشدار قیمت خرید (وضعیتِ هشدارهای ذخیره‌شده اول خوانده می‌شود)
+        if (d.ok && d.text) { await loadAlertState(); renderPicks(d.text); }
+        else { const s = $("algoPicks"); if (s) s.hidden = true; }
         show(elResult);
-      } catch (e) { renderText("", e.message); renderChannel(null); show(elResult); }
+      } catch (e) {
+        renderText("", e.message);
+        renderChannel(null);
+        const s = $("algoPicks"); if (s) s.hidden = true;
+        show(elResult);
+      }
     }
 
     $("algoRun").addEventListener("click", run);
