@@ -1665,3 +1665,43 @@ a.auth-account__sub:hover { color: var(--brand); }
 .picks__msg { margin: 12px 0 2px; font-size: .78rem; font-weight: 700; }
 .picks__msg--ok { color: var(--brand-dark); }
 .picks__msg--err { color: var(--down); }
+
+/* کارتِ ماندگارِ سبد پیشنهادی (پایین صفحهٔ مدیریت سرمایه) */
+.picks-card .picks__sub { margin: 0 0 14px; }
+.picks-card .picks__tablewrap { margin-top: 4px; }
+.picks__table--full th, .picks__table--full td { white-space: nowrap; }
+.picks__table--full .picks__price { width: 116px; }
+
+/* ---------- صفحهٔ تنظیمات حساب ---------- */
+.settings { max-width: 840px; margin: 0 auto; padding: 26px 16px 40px; }
+.settings__head { text-align: center; margin-bottom: 22px; }
+.settings__title { margin: 0 0 8px; font-size: 1.7rem; font-weight: 900; color: var(--heading); }
+.settings__sub { margin: 0; font-size: .86rem; line-height: 1.9; color: var(--text-soft); }
+.settings-card { margin-bottom: 18px; }
+.settings-empty { text-align: center; color: var(--text-soft); font-size: .88rem; padding: 26px 0; }
+
+.settings-desc { margin: 0 0 14px; font-size: .82rem; line-height: 2; color: var(--text-soft); }
+.settings-note { margin: 0 0 14px; padding: 12px 14px; border-radius: var(--radius-md);
+  border: 1px solid var(--border); background: var(--surface-2);
+  font-size: .79rem; line-height: 2; color: var(--text-soft); }
+.settings-note b { color: var(--text); }
+.settings-note--warn { border-color: rgba(251,191,36,.42); background: rgba(251,191,36,.09); }
+.settings-ol { margin: 8px 0 0; padding-inline-start: 20px; }
+.settings-ol li { margin-bottom: 5px; }
+
+.settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px; margin-bottom: 12px; }
+.settings-grid--2 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+.settings-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+.settings-hint { font-size: .76rem; color: var(--text-dim); }
+.settings-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.settings-actions .btn { width: auto; }
+.settings-foot { margin: 14px 0 0; font-size: .74rem; line-height: 1.9; color: var(--text-dim); }
+
+.settings-badge { font-size: .72rem; font-weight: 800; padding: 4px 11px;
+  border-radius: var(--radius-pill); background: var(--chip); color: var(--text-dim); }
+.settings-badge--on { background: rgba(25,195,179,.16); color: var(--brand-dark); }
+.btn--danger { color: var(--down); border-color: rgba(239,68,68,.4); }
+/* .btn دارای display صریح است و [hidden] را خنثی می‌کند؛ این قاعده آن را برمی‌گرداند. */
+.settings-actions .btn[hidden] { display: none; }

@@ -12,7 +12,8 @@ import asyncio
 
 from app import db
 from app.config import settings
-from app.routers import admin, advisor, auth, bot, market, pages, portfolio
+from app.routers import (admin, advisor, auth, bot, market, pages, portfolio,
+                         settings_api)
 from app.services import algohub_bot, market_card_job, price_alerts_job, telegram_signals
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
@@ -28,6 +29,7 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(advisor.router)
 app.include_router(bot.router)
+app.include_router(settings_api.router)
 
 
 @app.on_event("startup")

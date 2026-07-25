@@ -284,6 +284,31 @@ def buy_alert_message(symbol: str, name: str | None, target: float,
     return _with_footer(body)
 
 
+def sell_alert_message(symbol: str, name: str | None, target: float,
+                       price: float, horizon: str) -> str:
+    """پیامِ رسمیِ «ارز به قیمتِ فروش رسید»."""
+    title = _esc(name or symbol)
+    hz = _HORIZON_FA.get(horizon, horizon)
+    body = (
+        "🔕 <b>هشدار قیمت فروش</b>\n\n"
+        f"💎 ارز <b>{_esc(symbol.upper())}</b> ({title}) به قیمتِ هدفِ فروش رسید.\n\n"
+        f"🎯 قیمت هدف: <b>${_price_fa(target)}</b>\n"
+        f"💵 قیمت لحظه‌ای: <b>${_price_fa(price)}</b>\n"
+        f"⏳ افق سرمایه‌گذاری: <b>{hz}</b>\n\n"
+        "📊 بر اساس سبدچینیِ هوش مصنوعیِ الگو هاب، قیمت به هدفِ سودِ تعیین‌شده "
+        "رسیده است و می‌توانید نسبت به شناساییِ سود اقدام فرمایید. تصمیمِ نهایی "
+        "بر عهدهٔ شما و بر پایهٔ استراتژیِ شخصیِ شماست.\n\n"
+        "🙏 سود شما را تبریک می‌گوییم."
+    )
+    return _with_footer(body)
+
+
+def alert_message(kind: str, symbol: str, name: str | None, target: float,
+                  price: float, horizon: str) -> str:
+    fn = sell_alert_message if kind == "sell" else buy_alert_message
+    return fn(symbol, name, target, price, horizon)
+
+
 # ───────────────────────── پردازشِ آپدیت‌ها ─────────────────────────
 def _menu_keyboard() -> dict[str, Any]:
     return {

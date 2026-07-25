@@ -159,18 +159,85 @@ def init_db() -> None:
                 symbol       TEXT NOT NULL,          -- نماد ارز (BTC, ETH, …)
                 name         TEXT,                   -- نام نمایشی
                 horizon      TEXT NOT NULL DEFAULT 'short',  -- short | mid | long
-                target_price REAL NOT NULL,          -- قیمت هدفِ خرید (دلار)
+                target_price REAL NOT NULL,          -- قیمت هدف (دلار)
+                kind         TEXT NOT NULL DEFAULT 'buy',    -- buy | sell
                 active       INTEGER NOT NULL DEFAULT 1,
                 triggered_at TEXT,                   -- زمانِ آخرین شلیکِ هشدار
                 created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-                UNIQUE (user_id, symbol, horizon)
+                UNIQUE (user_id, symbol, horizon, kind)
             );
             CREATE INDEX IF NOT EXISTS idx_alerts_active ON price_alerts(active, symbol);
+
+            -- سبدِ پیشنهادیِ هوش مصنوعی (آخرین سبدچینیِ هر کاربر).
+            -- چون مودالِ سبدچینی با خروج از صفحه پاک می‌شود، پیشنهادها اینجا
+            -- می‌مانند تا پایینِ صفحهٔ مدیریت سرمایه نمایش داده شوند.
+            CREATE TABLE IF NOT EXISTS ai_picks (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER NOT NULL,
+                symbol      TEXT NOT NULL,
+                name        TEXT,
+                horizon     TEXT NOT NULL DEFAULT 'short',   -- short | mid | long
+                buy_price   REAL,
+                sell_price  REAL,
+                created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE (user_id, symbol, horizon)
+            );
+            CREATE INDEX IF NOT EXISTS idx_picks_user ON ai_picks(user_id);
+
+            -- کلیدهای API صرافی توبیت (اسپات) برای هر کاربر — رمزگذاری‌شده.
+            CREATE TABLE IF NOT EXISTS toobit_keys (
+                user_id     INTEGER PRIMARY KEY,
+                api_key_enc TEXT NOT NULL,
+                secret_enc  TEXT NOT NULL,
+                synced_at   TEXT,
+                sync_error  TEXT,
+                created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+            );
             """
         )
         _migrate_users(conn)
         _migrate_signals(conn)
         _migrate_risk(conn)
+        _migrate_alerts(conn)
+
+
+def _migrate_alerts(conn: sqlite3.Connection) -> None:
+    """افزودن ستونِ kind (buy|sell) به price_alerts (idempotent).
+
+    نسخهٔ نخست فقط هشدارِ خرید داشت؛ حالا هشدارِ فروش هم اضافه شده است. ردیف‌های
+    قدیمی به‌طور پیش‌فرض «خرید» در نظر گرفته می‌شوند.
+    """
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(price_alerts)").fetchall()}
+    if "kind" in cols:
+        return
+    # کلیدِ یکتای قدیمی (user_id, symbol, horizon) یک قیدِ جدولی است و ایندکسش
+    # جداگانه حذف‌شدنی نیست، پس جدول بازسازی و داده‌ها منتقل می‌شوند.
+    conn.executescript(
+        """
+        CREATE TABLE price_alerts_new (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER NOT NULL,
+            symbol       TEXT NOT NULL,
+            name         TEXT,
+            horizon      TEXT NOT NULL DEFAULT 'short',
+            target_price REAL NOT NULL,
+            kind         TEXT NOT NULL DEFAULT 'buy',
+            active       INTEGER NOT NULL DEFAULT 1,
+            triggered_at TEXT,
+            created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE (user_id, symbol, horizon, kind)
+        );
+        INSERT INTO price_alerts_new
+            (id, user_id, symbol, name, horizon, target_price, kind, active,
+             triggered_at, created_at)
+        SELECT id, user_id, symbol, name, horizon, target_price, 'buy', active,
+               triggered_at, created_at
+          FROM price_alerts;
+        DROP TABLE price_alerts;
+        ALTER TABLE price_alerts_new RENAME TO price_alerts;
+        CREATE INDEX IF NOT EXISTS idx_alerts_active ON price_alerts(active, symbol);
+        """
+    )
 
 
 def _migrate_risk(conn: sqlite3.Connection) -> None:
@@ -1126,21 +1193,24 @@ def alerts_list(user_id: int) -> list[dict[str, Any]]:
 
 
 def alert_upsert(user_id: int, symbol: str, horizon: str, target_price: float,
-                 name: str | None = None, active: bool = True) -> None:
-    """ثبت/به‌روزرسانیِ هشدارِ یک ارز در یک افق. تغییرِ قیمت یا فعال‌سازیِ دوباره،
-    وضعیتِ شلیکِ قبلی را پاک می‌کند تا هشدار دوباره قابل ارسال باشد."""
+                 name: str | None = None, active: bool = True,
+                 kind: str = "buy") -> None:
+    """ثبت/به‌روزرسانیِ هشدارِ یک ارز در یک افق و یک نوع (خرید/فروش).
+
+    تغییرِ قیمت یا فعال‌سازیِ دوباره، وضعیتِ شلیکِ قبلی را پاک می‌کند تا هشدار
+    دوباره قابل ارسال باشد."""
     with _LOCK, _conn() as conn:
         conn.execute(
-            "INSERT INTO price_alerts (user_id, symbol, name, horizon, target_price, active) "
-            "VALUES (?, ?, ?, ?, ?, ?) "
-            "ON CONFLICT(user_id, symbol, horizon) DO UPDATE SET "
+            "INSERT INTO price_alerts (user_id, symbol, name, horizon, target_price, active, kind) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(user_id, symbol, horizon, kind) DO UPDATE SET "
             "  target_price = excluded.target_price, name = excluded.name, "
             "  active = excluded.active, "
             "  triggered_at = CASE WHEN excluded.target_price <> price_alerts.target_price "
             "                      OR excluded.active = 1 AND price_alerts.active = 0 "
             "                 THEN NULL ELSE price_alerts.triggered_at END",
             (int(user_id), symbol.upper(), name, horizon, float(target_price),
-             1 if active else 0),
+             1 if active else 0, kind),
         )
 
 
@@ -1168,6 +1238,90 @@ def alert_mark_triggered(alert_id: int) -> None:
         conn.execute(
             "UPDATE price_alerts SET triggered_at = datetime('now') WHERE id = ?",
             (int(alert_id),),
+        )
+
+
+# ───────────────────────── سبدِ پیشنهادیِ هوش مصنوعی ─────────────────────────
+def picks_replace(user_id: int, picks: list[dict[str, Any]]) -> None:
+    """جایگزینیِ کاملِ سبدِ پیشنهادیِ کاربر با نتیجهٔ آخرین سبدچینی."""
+    with _LOCK, _conn() as conn:
+        conn.execute("DELETE FROM ai_picks WHERE user_id = ?", (int(user_id),))
+        for p in picks:
+            sym = str(p.get("symbol") or "").upper()
+            if not sym:
+                continue
+            conn.execute(
+                "INSERT INTO ai_picks (user_id, symbol, name, horizon, buy_price, sell_price) "
+                "VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(user_id, symbol, horizon) DO UPDATE SET "
+                "  buy_price = excluded.buy_price, sell_price = excluded.sell_price",
+                (int(user_id), sym, p.get("name"), p.get("horizon") or "short",
+                 p.get("buy_price"), p.get("sell_price")),
+            )
+
+
+def picks_list(user_id: int) -> list[dict[str, Any]]:
+    order = "CASE horizon WHEN 'short' THEN 0 WHEN 'mid' THEN 1 ELSE 2 END"
+    with _LOCK, _conn() as conn:
+        rows = conn.execute(
+            f"SELECT * FROM ai_picks WHERE user_id = ? ORDER BY {order}, symbol",
+            (int(user_id),),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def pick_set_price(user_id: int, symbol: str, horizon: str,
+                   buy_price: float | None = None,
+                   sell_price: float | None = None) -> None:
+    """به‌روزرسانیِ دستیِ قیمتِ خرید/فروشِ یک پیشنهاد (کاربر عدد را اصلاح کرده)."""
+    sets, args = [], []
+    if buy_price is not None:
+        sets.append("buy_price = ?")
+        args.append(float(buy_price))
+    if sell_price is not None:
+        sets.append("sell_price = ?")
+        args.append(float(sell_price))
+    if not sets:
+        return
+    args += [int(user_id), symbol.upper(), horizon]
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            f"UPDATE ai_picks SET {', '.join(sets)} "
+            "WHERE user_id = ? AND symbol = ? AND horizon = ?",
+            args,
+        )
+
+
+# ───────────────────────── کلیدهای API توبیت ─────────────────────────
+def toobit_keys_set(user_id: int, api_key_enc: str, secret_enc: str) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "INSERT INTO toobit_keys (user_id, api_key_enc, secret_enc) VALUES (?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET api_key_enc = excluded.api_key_enc, "
+            "  secret_enc = excluded.secret_enc, sync_error = NULL",
+            (int(user_id), api_key_enc, secret_enc),
+        )
+
+
+def toobit_keys_get(user_id: int) -> dict[str, Any] | None:
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM toobit_keys WHERE user_id = ?", (int(user_id),)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def toobit_keys_delete(user_id: int) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute("DELETE FROM toobit_keys WHERE user_id = ?", (int(user_id),))
+
+
+def toobit_mark_sync(user_id: int, error: str | None = None) -> None:
+    with _LOCK, _conn() as conn:
+        conn.execute(
+            "UPDATE toobit_keys SET synced_at = datetime('now'), sync_error = ? "
+            "WHERE user_id = ?",
+            (error, int(user_id)),
         )
 
 
