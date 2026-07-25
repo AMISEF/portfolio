@@ -1579,3 +1579,34 @@ a.auth-account__sub:hover { color: var(--brand); }
 .mng__file { font-size: .78rem; color: var(--text-soft); }
 .mng__msg { font-size: .84rem; color: var(--down); font-weight: 700; }
 .mng__actions { display: flex; gap: 10px; justify-content: flex-start; margin-top: 4px; }
+
+/* ---------- مودال راهنمای پرداخت اشتراک ---------- */
+.modal--pay { max-width: 520px; text-align: right; }
+.modal--pay .modal__title { margin-top: 4px; }
+.modal--pay .modal__sub { margin-bottom: 18px; }
+.modal--pay .modal__sub b { color: var(--brand-dark); font-weight: 900; }
+
+.pay-sec { border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface-2); padding: 14px 15px; margin-bottom: 12px; }
+.pay-sec--free { border-color: rgba(25,195,179,.42); background: rgba(25,195,179,.07); }
+.pay-sec__title { display: flex; align-items: center; gap: 8px; margin: 0 0 6px;
+  font-size: .92rem; font-weight: 900; color: var(--heading); }
+.pay-sec__ic { font-size: 1.05rem; line-height: 1; }
+.pay-sec__hint { margin: 0; font-size: .78rem; line-height: 1.85; color: var(--text-soft); }
+
+.pay-net { display: block; margin: 12px 0 6px; font-size: .74rem; font-weight: 800; color: var(--text-dim); }
+.pay-addr { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; padding: 10px 12px; border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-strong); background: var(--surface-solid);
+  cursor: pointer; font-family: var(--font); transition: var(--trans); }
+.pay-addr:hover { border-color: var(--brand); background: rgba(25,195,179,.06); }
+.pay-addr__val { font-size: .76rem; font-weight: 700; color: var(--text);
+  word-break: break-all; text-align: left; }
+.pay-addr__act { flex: none; font-size: .72rem; font-weight: 900; color: var(--brand-dark); }
+.pay-addr.is-copied { border-style: solid; border-color: var(--brand); background: rgba(25,195,179,.12); }
+.pay-addr.is-copied .pay-addr__act { color: var(--brand-dark); }
+
+.pay-tip { margin: 4px 0 16px; font-size: .74rem; color: var(--text-dim); }
+.pay-cta { width: 100%; }
+.pay-cta__desc { margin: 9px 0 0; font-size: .76rem; line-height: 1.8;
+  color: var(--text-soft); text-align: center; }
