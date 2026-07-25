@@ -12,8 +12,8 @@ import asyncio
 
 from app import db
 from app.config import settings
-from app.routers import admin, advisor, auth, market, pages, portfolio
-from app.services import market_card_job, telegram_signals
+from app.routers import admin, advisor, auth, bot, market, pages, portfolio
+from app.services import algohub_bot, market_card_job, price_alerts_job, telegram_signals
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
@@ -27,6 +27,7 @@ app.include_router(portfolio.router)
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(advisor.router)
+app.include_router(bot.router)
 
 
 @app.on_event("startup")
@@ -43,6 +44,16 @@ async def _startup() -> None:
         asyncio.create_task(_init_signals())
         # زمان‌بندِ روزانهٔ تصویر «نمای کلی بازار» (هر روز ۱۱:۰۰ تهران).
         asyncio.create_task(market_card_job.daily_loop())
+
+    # ربات «الگو هاب»: ثبتِ وب‌هوک + حلقهٔ پایشِ قیمت برای هشدارهای خرید.
+    if settings.algohub_bot_token:
+        async def _init_algohub() -> None:
+            try:
+                await algohub_bot.register_webhook()
+            except Exception:  # noqa: BLE001
+                pass
+        asyncio.create_task(_init_algohub())
+        asyncio.create_task(price_alerts_job.loop())
 
 
 @app.get("/health")
