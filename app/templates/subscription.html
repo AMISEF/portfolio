@@ -59,17 +59,72 @@
         </li>
       </ul>
 
-      <a class="btn {{ 'btn--brand' if p.highlight and p.key != 'bronze' else 'btn--ghost' }} pricecard__cta"
-         href="{{ p.purchase_url if p.key != 'bronze' else '/subscription' }}"
-         target="_blank" rel="noopener" data-plan="{{ p.key }}">
-        {% if p.key == 'bronze' %}شروع رایگان{% else %}خرید اشتراک{% endif %}
-      </a>
+      {% if p.key == 'bronze' %}
+      <a class="btn btn--ghost pricecard__cta" href="/subscription" data-plan="{{ p.key }}">شروع رایگان</a>
+      {% else %}
+      <button type="button"
+              class="btn {{ 'btn--brand' if p.highlight else 'btn--ghost' }} pricecard__cta js-buy"
+              data-plan="{{ p.key }}"
+              data-plan-name="{{ p.name_fa }}"
+              data-plan-price="{{ p.price_label }}"
+              data-plan-period="{{ 'سالانه' if p.period == 'year' else 'ماهانه' }}">
+        خرید اشتراک
+      </button>
+      {% endif %}
     </article>
     {% endfor %}
   </div>
 
   <p class="pricing__note">برای فعال‌سازی اشتراک پس از پرداخت، کد تراکنش را به <a href="https://t.me/cryptosmart_sup" target="_blank" rel="noopener">پشتیبانی تلگرام</a> ارسال کنید. اشتراک توسط مدیریت فعال می‌شود.</p>
 </section>
+
+{# ── راهنمای پرداخت و فعال‌سازی (با کلیک روی «خرید اشتراک» باز می‌شود) ── #}
+<div class="modal-overlay" id="payModal" hidden>
+  <div class="modal modal--pay" role="dialog" aria-modal="true" aria-labelledby="payModalTitle">
+    <button type="button" class="modal__close" id="payModalClose" aria-label="بستن">×</button>
+    <h2 class="modal__title" id="payModalTitle">راهنمای پرداخت و فعال‌سازی اشتراک</h2>
+    <p class="modal__sub" id="payModalPlan"></p>
+
+    <div class="pay-sec">
+      <h3 class="pay-sec__title"><span class="pay-sec__ic">💵</span>پرداخت ارزی — تتر (USDT)</h3>
+      <p class="pay-sec__hint">مبلغ اشتراک را به یکی از آدرس‌های زیر واریز کنید. پیش از واریز، از تطابق شبکه اطمینان حاصل فرمایید.</p>
+
+      <span class="pay-net">شبکهٔ TRC20 — ترون</span>
+      <button type="button" class="pay-addr js-copy" data-copy="TKnDWJ6PXt7CAjXEEvUnoJbD9QwnCwGyCL">
+        <span class="pay-addr__val" dir="ltr">TKnDWJ6PXt7CAjXEEvUnoJbD9QwnCwGyCL</span>
+        <span class="pay-addr__act">کپی</span>
+      </button>
+
+      <span class="pay-net">شبکهٔ BEP20 — بایننس اسمارت چین</span>
+      <button type="button" class="pay-addr js-copy" data-copy="0x723B04ABAAFF8524F98d4b60B20Fff67920A48A5">
+        <span class="pay-addr__val" dir="ltr">0x723B04ABAAFF8524F98d4b60B20Fff67920A48A5</span>
+        <span class="pay-addr__act">کپی</span>
+      </button>
+    </div>
+
+    <div class="pay-sec pay-sec--free">
+      <h3 class="pay-sec__title"><span class="pay-sec__ic">🪙</span>انتقال داخلی صرافی توبیت — بدون کارمزد</h3>
+      <p class="pay-sec__hint">در صورت استفاده از انتقال داخلی توبیت، هیچ کارمزدی از شما کسر نخواهد شد.</p>
+      <span class="pay-net">شناسهٔ کاربری (UID)</span>
+      <button type="button" class="pay-addr js-copy" data-copy="129107184">
+        <span class="pay-addr__val" dir="ltr">129107184</span>
+        <span class="pay-addr__act">کپی</span>
+      </button>
+    </div>
+
+    <div class="pay-sec">
+      <h3 class="pay-sec__title"><span class="pay-sec__ic">🛫</span>پرداخت ریالی</h3>
+      <p class="pay-sec__hint">تمامی اشتراک‌ها به‌صورت ریالی نیز قابل تهیه است. جهت دریافت شمارهٔ کارت، با پشتیبانی در ارتباط باشید.</p>
+    </div>
+
+    <p class="pay-tip">با کلیک روی هر آدرس، به‌صورت خودکار در حافظه کپی می‌شود.</p>
+
+    <a class="btn btn--brand pay-cta" id="paySupport" href="https://t.me/cryptosmart_sup" target="_blank" rel="noopener">
+      ارتباط با پشتیبانی
+    </a>
+    <p class="pay-cta__desc">جهت ارسال رسید واریز دلاری یا دریافت شمارهٔ کارت، کلیک کنید.</p>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
