@@ -27,7 +27,7 @@ BTN_ADMINS = "👤 مدیریت ادمین‌ها"
 BTN_SUBS = "🎟 فعال‌سازی اشتراک"
 BTN_REPORTS = "📊 گزارش عملکرد سایت"
 BTN_BROADCAST = "📢 ارسال پیام همگانی"
-BTN_BACK = "🔙 بازگشت"
+BTN_BACK = "🔙 بازگشت به منوی اصلی"
 
 _PERIOD_FA = {"day": "روزانه", "week": "هفتگی", "month": "ماهانه"}
 _PERIOD_DAYS = {"day": 1, "week": 7, "month": 30}
@@ -91,10 +91,17 @@ def admins_text() -> str:
     return "\n".join(lines)
 
 
+# ردیفِ «بازگشت» که به همهٔ کیبوردهای شیشه‌ای اضافه می‌شود تا کاربر هیچ‌وقت
+# مجبور نشود برای برگشتن دوباره /start بزند.
+BACK_ADMIN = ("🔙 بازگشت به پنل ادمین", "nav:admin")
+BACK_HOME = ("🔙 بازگشت به منوی اصلی", "nav:home")
+
+
 def admins_keyboard() -> dict[str, Any]:
     return _inline([
         [("➕ افزودن ادمین", "adm:add"), ("➖ حذف ادمین", "adm:del")],
         [("🔄 تازه‌سازی", "adm:list")],
+        [BACK_ADMIN],
     ])
 
 
@@ -102,29 +109,45 @@ def sites_keyboard(prefix: str) -> dict[str, Any]:
     return _inline([
         [("💼 پنل مدیریت سرمایه", f"{prefix}:portfolio")],
         [("📊 پنل ژورنال تریدینگ", f"{prefix}:journal")],
+        [BACK_ADMIN],
     ])
 
 
 def tiers_keyboard(site: str) -> dict[str, Any]:
     tiers = PORTFOLIO_TIERS if site == "portfolio" else journal_api.TIERS
     rows = [[(fa, f"sub:tier:{site}:{key}")] for key, fa in tiers]
+    rows.append([("🔙 انتخاب کاربرِ دیگر", f"sub:site:{site}")])
+    rows.append([BACK_ADMIN])
     return _inline(rows)
 
 
 def durations_keyboard(site: str, tier: str) -> dict[str, Any]:
     if tier == "bronze":
         # پلنِ رایگان مدت ندارد.
-        return _inline([[("ثبت پلن رایگان", f"sub:dur:{site}:{tier}:0")]])
+        return _inline([[("ثبت پلن رایگان", f"sub:dur:{site}:{tier}:0")],
+                        [("🔙 انتخاب پلنِ دیگر", f"sub:back-tier:{site}")],
+                        [BACK_ADMIN]])
     rows = [[(fa, f"sub:dur:{site}:{tier}:{m}")] for m, fa in DURATIONS]
+    rows.append([("🔙 انتخاب پلنِ دیگر", f"sub:back-tier:{site}")])
+    rows.append([BACK_ADMIN])
     return _inline(rows)
 
 
 def periods_keyboard(site: str) -> dict[str, Any]:
-    return _inline([[(_PERIOD_FA[p], f"rep:{site}:{p}") for p in ("day", "week", "month")]])
+    return _inline([
+        [(_PERIOD_FA[p], f"rep:{site}:{p}") for p in ("day", "week", "month")],
+        [("🔙 انتخاب سایتِ دیگر", "rep:pick")],
+        [BACK_ADMIN],
+    ])
 
 
 def confirm_keyboard() -> dict[str, Any]:
     return _inline([[("✅ بله، ارسال کن", "bc:yes"), ("❌ خیر، لغو", "bc:no")]])
+
+
+def cancel_keyboard() -> dict[str, Any]:
+    """کیبوردِ تک‌دکمه‌ایِ انصراف برای گام‌هایی که کاربر باید متن بفرستد."""
+    return _inline([[("🔙 انصراف و بازگشت به پنل ادمین", "nav:admin")]])
 
 
 # ── گزارش‌ها ────────────────────────────────────────────────────────────────
