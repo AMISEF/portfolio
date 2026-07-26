@@ -105,6 +105,33 @@ pm2 list
 ss -tlnp | grep -E ':3000|:3001|:8000|:8001'
 ```
 
+### ۳.۱ اتصالِ ربات الگو هاب به سرویسِ ژورنال (پنل ادمین)
+
+ربات تلگرام «الگو هاب» (این ریپو) یک پنلِ ادمین دارد که می‌تواند اشتراکِ
+سایتِ **ژورنال تریدینگ** را هم فعال کند و گزارشِ آن را هم بگیرد — بدون آنکه
+مستقیماً به دیتابیسِ آن سایت (PostgreSQL) وصل شود. این کار از طریق یک API
+کوچکِ ماشین‌به‌ماشین در بک‌اندِ ژورنال (`/api/service/*`) انجام می‌شود که با
+یک توکنِ مشترک محافظت شده است:
+
+| متغیر | در کدام سرویس | مقدار |
+|---|---|---|
+| `SERVICE_TOKEN` | `trading-journal/backend/.env` | یک رشتهٔ تصادفیِ طولانی (مثلاً `openssl rand -hex 32`) |
+| `JOURNAL_SERVICE_TOKEN` | `portfolio/.env` (همین ریپو) | **باید دقیقاً همان مقدارِ بالا باشد** |
+| `JOURNAL_API_BASE` | `portfolio/.env` | آدرسِ داخلیِ بک‌اندِ ژورنال — روی این سرور: `http://127.0.0.1:8001` |
+
+اگر `JOURNAL_SERVICE_TOKEN` خالی یا نادرست باشد، فقط بخش‌های مربوط به ژورنال
+در پنلِ ادمینِ ربات (فعال‌سازیِ اشتراک و گزارشِ آن سایت) پیامِ خطای روشن
+می‌دهند؛ بقیهٔ ربات و کلِ پنلِ مدیریت سرمایه بدونِ اثر کار می‌کنند.
+
+راه‌اندازی/بازتنظیمِ این اتصال روی سرور:
+```bash
+TOKEN=$(openssl rand -hex 32)
+sed -i "s|^SERVICE_TOKEN=.*|SERVICE_TOKEN=$TOKEN|" /var/www/trading-journal/backend/.env
+sed -i "s|^JOURNAL_SERVICE_TOKEN=.*|JOURNAL_SERVICE_TOKEN=$TOKEN|" /var/www/portfolio/.env
+sed -i "s|^JOURNAL_API_BASE=.*|JOURNAL_API_BASE=http://127.0.0.1:8001|" /var/www/portfolio/.env
+pm2 restart cryptosmart-portfolio tj-backend
+```
+
 ## ۴. پشتهٔ فناوری و معماری کد
 
 - **زبان و فریم‌ورک بک‌اند:** Python 3.11 + **FastAPI** (async) — معماری لایه‌ای:
@@ -232,6 +259,8 @@ python run.py              # http://127.0.0.1:8000 (با auto-reload)
 | دادهٔ بازار | `CMC_API_KEY`, `TOOBIT_*`, `TABDEAL_API_*`, `SOURCEARENA_TOKEN` | نمای کلی بازار، تاپ گینرها، قیمت‌ها |
 | هوش مصنوعی (Dify) | `DIFY_API_BASE`, `DIFY_API_KEY`, `DIFY_ADVISOR_KEY`, `DIFY_ALLOCATION_*`, `ADVISOR_API_KEY` | چت‌بات ثبت دارایی، مشاور سبد، سبدچینی هوش مصنوعی |
 | تلگرام | `ALGO_ANALYZER_BOT_TOKEN`, `ALGO_CHANNEL_ID`, `SIGNALS_BOT_TOKEN`, `SIGNALS_CHANNEL_ID`, `TELEGRAM_ADMIN_IDS` | خواندن سیگنال‌های کانال، وب‌هوک، مینی‌اپ |
+| ربات الگو هاب | `ALGOHUB_BOT_TOKEN`, `ALGOHUB_BOT_URL`, `ALGOHUB_OWNER_ID`, `SUPPORT_URL`, `ALGOHUB_CHANNEL_USERNAME`, `ALGOHUB_WEBSITE_URL`, `PRICE_ALERT_INTERVAL` | هشدار قیمت خرید/فروش، دکمه‌های خرید اشتراک، پنل ادمین داخل ربات |
+| ارتباط با ژورنال (پنل ادمین ربات) | `JOURNAL_API_BASE`, `JOURNAL_SERVICE_TOKEN` | فعال‌سازی اشتراک و گزارشِ سایتِ ژورنال از داخل ربات — رجوع به «۳.۱» |
 | ایمیل | `RESEND_API_KEY`, `MAIL_FROM_EMAIL`, `MAIL_FROM_NAME` | کد تأیید/بازیابی رمز |
 | ادمین/امنیت | `ADMIN_EMAILS`, `ADMIN_SECRET_KEY` | نقش ادمین، رمزنگاری رمزهای قابل‌نمایش |
 | عمومی | `PUBLIC_BASE_URL`, `DEBUG` | ساخت URL وب‌هوک/تصاویر، حالت دیباگ |
