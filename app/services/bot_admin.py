@@ -4,27 +4,27 @@
 چهار بخش است:
 
   👤 مدیریت ادمین‌ها   — افزودن/حذف با شناسهٔ عددی یا نام کاربری
-  🎫 فعال‌سازی اشتراک  — برای هر دو سایت، هر پلن و هر مدت؛ کاربر با ایمیل/
+  🎟 فعال‌سازی اشتراک  — برای هر دو سایت، هر پلن و هر مدت؛ کاربر با ایمیل/
                           نام کاربری/شناسه پیدا می‌شود
   📊 گزارش عملکرد      — روزانه/هفتگی/ماهانه، برای هر سایت جداگانه
-  📢 پیام همگانی       — هر نوع محتوای تلگرام، با تأییدِ «بله/خیر» پیش از ارسال
+  📢 پیام همگانی       — هر نوع محتوای تلگرام، با تأییدِ «بله/خیر» و ارسالِ
+                          کنترل‌شده و صف‌بندی‌شده (سقفِ ساعتی)
 
-گفتگوهای چندمرحله‌ای در جدولِ bot_state نگه داشته می‌شوند تا ربات بدون حافطهٔ
+گفتگوهای چندمرحله‌ای در جدولِ bot_state نگه داشته می‌شوند تا ربات بدون حافظهٔ
 درون‌فرایندی هم درست کار کند.
 """
 from __future__ import annotations
 
-import asyncio
 from typing import Any
 
 from app import db
 from app.config import settings
-from app.services import bot_chats, journal_api
+from app.services import bot_chats, broadcast_job, journal_api
 
-# ── برچسبِ دکمه‌ها ────────────────────────────────────────────
+# ── برچسبِ دکمه‌ها ──────────────────────────────────────────────────────────
 BTN_ADMIN = "🛠 پنل ادمین"
 BTN_ADMINS = "👤 مدیریت ادمین‌ها"
-BTN_SUBS = "🎫 فعال‌سازی اشتراک"
+BTN_SUBS = "🎟 فعال‌سازی اشتراک"
 BTN_REPORTS = "📊 گزارش عملکرد سایت"
 BTN_BROADCAST = "📢 ارسال پیام همگانی"
 BTN_BACK = "🔙 بازگشت به منوی اصلی"
@@ -51,7 +51,7 @@ def is_owner(tg_id: str | int | None) -> bool:
     return str(tg_id) == str(settings.algohub_owner_id)
 
 
-# ── کیبوردها ────────────────────────────────────────────────
+# ── کیبوردها ────────────────────────────────────────────────────────────────
 def admin_menu_keyboard() -> dict[str, Any]:
     return {
         "keyboard": [[{"text": BTN_ADMINS}, {"text": BTN_SUBS}],
@@ -66,7 +66,7 @@ def _inline(rows: list[list[tuple[str, str]]]) -> dict[str, Any]:
                                 for row in rows]}
 
 
-# ── متن‌ها ──────────────────────────────────────────────────
+# ── متن‌ها ──────────────────────────────────────────────────────────────────
 ADMIN_WELCOME = (
     "🛠 <b>پنل مدیریت الگو هاب</b>\n\n"
     "به پنل ادمین خوش آمدید. یکی از بخش‌های زیر را انتخاب کنید."
@@ -146,11 +146,15 @@ def confirm_keyboard() -> dict[str, Any]:
 
 
 def cancel_keyboard() -> dict[str, Any]:
-    """کیبوردِ تک‌دکمه‌ایِ انصراف برای گام‌هایی که کاربر باید متن بفرسد."""
+    """کیبوردِ تک‌دکمه‌ایِ انصراف برای گام‌هایی که کاربر باید متن بفرستد."""
     return _inline([[("🔙 انصراف و بازگشت به پنل ادمین", "nav:admin")]])
 
 
-# ── گزارش‌ها ──────────────────────────────────────────────
+def broadcast_status_keyboard() -> dict[str, Any]:
+    return _inline([[("🔄 وضعیت ارسال", "bc:status")], [BACK_ADMIN]])
+
+
+# ── گزارش‌ها ────────────────────────────────────────────────────────────────
 def _fa(n: Any) -> str:
     s = f"{int(n):,}" if isinstance(n, (int, float)) else str(n)
     fa = "۰۱۲۳۴۵۶۷۸۹"
@@ -173,7 +177,7 @@ def portfolio_report(period: str) -> str:
         f"• کل کاربران: <b>{_fa(u['total'])}</b>",
         f"• کاربران جدید در این بازه: <b>{_fa(u['new'])}</b>",
         f"• دارای اشتراک فعال: <b>{_fa(u['paid'])}</b>", "",
-        "🎫 <b>اشتراک‌ها به تفکیک پلن</b>",
+        "🎟 <b>اشتراک‌ها به تفکیک پلن</b>",
     ]
     for key, fa in PORTFOLIO_TIERS:
         lines.append(f"• {fa}: <b>{_fa(s['by_tier'].get(key, 0))}</b>")
@@ -188,6 +192,7 @@ def portfolio_report(period: str) -> str:
         f"• هشدار فعال: <b>{_fa(al['active'])}</b> — شلیک‌شده در بازه: <b>{_fa(al['fired'])}</b>",
         "", "🔗 <b>اتصال‌ها</b>",
         f"• متصل به ربات تلگرام: <b>{_fa(lk['telegram'])}</b>",
+        f"• کاربرانِ ثبت‌شدهٔ ربات (مقصدِ پیام همگانی): <b>{_fa(bot_chats.count())}</b>",
         f"• متصل به API توبیت: <b>{_fa(lk['toobit'])}</b>",
         f"• دارای سبد پیشنهادی ذخیره‌شده: <b>{_fa(lk['picks'])}</b>",
     ]
@@ -203,7 +208,7 @@ def journal_report(period: str, s: dict[str, Any]) -> str:
         f"• کل کاربران: <b>{_fa(u['total'])}</b>",
         f"• کاربران جدید در این بازه: <b>{_fa(u['new'])}</b>",
         f"• دارای اشتراک فعال: <b>{_fa(u['paid'])}</b>", "",
-        "🎫 <b>اشتراک‌ها به تفکیک پلن</b>",
+        "🎟 <b>اشتراک‌ها به تفکیک پلن</b>",
     ]
     for key, fa in journal_api.TIERS:
         lines.append(f"• {fa}: <b>{_fa(s['by_tier'].get(key, 0))}</b>")
@@ -223,7 +228,7 @@ def journal_report(period: str, s: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-# ── فعال‌سازیِ اشتراک ──────────────────────────────────────
+# ── فعال‌سازیِ اشتراک ────────────────────────────────────────────────────────
 def portfolio_lookup(term: str) -> list[dict[str, Any]]:
     """جستجوی کاربرِ پنل مدیریت سرمایه با ایمیل/نام کاربری/شناسه."""
     term = (term or "").strip().lower()
@@ -270,7 +275,7 @@ def apply_portfolio_plan(user_id: int, tier: str, months: int) -> str:
     return exp_fa
 
 
-# ── پیام همگانی ───────────────────────────────────────────
+# ── پیام همگانی ─────────────────────────────────────────────────────────────
 BROADCAST_PROMPT = (
     "📢 <b>ارسال پیام همگانی</b>\n\n"
     "پیام موردنظر خود را همین‌جا بفرستید. هر نوع محتوایی پشتیبانی می‌شود:\n"
@@ -281,45 +286,79 @@ BROADCAST_PROMPT = (
 
 
 def broadcast_targets() -> list[str]:
-    """مقصدهای پیامِ همگانی: هر چتی که تاکنون با ربات تعامل داشته است."""
+    """مقصدهای پیامِ همگانی: هر چتی که تاکنون با ربات تعامل داشته است.
+
+    این فهرست دائمی است؛ کاربر لازم نیست برای هر پیامِ همگانیِ جدید دوباره ربات
+    را استارت کند.
+    """
     return bot_chats.known_chats()
 
 
 def broadcast_confirm_text(n: int | None = None) -> str:
-    """متنِ تأیید. شمارش از همان منبعِ مقصدهای ارسال خوانده می‌شود،
-    تا عددِ نمایش‌داده‌شده و تعدادِ واقعیِ دریافت‌کنندگان یکی باشد."""
+    """متنِ تأیید. شمارش از همان منبعِ مقصدهای ارسال خوانده می‌شود تا عددِ
+    نمایش‌داده‌شده و تعدادِ واقعیِ دریافت‌کنندگان یکی باشد."""
     total = len(broadcast_targets())
+    eta = broadcast_job.eta_minutes(total)
     return (
         "⚠️ <b>تأیید ارسال پیام همگانی</b>\n\n"
-        f"این پیام برای <b>{_fa(total)}</b> کاربرِ ربات ارسال خواهد شد.\n\n"
+        f"این پیام برای <b>{_fa(total)}</b> کاربرِ ربات ارسال خواهد شد.\n"
+        f"⚙️ ارسال کنترل‌شده است: حداکثر <b>{_fa(broadcast_job.HOURLY_LIMIT)}</b> "
+        "پیام در هر ساعت، تا سرور تحت فشار قرار نگیرد.\n"
+        f"⏱ زمان تقریبی تکمیل: <b>{_fa(eta)}</b> دقیقه\n\n"
         "آیا از ارسال این پیام مطمئن هستید؟"
     )
 
 
-async def broadcast(copy_from_chat: str, message_id: int, send_copy) -> dict[str, int]:
-    """کپیِ پیامِ ذخیره‌شده برای همهٔ چت‌های شناخته‌شدهٔ ربات.
+def broadcast_enqueue(from_chat: str, message_id: int,
+                      created_by: str | int | None = None) -> dict[str, Any]:
+    """ثبتِ پیام در صفِ ارسالِ کنترل‌شده (ارسالِ واقعی در پس‌زمینه انجام می‌شود)."""
+    return broadcast_job.enqueue(from_chat, int(message_id),
+                                 broadcast_targets(), created_by)
 
-    از copyMessage استفاده می‌شود تا هر نوع محتوایی (عکس، ویس، استیکر، گیف،
-    ایموجی متحرک و …) بدون بازسازی و بدون برچسبِ «فوروارد» ارسال شود.
 
-    مقصدها از جدولِ bot_chats خوانده می‌شوند (هر چتِ خصوصی‌ای که با ربات حرف
-    زده)، نه فقط حساب‌هایی که اتصالِ پنل را کامل کرده‌اند؛ و چتی که چند بار
-    پشت سر هم ناموفق شود (بلاک/حذفِ حساب) غیرفعال می‌شود.
-    """
-    chats = broadcast_targets()
-    sent = failed = removed = 0
-    for chat_id in chats:
-        try:
-            ok = bool(await send_copy(chat_id, copy_from_chat, message_id))
-        except Exception:  # noqa: BLE001
-            ok = False
-        if ok:
-            sent += 1
-            bot_chats.mark_sent(chat_id)
-        else:
-            failed += 1
-            if bot_chats.mark_failed(chat_id):
-                removed += 1
-        await asyncio.sleep(0.05)      # رعایتِ محدودیتِ نرخِ تلگرام
-    return {"sent": sent, "failed": failed, "removed": removed,
-            "total": len(chats)}
+def broadcast_queued_text(info: dict[str, Any]) -> str:
+    return (
+        "🚀 <b>ارسال پیام همگانی آغاز شد</b>\n\n"
+        f"👥 مقصدها: <b>{_fa(info.get('total', 0))}</b> کاربر\n"
+        f"⚙️ سقف ارسال: <b>{_fa(broadcast_job.HOURLY_LIMIT)}</b> پیام در ساعت\n"
+        f"⏱ زمان تقریبی تکمیل: <b>{_fa(info.get('eta_minutes', 0))}</b> دقیقه\n\n"
+        "ارسال در پس‌زمینه و به‌صورت تدریجی انجام می‌شود؛ می‌توانید ربات را ببندید.\n"
+        "در پایان، خلاصهٔ نتیجه برای شما ارسال خواهد شد.\n"
+        "برای دیدنِ پیشرفت، دکمهٔ «🔄 وضعیت ارسال» را بزنید."
+    )
+
+
+_JOB_STATUS_FA = {"running": "در حال ارسال", "done": "تکمیل‌شده",
+                  "cancelled": "لغوشده"}
+
+
+def broadcast_status_text() -> str:
+    """وضعیتِ لحظه‌ایِ آخرین ارسالِ همگانی."""
+    p = broadcast_job.progress()
+    if not p:
+        return ("📭 هنوز هیچ پیام همگانی‌ای ارسال نشده است.\n\n"
+                f"👥 مقصدهای فعلی: <b>{_fa(len(broadcast_targets()))}</b> کاربر")
+    status_fa = _JOB_STATUS_FA.get(str(p.get("status")), str(p.get("status")))
+    lines = [
+        "📊 <b>وضعیت ارسال پیام همگانی</b>", "",
+        f"🔖 وضعیت: <b>{status_fa}</b>",
+        f"👥 مجموع مقصدها: <b>{_fa(p.get('total', 0))}</b>",
+        f"📨 ارسال‌شده: <b>{_fa(p.get('sent', 0))}</b>",
+        f"🕓 در انتظار: <b>{_fa(p.get('pending', 0))}</b>",
+        f"⚠️ ناموفق: <b>{_fa(p.get('failed', 0))}</b>",
+    ]
+    if p.get("status") == "running":
+        lines += [
+            "",
+            f"⚙️ سقف ساعتی: <b>{_fa(p.get('hourly_limit', 0))}</b> پیام",
+            f"🎟 سهمیهٔ باقی‌ماندهٔ این ساعت: <b>{_fa(p.get('quota_left', 0))}</b>",
+            f"⏱ زمان تقریبی باقی‌مانده: <b>{_fa(p.get('eta_minutes', 0))}</b> دقیقه",
+        ]
+    return "\n".join(lines)
+
+
+async def broadcast(copy_from_chat: str, message_id: int, send_copy=None) -> dict[str, int]:
+    """سازگاری با گذشته: پیام را در صف می‌گذارد (ارسال در پس‌زمینه انجام می‌شود)."""
+    info = broadcast_enqueue(copy_from_chat, int(message_id))
+    return {"sent": 0, "failed": 0, "queued": int(info.get("total", 0)),
+            "total": int(info.get("total", 0)), "job_id": int(info.get("job_id", 0))}

@@ -14,7 +14,8 @@ from app import db
 from app.config import settings
 from app.routers import (admin, advisor, auth, bot, market, pages, portfolio,
                          settings_api)
-from app.services import algohub_bot, market_card_job, price_alerts_job, telegram_signals
+from app.services import (algohub_bot, broadcast_job, market_card_job,
+                          price_alerts_job, telegram_signals)
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
@@ -56,6 +57,9 @@ async def _startup() -> None:
                 pass
         asyncio.create_task(_init_algohub())
         asyncio.create_task(price_alerts_job.loop())
+        # کارگرِ صفِ پیام همگانی: ارسالِ تدریجی با سقفِ ساعتی (بدون فشار به سرور).
+        # صف در پایگاه‌داده است، پس کارهای نیمه‌تمامِ پیش از ری‌استارت ادامه می‌یابند.
+        asyncio.create_task(broadcast_job.loop())
 
 
 @app.get("/health")
