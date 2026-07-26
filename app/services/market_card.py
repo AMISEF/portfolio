@@ -5,7 +5,7 @@
   • سرتیتر «نمای کلی بازار» (راست) + تاریخ شمسیِ همان روز (چپ) + شاخص‌های کلان
   • «ارزهای برتر بازار» (آیکون/نام/قیمت/تغییر ۲۴ساعته) — باکس‌های گوشه‌نرم
   • «قیمت‌های کلیدی» (تتر، طلای ۱۸ع، انس طلا، نقره، نفت)
-  • «Gainers / Top losers» به‌سبک توبیت (با آیکون واقعی ارز)
+  • «دامیننس بازار» (بیت‌کوین / اتریوم / سایر) — همان باکسِ نمای بازارِ سایت
   • لوگوی کریپتو‌اسمارت در پایین
 
 روش رِندر: HTML کاملاً خوداتکا (فونت/آیکون/لوگو به base64 جاسازی شده) با Chromium
@@ -45,6 +45,11 @@ BRAND = {
     "teal": "#19C3B3", "teal2": "#4ED9CC", "glow": "#A6F0E8",
     "up": "#16C784", "down": "#EA3943", "light": "#F3F6F9",
 }
+
+# رنگ‌های نوارِ دامیننس — همان رنگ‌هایی که در نمای بازارِ سایت استفاده می‌شود.
+DOM_BTC = "#F7931A"   # بیت‌کوین
+DOM_ETH = "#627EEA"   # اتریوم
+DOM_OTH = "#BFC7CE"   # سایر (معادلِ var(--gray-500) در سایت)
 
 # ───────────────────────── تبدیل تاریخ میلادی → شمسی (جلالی) ─────────────────────────
 _FA_MONTHS = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
@@ -274,19 +279,6 @@ async def _safe(coro):
         return {"error": f"{type(e).__name__}: {e}"}
 
 
-async def _fresh_gainers_losers() -> dict[str, Any]:
-    """بیشترین رشد/افتِ زنده — بدون کش، با یک تلاشِ مجدد.
-
-    toobit.gainers_losers() کش ۵دقیقه‌ای دارد و در خطای مکرر، آخرین مقدارِ
-    موفقِ کش‌شده را برای همیشه برمی‌گرداند (داده‌ی ثابت/قدیمی). چون این تصویر
-    باید هر بار «آخرین» گینر/لوزر را نشان دهد، مستقیماً (بدون کش) درخواست
-    می‌زنیم؛ در صورت شکستِ اول یک‌بار دیگر امتحان می‌کنیم.
-    """
-    try:
-        return await toobit.get_gainers_losers()
-    except Exception:  # noqa: BLE001
-        return await toobit.get_gainers_losers()
-
 
 async def _retry_once(fetcher):
     try:
@@ -357,10 +349,9 @@ async def _fresh_prices() -> dict[str, Any]:
 async def gather() -> dict[str, Any]:
     from app.services import coinmarketcap
 
-    coins_d, prices_d, gl_d, macro_d = await asyncio.gather(
+    coins_d, prices_d, macro_d = await asyncio.gather(
         _safe(toobit.card_coins()),
         _safe(_fresh_prices()),
-        _safe(_fresh_gainers_losers()),
         _safe(coinmarketcap.macro()),
     )
 
@@ -373,27 +364,21 @@ async def gather() -> dict[str, Any]:
         t = mock_data.tabdeal_usdt()
         prices = {"usdt_irt": t["usdt_irt"], "gold_18k": m["gold_18k"],
                   "commodities": m["commodities"]}
-    gl = gl_d if isinstance(gl_d, dict) and gl_d.get("gainers") else mock_data.toobit_gainers_losers()
     macro = macro_d if isinstance(macro_d, dict) and "error" not in macro_d else mock_data.cmc_macro()
 
-    # آیکونِ همهٔ ارزهای استفاده‌شده (برتر + رشد + افت) — با دانلود و کش
-    syms = [c["symbol"] for c in coins]
-    syms += [x["symbol"] for x in gl.get("gainers", [])]
-    syms += [x["symbol"] for x in gl.get("losers", [])]
-    icons = await _icon_map(syms)
+    # آیکونِ ارزهای برترِ نمایش‌داده‌شده — با دانلود و کش
+    icons = await _icon_map([c["symbol"] for c in coins])
 
-    return {"coins": coins, "prices": prices, "gl": gl, "macro": macro,
+    return {"coins": coins, "prices": prices, "macro": macro,
             "icons": icons, "shamsi": shamsi_today()}
 
 
+_ICON_DOM = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#19C3B3" stroke-width="2">'
+    '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18"/></svg>'
+)
+
 # ───────────────────────── آیکون‌های SVG ─────────────────────────
-# آیکون رشد (نمودار صعودی سبز) و افت (نمودار نزولی قرمز) — کنار Gainers/Top losers
-_ICON_GAIN = ('<svg viewBox="0 0 24 24" fill="none" stroke="#16C784" stroke-width="2.4" '
-              'stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/>'
-              '<path d="M15 7h5v5"/></svg>')
-_ICON_LOSE = ('<svg viewBox="0 0 24 24" fill="none" stroke="#EA3943" stroke-width="2.4" '
-              'stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l6 6 4-4 8 8"/>'
-              '<path d="M15 17h5v-5"/></svg>')
 # آیکون‌های شبکه‌های اجتماعی
 _SOC_TG = ('<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.9 4.3l-3.2 15.1c-.2 1-.9 '
            '1.3-1.8.8l-4.9-3.6-2.4 2.3c-.3.3-.5.5-1 .5l.4-5 9.1-8.2c.4-.4-.1-.6-.6-.2L6.2 '
@@ -453,22 +438,6 @@ _BG_SVG = """<svg viewBox="0 0 720 1280" xmlns="http://www.w3.org/2000/svg" pres
 </svg>"""
 
 
-# کندل‌استیکِ پس‌زمینهٔ باکس Gainers/Top losers (سبزِ صعودی / قرمزِ نزولی).
-def _candles_svg(color: str, ys: list[int]) -> str:
-    parts = []
-    for i, cy in enumerate(ys):
-        cx = 24 + i * 42
-        parts.append(f'<line x1="{cx}" y1="{cy - 48}" x2="{cx}" y2="{cy + 48}"/>')
-        parts.append(f'<rect x="{cx - 13}" y="{cy - 26}" width="26" height="52" rx="3"/>')
-    return (f'<svg class="gl__cbg" viewBox="0 0 260 300" preserveAspectRatio="xMidYMid slice" '
-            f'xmlns="http://www.w3.org/2000/svg"><g stroke="{color}" stroke-width="3.4" '
-            f'fill="{color}" opacity="0.16">' + "".join(parts) + "</g></svg>")
-
-
-_CBG_UP = _candles_svg("#16C784", [226, 200, 178, 150, 122, 96])    # صعودی (Gainers)
-_CBG_DOWN = _candles_svg("#EA3943", [96, 122, 150, 178, 200, 226])  # نزولی (Top losers)
-
-
 # ───────────────────────── ساخت HTML ─────────────────────────
 def _chip(ch: float) -> str:
     cls = "up" if ch > 0 else ("down" if ch < 0 else "flat")
@@ -504,31 +473,53 @@ def _key_row(key: str, name: str, price_html: str, ch: float,
     )
 
 
-def _gl_row(it: dict, icons: dict) -> str:
-    """ردیفِ گینر/لوزر: آیکون+نماد سمتِ چپ؛ قیمت وسطِ باکس؛ درصدِ تغییر (به‌صورتِ
-    چیپِ سبز/قرمز، هم‌سبکِ بقیهٔ بخش‌ها) سمتِ راستِ قیمت."""
+def _dom_box(macro: dict[str, Any]) -> str:
+    """باکسِ «دامیننس بیت‌کوین / اتریوم / سایر» — دقیقاً همان چیزی که در نمای
+    بازارِ سایتِ پورتفولیو نمایش داده می‌شود (همان منبعِ داده و همان رنگ‌ها).
+
+    جایگزینِ باکس‌های Gainers/Top losers شد؛ آن‌ها از توبیت می‌آمدند و ارزها را
+    نادرست گزارش می‌کردند.
+    """
+    dom = (macro or {}).get("dominance") or {}
+    btc = float(dom.get("btc") or 0)
+    eth = float(dom.get("eth") or 0)
+    others = dom.get("others")
+    others = float(others) if others is not None else max(round(100 - btc - eth, 2), 0.0)
+
+    def pct(v: float) -> str:
+        return _fa(f"{v:.1f}") + "٪"
+
+    # عرضِ نوار دقیقاً به نسبتِ سه سهم (مجموع همیشه ~۱۰۰).
+    total = btc + eth + others or 100.0
+    w = lambda v: f"{v / total * 100:.4f}"  # noqa: E731
+
     return (
-        '<div class="gl__row">'
-        '<span class="gl__l">' + _icon_html(it.get("symbol", ""), "gl__ic", icons) +
-        f'<b>{it.get("symbol","")}</b><span class="gl__q">/USDT</span></span>'
-        f'<span class="gl__p">{_usd_num(it.get("price"))}</span>'
-        + _chip(it.get("change_24h", 0)) +
+        '<div class="dom glass">'
+        '<div class="dom__hd">'
+        f'<span class="dom__hi">{_ICON_DOM}</span>'
+        '<span class="dom__t">دامیننس بیت‌کوین</span>'
+        '</div>'
+        '<div class="dom__legend">'
+        f'<span><i style="background:{DOM_BTC}"></i>بیت‌کوین</span>'
+        f'<span><i style="background:{DOM_ETH}"></i>اتریوم</span>'
+        f'<span><i style="background:{DOM_OTH}"></i>سایر</span>'
+        '</div>'
+        '<div class="dom__values">'
+        f'<b style="color:{DOM_BTC}">{pct(btc)}</b>'
+        f'<b style="color:{DOM_ETH}">{pct(eth)}</b>'
+        f'<b style="color:{DOM_OTH}">{pct(others)}</b>'
+        '</div>'
+        '<div class="dom__bar">'
+        f'<span style="width:{w(btc)}%;background:{DOM_BTC}"></span>'
+        f'<span style="width:{w(eth)}%;background:{DOM_ETH}"></span>'
+        f'<span style="width:{w(others)}%;background:{DOM_OTH}"></span>'
+        '</div>'
         '</div>'
     )
 
 
-def _gl_box(title: str, icon_svg: str, rows: list[dict], kind: str, icons: dict) -> str:
-    body = "".join(_gl_row(r, icons) for r in rows[:settings.toobit_gl_count])
-    cbg = _CBG_UP if kind == "up" else _CBG_DOWN
-    return (
-        f'<div class="gl glass gl--{kind}">{cbg}'
-        f'<div class="gl__hd"><span class="gl__hi">{icon_svg}</span>'
-        f'<span class="gl__t">{title}</span></div>{body}</div>'
-    )
-
-
 def build_html(data: dict[str, Any]) -> str:
-    coins, pr, gl, mac = data["coins"], data["prices"], data["gl"], data["macro"]
+    coins, pr, mac = data["coins"], data["prices"], data["macro"]
     icons = data.get("icons", {})
 
     coin_boxes = "".join(_coin_box(g, icons) for g in coins)
@@ -545,8 +536,7 @@ def build_html(data: dict[str, Any]) -> str:
         + _key_row("OIL", "نفت خام", usd_fa(oil.get("price")), oil.get("change_24h", 0))
     )
 
-    gl_html = (_gl_box("Gainers", _ICON_GAIN, gl.get("gainers", []), "up", icons)
-               + _gl_box("Top losers", _ICON_LOSE, gl.get("losers", []), "down", icons))
+    dom_html = _dom_box(mac)
 
     # لوگو: اگر فایلِ سفیدِ شفافِ شما (logo-white.png) موجود باشد همان استفاده می‌شود؛
     # وگرنه به logo-lockup.png برمی‌گردد. هیچ تغییری روی فایلِ لوگو اعمال نمی‌شود.
@@ -597,7 +587,7 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
 .body{{position:absolute;top:{PAD_TOP + 80}px;left:24px;right:24px;bottom:{PAD_BOT + 86}px;
   overflow:hidden;display:flex;flex-direction:column;gap:11px}}
 .sec{{display:flex;flex-direction:column;min-height:0}}
-.sec--coins{{flex:5}} .sec--keys{{flex:7}} .sec--gl{{flex:4}}
+.sec--coins{{flex:5}} .sec--keys{{flex:7}} .sec--dom{{flex:4}}
 .sec h3{{font-size:19px;font-weight:800;color:{B['glow']};margin:0 2px 9px;display:flex;
   align-items:center;gap:9px;text-shadow:0 2px 10px rgba(0,0,0,.3)}}
 .sec h3::before{{content:"";width:5px;height:20px;border-radius:3px;
@@ -631,26 +621,24 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
 .chip--up{{color:{B['up']};background:rgba(22,199,132,.16)}}
 .chip--down{{color:{B['down']};background:rgba(234,57,67,.16)}}
 .chip--flat{{color:{B['dim']};background:rgba(124,154,200,.16)}}
-/* Gainers / Top losers — کنار هم؛ پس‌زمینهٔ کندلِ سبز(چپ)/قرمز(راست) */
-.glwrap{{flex:1;min-height:0;display:flex;gap:13px;direction:ltr}}
-.gl{{position:relative;flex:1;min-height:0;border-radius:16px;overflow:hidden;display:flex;flex-direction:column}}
-.gl__cbg{{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}}
-.gl__hd{{position:relative;z-index:1;display:flex;align-items:center;gap:9px;padding:10px 15px;font-weight:800;font-size:18px;color:#fff}}
-.gl--up .gl__hd{{background:linear-gradient(90deg,rgba(22,199,132,.34),rgba(22,199,132,0))}}
-.gl--down .gl__hd{{background:linear-gradient(90deg,rgba(234,57,67,.34),rgba(234,57,67,0))}}
-.gl__hi{{width:20px;height:20px;display:grid;place-items:center;flex:none}}
-.gl__hi svg{{width:20px;height:20px}}
-/* ستون‌بندی: آیکون+نماد (چپ) / قیمت (وسطِ باکس) / چیپِ درصدِ تغییر (راستِ قیمت) */
-.gl__row{{position:relative;z-index:1;min-height:0;display:grid;
-  grid-template-columns:auto 1fr auto;align-items:center;gap:10px;
-  padding:7px 14px;border-top:1px solid rgba(255,255,255,.06)}}
-.gl__l{{display:flex;align-items:center;gap:9px;min-width:0}}
-.gl__ic{{width:30px;height:30px;border-radius:50%;overflow:hidden;flex:none;display:grid;place-items:center;background:rgba(255,255,255,.10)}}
-.gl__ic img{{width:100%;height:100%;object-fit:cover}}
-.gl__l b{{font-size:17px;font-weight:800;color:#fff}}
-.gl__q{{font-size:12px;color:{B['dim']};font-weight:600}}
-.gl__p{{font-weight:800;font-size:17px;color:#fff;text-align:center}}
-.gl .chip{{font-size:14px;padding:2px 9px}}
+/* دامیننس بازار — یک باکسِ تمام‌عرض، هم‌تراز با بخش‌های بالا (بدون حاشیهٔ جانبی) */
+.domwrap{{flex:1;min-height:0;display:flex;direction:rtl}}
+.dom{{position:relative;flex:1;min-height:0;width:100%;border-radius:16px;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:center;gap:12px;padding:14px 22px}}
+.dom__hd{{flex:none;display:flex;align-items:center;gap:9px}}
+.dom__hi{{width:22px;height:22px;display:grid;place-items:center;flex:none}}
+.dom__hi svg{{width:22px;height:22px}}
+.dom__t{{font-weight:800;font-size:19px;color:#fff}}
+/* راهنما و مقادیر روی سه ستونِ مساوی می‌نشینند تا دقیقاً بالای نوار تراز باشند */
+.dom__legend{{flex:none;display:flex;align-items:center;gap:22px;font-size:15px;
+  font-weight:700;color:{B['muted']}}}
+.dom__legend span{{display:flex;align-items:center;gap:7px}}
+.dom__legend i{{width:11px;height:11px;border-radius:50%;display:inline-block;flex:none}}
+.dom__values{{flex:none;display:flex;align-items:baseline;gap:26px;font-size:30px;
+  font-weight:900;letter-spacing:-.5px}}
+.dom__bar{{flex:none;display:flex;width:100%;height:22px;border-radius:999px;
+  overflow:hidden;background:rgba(255,255,255,.08);direction:ltr}}
+.dom__bar span{{display:block;height:100%}}
 .ic-badge{{color:#fff;font-weight:900;font-size:12px;background:linear-gradient(135deg,{B['blue']},{B['navy']})}}
 /* فوتر: شبکه‌های اجتماعی چپ، لوگو راست */
 .ft{{position:absolute;left:24px;right:24px;bottom:{PAD_BOT}px;height:74px;
@@ -675,7 +663,7 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
   <div class="body">
     <section class="sec sec--coins"><h3>ارزهای برتر بازار</h3><div class="coingrid">{coin_boxes}</div></section>
     <section class="sec sec--keys"><h3>قیمت‌های کلیدی</h3><div class="list">{key_rows}</div></section>
-    <section class="sec sec--gl"><h3>بیشترین رشد و افت بازار</h3><div class="glwrap">{gl_html}</div></section>
+    <section class="sec sec--dom"><h3>دامیننس بازار</h3><div class="domwrap">{dom_html}</div></section>
   </div>
   <div class="ft">
     <div class="ft__social">
