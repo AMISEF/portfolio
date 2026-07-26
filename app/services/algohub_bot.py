@@ -203,13 +203,60 @@ def _support_link(message: str) -> str:
 
 
 def _purchase_message(plan_name: str, product: str, period_fa: str, price_fa: str) -> str:
-    """پیامِ رسمیِ آماده که در پیویِ پشتیبانی نوشته می‌شود."""
+    """پیامِ رسمیِ آماده که در پیویِ پشتیبانی نوشته می‌شود.
+
+    کاربر پس از واریز روی دکمهٔ پلن می‌زند؛ این متن در پیویِ پشتیبانی نوشته
+    می‌شود و بلافاصله می‌تواند تصویرِ رسیدِ واریز را همان‌جا بفرستد.
+    """
     return (
         "سلام؛ وقت بخیر.\n"
         f"مایل به تهیهٔ اشتراک «{plan_name}» {product} "
         f"({period_fa} — {price_fa}) هستم.\n"
+        "مبلغ را واریز کرده‌ام و رسید پرداخت را در همین گفتگو ارسال می‌کنم.\n"
         "لطفاً راهنمایی بفرمایید. سپاسگزارم."
     )
+
+
+# ───────────────────────── راهنمای پرداخت ─────────────────────────
+# آدرس‌های واریز و شناسهٔ توبیت — در هر دو پیامِ اشتراک نمایش داده می‌شوند.
+USDT_TRC20 = "TKnDWJ6PXt7CAjXEEvUnoJbD9QwnCwGyCL"
+USDT_BEP20 = "0x723B04ABAAFF8524F98d4b60B20Fff67920A48A5"
+TOOBIT_UID = "129107184"
+
+
+def payment_block() -> list[str]:
+    """بخشِ «روش‌های پرداخت» با ایموجی و لحنِ رسمی.
+
+    آدرس‌ها داخلِ <code> می‌آیند تا در تلگرام با یک لمس کپی شوند.
+    """
+    return [
+        "━━━━━━━━━━━━━━━",
+        "💳 <b>روش‌های پرداخت و فعال‌سازی</b>",
+        "",
+        "💵 <b>پرداخت ارزی — تتر (USDT)</b>",
+        "پیش از واریز، از تطابقِ شبکه اطمینان حاصل فرمایید.",
+        "",
+        "🔹 شبکهٔ <b>TRC20</b> (ترون):",
+        f"<code>{USDT_TRC20}</code>",
+        "",
+        "🔹 شبکهٔ <b>BEP20</b> (بایننس اسمارت چین):",
+        f"<code>{USDT_BEP20}</code>",
+        "",
+        "🪙 <b>انتقال داخلی صرافی توبیت — بدون کارمزد</b>",
+        "در صورت استفاده از انتقال داخلی، هیچ کارمزدی از شما کسر نمی‌شود.",
+        f"شناسهٔ کاربری (UID): <code>{TOOBIT_UID}</code>",
+        "",
+        "🛫 <b>پرداخت ریالی</b>",
+        "تمامی اشتراک‌ها به‌صورت ریالی نیز قابل تهیه است؛ جهت دریافت شمارهٔ کارت "
+        "با پشتیبانی در ارتباط باشید.",
+        "",
+        "👆 با لمسِ هر آدرس، به‌صورت خودکار کپی می‌شود.",
+        "━━━━━━━━━━━━━━━",
+        "",
+        "📤 <b>پس از واریز:</b> روی دکمهٔ پلنِ موردنظر در پایین بزنید تا به "
+        "پشتیبانی متصل شوید؛ پیام درخواست به‌صورت آماده نوشته می‌شود و کافی است "
+        "<b>تصویر رسید پرداخت</b> را همان‌جا ارسال کنید.",
+    ]
 
 
 def portfolio_subscription_message() -> tuple[str, dict]:
@@ -234,8 +281,9 @@ def portfolio_subscription_message() -> tuple[str, dict]:
             "text": f"{p['emoji']} اشتراک {p['name']} — {price_fa}",
             "url": _support_link(msg),
         }])
-    lines += ["", "💳 برای خرید، روی پلنِ موردنظر بزنید تا به پشتیبانی وصل شوید."]
+    lines += [""] + payment_block()
     buttons.append([{"text": "💬 گفتگو با پشتیبانی", "url": settings.support_url}])
+    buttons.append([{"text": "🔙 بازگشت به منوی اصلی", "callback_data": "nav:home"}])
     return _with_footer("\n".join(lines)), {"inline_keyboard": buttons}
 
 
@@ -264,9 +312,9 @@ def journal_subscription_message() -> tuple[str, dict]:
         "💡 با خرید ۳، ۶ یا ۱۲ ماهه تا ۳۳٪ تخفیف بگیرید — برای دورهٔ بلندتر با "
         "پشتیبانی در ارتباط باشید.",
         "",
-        "💳 برای خرید، روی پلنِ موردنظر بزنید تا به پشتیبانی وصل شوید.",
-    ]
+    ] + payment_block()
     buttons.append([{"text": "💬 گفتگو با پشتیبانی", "url": settings.support_url}])
+    buttons.append([{"text": "🔙 بازگشت به منوی اصلی", "callback_data": "nav:home"}])
     return _with_footer("\n".join(lines)), {"inline_keyboard": buttons}
 
 
@@ -430,7 +478,7 @@ async def process_update(update: dict[str, Any]) -> bool:
         else:
             db.bot_state_set(chat_id, {"flow": "broadcast"})
             await send_message(chat_id, ba.BROADCAST_PROMPT,
-                               reply_markup=ba.admin_menu_keyboard())
+                               reply_markup=ba.cancel_keyboard())
         return True
 
     # ── ادامهٔ گفتگوهای چندمرحله‌ای ──
@@ -539,17 +587,32 @@ async def _handle_callback(cb: dict[str, Any]) -> bool:
     chat_id = (msg.get("chat") or {}).get("id")
     tg_id = (cb.get("from") or {}).get("id")
 
-    # دکمه‌های خریدِ اشتراک لینکی‌اند و callback ندارند؛ بقیه فقط برای ادمین.
     if not data or chat_id is None:
         await _answer_callback(cb_id)
         return True
+
+    parts = data.split(":")
+    head = parts[0]
+
+    # ── ناوبری (بازگشت) — برای همه در دسترس است ──
+    if head == "nav":
+        await _answer_callback(cb_id)
+        db.bot_state_set(chat_id, None)
+        where = parts[1] if len(parts) > 1 else "home"
+        if where == "admin" and ba.is_admin(tg_id):
+            await send_message(chat_id, ba.ADMIN_WELCOME,
+                               reply_markup=ba.admin_menu_keyboard())
+        else:
+            await send_message(chat_id, _with_footer(_WELCOME),
+                               reply_markup=_menu_keyboard(tg_id))
+        return True
+
+    # بقیهٔ دکمه‌های شیشه‌ای فقط برای ادمین است (دکمه‌های خرید لینکی‌اند).
     if not ba.is_admin(tg_id):
         await _answer_callback(cb_id, "دسترسی ندارید")
         return True
 
     await _answer_callback(cb_id)
-    parts = data.split(":")
-    head = parts[0]
 
     # ── مدیریت ادمین‌ها ──
     if head == "adm":
@@ -558,11 +621,13 @@ async def _handle_callback(cb: dict[str, Any]) -> bool:
             db.bot_state_set(chat_id, {"flow": "admin_add"})
             await send_message(chat_id,
                                "➕ <b>افزودن ادمین</b>\n\nشناسهٔ عددیِ تلگرامِ ادمین جدید را بفرستید.\n"
-                               "<i>کاربر می‌تواند شناسهٔ خود را از @userinfobot بگیرد.</i>")
+                               "<i>کاربر می‌تواند شناسهٔ خود را از @userinfobot بگیرد.</i>",
+                               reply_markup=ba.cancel_keyboard())
         elif action == "del":
             db.bot_state_set(chat_id, {"flow": "admin_del"})
             await send_message(chat_id,
-                               "➖ <b>حذف ادمین</b>\n\nشناسهٔ عددی یا نام کاربری (@user) ادمین موردنظر را بفرستید.")
+                               "➖ <b>حذف ادمین</b>\n\nشناسهٔ عددی یا نام کاربری (@user) ادمین موردنظر را بفرستید.",
+                               reply_markup=ba.cancel_keyboard())
         else:
             await send_message(chat_id, ba.admins_text(),
                                reply_markup=ba.admins_keyboard())
@@ -577,11 +642,24 @@ async def _handle_callback(cb: dict[str, Any]) -> bool:
             label = "پنل مدیریت سرمایه" if site == "portfolio" else "پنل ژورنال تریدینگ"
             await send_message(chat_id,
                                f"🎟 <b>فعال‌سازی اشتراک — {label}</b>\n\n"
-                               "ایمیل، نام کاربری یا شناسهٔ کاربر را بفرستید:")
+                               "ایمیل، نام کاربری یا شناسهٔ کاربر را بفرستید:",
+                               reply_markup=ba.cancel_keyboard())
             return True
         if step == "user":
             site, user_id = parts[2], parts[3]
             db.bot_state_set(chat_id, {"flow": "sub_tier", "site": site, "user_id": user_id})
+            await send_message(chat_id, "پلنِ موردنظر را انتخاب کنید:",
+                               reply_markup=ba.tiers_keyboard(site))
+            return True
+        if step == "back-tier":
+            site = parts[2]
+            st = db.bot_state_get(chat_id)
+            if not st.get("user_id"):
+                await send_message(chat_id, "نشستِ فعال‌سازی منقضی شد. دوباره شروع کنید:",
+                                   reply_markup=ba.sites_keyboard("sub:site"))
+                return True
+            st["flow"] = "sub_tier"
+            db.bot_state_set(chat_id, st)
             await send_message(chat_id, "پلنِ موردنظر را انتخاب کنید:",
                                reply_markup=ba.tiers_keyboard(site))
             return True
@@ -630,6 +708,10 @@ async def _handle_callback(cb: dict[str, Any]) -> bool:
 
     # ── گزارش‌ها ──
     if head == "rep":
+        if parts[1] == "pick":
+            await send_message(chat_id, "📊 <b>گزارش عملکرد</b>\n\nگزارشِ کدام سایت را می‌خواهید؟",
+                               reply_markup=ba.sites_keyboard("rep:site"))
+            return True
         if parts[1] == "site":
             site = parts[2]
             await send_message(chat_id, "بازهٔ گزارش را انتخاب کنید:",
