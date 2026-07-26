@@ -41,7 +41,7 @@ def is_enabled() -> bool:
     return bool(_token())
 
 
-# ───────────────────────── پاورقیِ مشترکِ همهٔ پیام‌ها ─────────────────────────
+# ──────────────────────── پاورقیِ مشترکِ همهٔ پیام‌ها ───────────────────────
 def footer() -> str:
     """پاورقیِ نقل‌قولیِ (blockquote) تلگرام: شناسهٔ کانال + وب‌سایت."""
     ch = settings.algohub_channel_username
@@ -65,7 +65,7 @@ def _with_footer(body: str) -> str:
     return f"{body}\n\n{footer()}"
 
 
-# ───────────────────────── ارسال پیام ─────────────────────────
+# ──────────────────────── ارسال پیام ───────────────────────
 async def send_message(chat_id: str | int, text: str,
                        reply_markup: dict | None = None) -> bool:
     token = _token()
@@ -119,7 +119,7 @@ async def _answer_callback(callback_id: str, text: str = "") -> None:
         pass
 
 
-# ───────────────────────── ثبت وب‌هوک ─────────────────────────
+# ──────────────────────── ثبت وب‌هوک ───────────────────────
 async def register_webhook() -> dict[str, Any]:
     """ثبتِ idempotentِ وب‌هوک. بدون توکن کاری نمی‌کند."""
     token = _token()
@@ -148,7 +148,7 @@ async def register_webhook() -> dict[str, Any]:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 
 
-# ───────────────────────── اتصالِ حسابِ پنل ─────────────────────────
+# ──────────────────────── اتصالِ حسابِ پنل ───────────────────────
 def new_link_token(user_id: int) -> str:
     """ساختِ توکنِ یک‌بارمصرفِ اتصال و بازگرداندنِ لینکِ deep-link ربات."""
     token = secrets.token_urlsafe(16)
@@ -160,7 +160,7 @@ def link_url(token: str) -> str:
     return f"{settings.algohub_bot_url.rstrip('/')}?start={quote(token)}"
 
 
-# ───────────────────────── فهرست قیمت اشتراک‌ها ─────────────────────────
+# ──────────────────────── فهرست قیمت اشتراک‌ها ───────────────────────
 def _fa_digits(s: Any) -> str:
     fa = "۰۱۲۳۴۵۶۷۸۹"
     return "".join(fa[int(c)] if c.isdigit() else c for c in str(s))
@@ -217,7 +217,7 @@ def _purchase_message(plan_name: str, product: str, period_fa: str, price_fa: st
     )
 
 
-# ───────────────────────── راهنمای پرداخت ─────────────────────────
+# ──────────────────────── راهنمای پرداخت ───────────────────────
 # آدرس‌های واریز و شناسهٔ توبیت — در هر دو پیامِ اشتراک نمایش داده می‌شوند.
 USDT_TRC20 = "TKnDWJ6PXt7CAjXEEvUnoJbD9QwnCwGyCL"
 USDT_BEP20 = "0x723B04ABAAFF8524F98d4b60B20Fff67920A48A5"
@@ -318,7 +318,7 @@ def journal_subscription_message() -> tuple[str, dict]:
     return _with_footer("\n".join(lines)), {"inline_keyboard": buttons}
 
 
-# ───────────────────────── هشدارِ قیمتِ خرید ─────────────────────────
+# ──────────────────────── هشدارِ قیمتِ خرید ───────────────────────
 def _price_fa(v: float) -> str:
     """قالب‌بندیِ قیمتِ دلاری با دقتِ متناسب با بزرگیِ عدد."""
     if v >= 100:
@@ -377,7 +377,7 @@ def alert_message(kind: str, symbol: str, name: str | None, target: float,
     return fn(symbol, name, target, price, horizon)
 
 
-# ───────────────────────── پردازشِ آپدیت‌ها ─────────────────────────
+# ──────────────────────── پردازشِ آپدیت‌ها ───────────────────────
 def _menu_keyboard(tg_id: str | int | None = None) -> dict[str, Any]:
     rows = [[{"text": BTN_PORTFOLIO_SUB}], [{"text": BTN_JOURNAL_SUB}]]
     if ba.is_admin(tg_id):
@@ -571,8 +571,8 @@ async def _handle_flow(chat_id, tg_id, state: dict, msg: dict, text: str) -> boo
             return False
         db.bot_state_set(chat_id, {"flow": "broadcast_confirm",
                                    "from_chat": str(chat_id), "message_id": int(mid)})
-        n = len(db.bot_known_chats())
-        await send_message(chat_id, ba.broadcast_confirm_text(n),
+        # تعدادِ مقصدها از فهرستِ دائمیِ چت‌های ربات خوانده می‌شود.
+        await send_message(chat_id, ba.broadcast_confirm_text(),
                            reply_markup=ba.confirm_keyboard())
         return True
 
@@ -730,11 +730,19 @@ async def _handle_callback(cb: dict[str, Any]) -> bool:
                                reply_markup=ba.periods_keyboard(site))
         return True
 
-    # ── تأییدِ پیام همگانی ──
+    # ── پیام همگانی ──
     if head == "bc":
+        action = parts[1] if len(parts) > 1 else ""
+
+        # وضعیتِ لحطه‌ایِ صفِ ارسال (نشستِ تأیید را دست نمی‌زند).
+        if action == "status":
+            await send_message(chat_id, ba.broadcast_status_text(),
+                               reply_markup=ba.broadcast_status_keyboard())
+            return True
+
         st = db.bot_state_get(chat_id)
         db.bot_state_set(chat_id, None)
-        if parts[1] == "no":
+        if action == "no":
             await send_message(chat_id, "❌ ارسال پیام همگانی لغو شد.",
                                reply_markup=ba.admin_menu_keyboard())
             return True
@@ -742,14 +750,11 @@ async def _handle_callback(cb: dict[str, Any]) -> bool:
             await send_message(chat_id, "❌ پیامی برای ارسال یافت نشد. دوباره تلاش کنید.",
                                reply_markup=ba.admin_menu_keyboard())
             return True
-        await send_message(chat_id, "⏳ در حال ارسال پیام همگانی…")
-        result = await ba.broadcast(st["from_chat"], int(st["message_id"]), copy_message)
-        await send_message(
-            chat_id,
-            f"✅ <b>ارسال پیام همگانی پایان یافت</b>\n\n"
-            f"📨 ارسال‌شده: <b>{ba._fa(result['sent'])}</b>\n"
-            f"⚠️ ناموفق: <b>{ba._fa(result['failed'])}</b>",
-            reply_markup=ba.admin_menu_keyboard())
+        # پیام در صف قرار می‌گیرد و کارگرِ پس‌زمینه آن را با سقفِ ساعتی می‌فرستد؛
+        # به‌این‌ترتیب وب‌هوک بلوکه نمی‌شود و به سرور فشار نمی‌آید.
+        info = ba.broadcast_enqueue(st["from_chat"], int(st["message_id"]), tg_id)
+        await send_message(chat_id, ba.broadcast_queued_text(info),
+                           reply_markup=ba.broadcast_status_keyboard())
         return True
 
     return True
