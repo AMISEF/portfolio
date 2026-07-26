@@ -202,19 +202,68 @@ def _support_link(message: str) -> str:
     return f"{settings.support_url.rstrip('/')}?text={quote(message)}"
 
 
-def _purchase_message(plan_name: str, product: str, period_fa: str, price_fa: str) -> str:
+def _mono(value: Any) -> str:
+    """قالبِ «کد» برای متنِ از‌پیش‌نوشتهٔ لینکِ تلگرام.
+
+    ⚠️ این متن از راهِ ?text= داخلِ جعبهٔ نوشتنِ تلگرام می‌نشیند و آنجا HTML
+    رندر نمی‌شود — یعنی <code> عیناً به‌صورتِ متن دیده می‌شد. اما کلاینت‌های
+    تلگرام هنگامِ ارسال، بک‌تیک را به همان موجودیتِ «کد» تبدیل می‌کنند، پس
+    پشتیبانی مقدار را با یک لمس کپی می‌کند.
+    """
+    return f"`{value}`"
+
+
+def _account_lines(site: str, user: dict[str, Any] | None,
+                   tg_id: Any = None, tg_username: str | None = None) -> list[str]:
+    """بلوکِ «مشخصات حساب» که همراهِ پیامِ خرید برای پشتیبانی فرستاده می‌شود.
+
+    پشتیبانی با همین مقادیر کاربر را در پنلِ ادمینِ ربات جستجو (ایمیل/نام
+    کاربری/شناسه) و اشتراکش را فعال می‌کند؛ برای همین هر مقدار داخلِ بک‌تیک
+    می‌آید تا قابلِ کپی با یک لمس باشد.
+
+    ``user`` همیشه حسابِ پنلِ مدیریت سرمایه است (چون ربات فقط همان را از راهِ
+    tg_links می‌شناسد). برای اشتراکِ ژورنال یک خطِ توضیحی اضافه می‌شود تا اگر
+    ایمیلِ حسابِ ژورنالِ کاربر فرق دارد، خودش اعلام کند.
+    """
+    lines = ["", "━━━━━━━━━━━━━━━", "🧾 مشخصات حساب من (جهت فعال‌سازی):"]
+    if user:
+        full = user.get("name") or " ".join(
+            x for x in (user.get("first_name"), user.get("last_name")) if x)
+        lines.append(f"🆔 شناسهٔ کاربری: {_mono(user.get('user_code') or user.get('id'))}")
+        lines.append(f"✉️ ایمیل: {_mono(user.get('email') or '—')}")
+        if user.get("username"):
+            lines.append(f"👤 نام کاربری: {_mono(user['username'])}")
+        if full:
+            lines.append(f"🙍 نام: {full}")
+    if tg_id:
+        lines.append(f"🤖 شناسهٔ تلگرام: {_mono(tg_id)}")
+    if tg_username:
+        lines.append(f"🔗 تلگرام: @{tg_username}")
+    if not user:
+        lines.append("ℹ️ حسابم هنوز به ربات متصل نشده — ایمیل و نام کاربریِ "
+                     "حسابم را همین‌جا اعلام می‌کنم.")
+    elif site == "journal":
+        lines.append("ℹ️ مشخصات بالا مربوط به حسابِ پنلِ مدیریت سرمایه است؛ اگر "
+                     "ایمیلِ حسابم در پنلِ ژورنال تریدینگ فرق دارد، همین‌جا اعلام می‌کنم.")
+    return lines
+
+
+def _purchase_message(plan_name: str, product: str, period_fa: str, price_fa: str,
+                      account_lines: list[str] | None = None) -> str:
     """پیامِ رسمیِ آماده که در پیویِ پشتیبانی نوشته می‌شود.
 
     کاربر پس از واریز روی دکمهٔ پلن می‌زند؛ این متن در پیویِ پشتیبانی نوشته
-    می‌شود و بلافاصله می‌تواند تصویرِ رسیدِ واریز را همان‌جا بفرستد.
+    می‌شود و بلافاصله می‌تواند تصویرِ رسیدِ واریز را همان‌جا بفرستد. مشخصاتِ
+    حساب هم ضمیمه می‌شود تا پشتیبانی بدونِ پرس‌وجوی اضافه اشتراک را فعال کند.
     """
-    return (
-        "سلام؛ وقت بخیر.\n"
-        f"مایل به تهیهٔ اشتراک «{plan_name}» {product} "
-        f"({period_fa} — {price_fa}) هستم.\n"
-        "مبلغ را واریز کرده‌ام و رسید پرداخت را در همین گفتگو ارسال می‌کنم.\n"
-        "لطفاً راهنمایی بفرمایید. سپاسگزارم."
-    )
+    parts = [
+        "سلام؛ وقت بخیر.",
+        f"مایل به تهیهٔ اشتراک «{plan_name}» {product} ({period_fa} — {price_fa}) هستم.",
+        "مبلغ را واریز کرده‌ام و رسید پرداخت را در همین گفتگو ارسال می‌کنم.",
+    ]
+    parts += account_lines or []
+    parts += ["", "لطفاً راهنمایی بفرمایید. سپاسگزارم."]
+    return "\n".join(parts)
 
 
 # ──────────────────────── راهنمای پرداخت ───────────────────────
@@ -259,8 +308,16 @@ def payment_block() -> list[str]:
     ]
 
 
-def portfolio_subscription_message() -> tuple[str, dict]:
-    """متن + کیبوردِ شیشه‌ایِ اشتراک‌های پنل مدیریت سرمایه."""
+def portfolio_subscription_message(chat_id: str | int | None = None,
+                                   tg_id: Any = None,
+                                   tg_username: str | None = None) -> tuple[str, dict]:
+    """متن + کیبوردِ شیشه‌ایِ اشتراک‌های پنل مدیریت سرمایه.
+
+    اگر chat_id داده شود، حسابِ متصلِ کاربر خوانده و مشخصاتش به پیامِ خریدِ هر
+    پلن (که در پیویِ پشتیبانی نوشته می‌شود) ضمیمه می‌شود.
+    """
+    user = db.tg_user_by_chat_id(chat_id) if chat_id is not None else None
+    acct = _account_lines("portfolio", user, tg_id, tg_username)
     rows = _portfolio_plans()
     lines = [
         "💼 <b>اشتراک‌های پنل مدیریت سرمایه الگو هاب</b>",
@@ -276,7 +333,7 @@ def portfolio_subscription_message() -> tuple[str, dict]:
         if p["desc"]:
             lines.append(f"    ↳ {_esc(p['desc'])}")
         msg = _purchase_message(p["name"], "پنل مدیریت سرمایه الگو هاب",
-                                p["period_fa"], price_fa)
+                                p["period_fa"], price_fa, acct)
         buttons.append([{
             "text": f"{p['emoji']} اشتراک {p['name']} — {price_fa}",
             "url": _support_link(msg),
@@ -287,8 +344,15 @@ def portfolio_subscription_message() -> tuple[str, dict]:
     return _with_footer("\n".join(lines)), {"inline_keyboard": buttons}
 
 
-def journal_subscription_message() -> tuple[str, dict]:
-    """متن + کیبوردِ شیشه‌ایِ اشتراک‌های پنل ژورنال تریدینگ."""
+def journal_subscription_message(chat_id: str | int | None = None,
+                                 tg_id: Any = None,
+                                 tg_username: str | None = None) -> tuple[str, dict]:
+    """متن + کیبوردِ شیشه‌ایِ اشتراک‌های پنل ژورنال تریدینگ.
+
+    مثلِ نسخهٔ مدیریت سرمایه، مشخصاتِ حسابِ متصل به پیامِ پشتیبانی ضمیمه می‌شود.
+    """
+    user = db.tg_user_by_chat_id(chat_id) if chat_id is not None else None
+    acct = _account_lines("journal", user, tg_id, tg_username)
     lines = [
         "📊 <b>اشتراک‌های پنل ژورنال تریدینگ الگو هاب</b>",
         "",
@@ -301,7 +365,7 @@ def journal_subscription_message() -> tuple[str, dict]:
         price_fa = _toman(p["monthly"])
         lines.append(f"{p['emoji']} <b>{_esc(p['name'])}</b> — {_esc(price_fa)} (ماهانه)")
         msg = _purchase_message(p["name"], "پنل ژورنال تریدینگ الگو هاب",
-                                "ماهانه", price_fa)
+                                "ماهانه", price_fa, acct)
         buttons.append([{
             "text": f"{p['emoji']} اشتراک {p['name']} — {price_fa}",
             "url": _support_link(msg),
@@ -437,13 +501,15 @@ async def process_update(update: dict[str, Any]) -> bool:
 
     if text == BTN_PORTFOLIO_SUB:
         db.bot_state_set(chat_id, None)
-        body, kb = portfolio_subscription_message()
+        body, kb = portfolio_subscription_message(
+            chat_id, tg_id, from_user.get("username"))
         await send_message(chat_id, body, reply_markup=kb)
         return True
 
     if text == BTN_JOURNAL_SUB:
         db.bot_state_set(chat_id, None)
-        body, kb = journal_subscription_message()
+        body, kb = journal_subscription_message(
+            chat_id, tg_id, from_user.get("username"))
         await send_message(chat_id, body, reply_markup=kb)
         return True
 

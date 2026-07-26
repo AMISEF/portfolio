@@ -1193,6 +1193,21 @@ def tg_chat_id(user_id: int) -> str | None:
         return cid or None
 
 
+def tg_user_by_chat_id(chat_id: str | int) -> dict[str, Any] | None:
+    """کاربرِ پنل که حسابش به این چتِ تلگرام وصل است (یا None اگر متصل نشده).
+
+    عکسِ tg_chat_id؛ ربات با آن می‌فهمد پیام از طرفِ کدام حسابِ پنل آمده و
+    می‌تواند مشخصاتِ کاربر را به پیامِ خریدِ اشتراک ضمیمه کند.
+    """
+    with _LOCK, _conn() as conn:
+        row = conn.execute(
+            "SELECT u.* FROM tg_links l JOIN users u ON u.id = l.user_id "
+            "WHERE l.chat_id = ? AND l.chat_id != '' LIMIT 1",
+            (str(chat_id),),
+        ).fetchone()
+        return dict(row) if row else None
+
+
 def tg_unlink(user_id: int) -> None:
     with _LOCK, _conn() as conn:
         conn.execute("DELETE FROM tg_links WHERE user_id = ?", (int(user_id),))

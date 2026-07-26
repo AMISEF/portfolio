@@ -14,12 +14,17 @@
     return (window.CS ? CS.toFa(left) : left) + " تحلیل باقی‌مانده این ماه";
   }
 
+  // کاربرِ واردشده (یا null برای مهمان). مودالِ پرداخت هنگام کلیک از همین
+  // مقدار مشخصاتِ حساب را برمی‌دارد تا به پیامِ پشتیبانی ضمیمه کند.
+  let currentUser = null;
+
   async function init() {
     let me = null;
     try {
       const r = await fetch("/api/auth/me");
       if (r.ok) { const d = await r.json(); me = d.user || null; }
     } catch (e) { /* مهمان */ }
+    currentUser = me;
     if (!me) return; // کاربر وارد نشده — کارت‌ها همان‌گونه می‌مانند
 
     const tier = me.tier || "bronze";
@@ -47,17 +52,46 @@
   // ── مودال راهنمای پرداخت ───────────────────────────────────────────────
   const SUPPORT_URL = "https://t.me/cryptosmart_sup";
 
+  /**
+   * قالبِ «کد» برای متنِ از‌پیش‌نوشتهٔ لینکِ تلگرام.
+   * این متن داخلِ جعبهٔ نوشتنِ تلگرام می‌نشیند و HTML در آن رندر نمی‌شود؛
+   * ولی کلاینت‌های تلگرام هنگام ارسال بک‌تیک را به «کد» تبدیل می‌کنند و
+   * پشتیبانی مقدار را با یک لمس کپی می‌کند.
+   */
+  function mono(v) { return "`" + v + "`"; }
+
+  /**
+   * بلوکِ مشخصاتِ حساب برای پشتیبانی — با همین مقادیر کاربر را در پنلِ ادمین
+   * جستجو (ایمیل/نام کاربری/شناسه) و اشتراکش را فعال می‌کند.
+   */
+  function accountLines(me) {
+    const out = ["", "━━━━━━━━━━━━━━━", "🧾 مشخصات حساب من (جهت فعال‌سازی):"];
+    if (!me) {
+      out.push("ℹ️ در لحظهٔ ارسال وارد حساب نبودم — ایمیل و نام کاربریِ حسابم را همین‌جا اعلام می‌کنم.");
+      return out;
+    }
+    const full = me.name || [me.first_name, me.last_name].filter(Boolean).join(" ");
+    out.push("🆔 شناسهٔ کاربری: " + mono(me.user_code || me.id));
+    out.push("✉️ ایمیل: " + mono(me.email || "—"));
+    if (me.username) out.push("👤 نام کاربری: " + mono(me.username));
+    if (full) out.push("🙍 نام: " + full);
+    return out;
+  }
+
   /** پیام رسمیِ آمادهٔ ارسال به پشتیبانی برای پلن انتخاب‌شده. */
   function supportMessage(btn) {
     const name = btn.getAttribute("data-plan-name") || "";
     const price = btn.getAttribute("data-plan-price") || "";
     const period = btn.getAttribute("data-plan-period") || "";
-    return (
-      "سلام؛ وقت بخیر.\n" +
-      "مایل به تهیهٔ اشتراک «" + name + "» الگو هاب کریپتو اسمارت (" +
-      period + " — " + price + ") هستم.\n" +
-      "لطفاً راهنمایی بفرمایید. سپاسگزارم."
-    );
+    return [
+      "سلام؛ وقت بخیر.",
+      "مایل به تهیهٔ اشتراک «" + name + "» پنل مدیریت سرمایه الگو هاب (" +
+        period + " — " + price + ") هستم.",
+      "مبلغ را واریز کرده‌ام و رسید پرداخت را در همین گفتگو ارسال می‌کنم.",
+    ]
+      .concat(accountLines(currentUser))
+      .concat(["", "لطفاً راهنمایی بفرمایید. سپاسگزارم."])
+      .join("\n");
   }
 
   /** کپی در حافظه با فالبک برای مرورگرهای بدون Clipboard API. */
