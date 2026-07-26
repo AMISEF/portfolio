@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from app import db
 from app.config import settings
 from app.routers.auth import current_user
-from app.services import algohub_bot
+from app.services import algohub_bot, bot_chats
 
 router = APIRouter()
 
@@ -43,6 +43,12 @@ async def algohub_webhook(
         update = await request.json()
     except Exception:  # noqa: BLE001
         return JSONResponse({"ok": True})
+    # هر چتِ خصوصی‌ای که با ربات حرف بزند ثبت می‌شود تا مقصدِ پیامِ همگانی باشد؛
+    # شکستِ این کار نباید پردازشِ آپدیت را متوقف کند.
+    try:
+        bot_chats.remember_update(update)
+    except Exception:  # noqa: BLE001
+        pass
     try:
         await algohub_bot.process_update(update)
     except Exception:  # noqa: BLE001
