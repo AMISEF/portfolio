@@ -695,7 +695,7 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
 .body{{position:absolute;top:{PAD_TOP + 80}px;left:24px;right:24px;bottom:{PAD_BOT + 86}px;
   overflow:hidden;display:flex;flex-direction:column;gap:11px}}
 .sec{{display:flex;flex-direction:column;min-height:0}}
-.sec--coins{{flex:5}} .sec--keys{{flex:7}} .sec--idx{{flex:4}}
+.sec--coins{{flex:5}} .sec--keys{{flex:8}} .sec--idx{{flex:3}}
 .sec h3{{font-size:19px;font-weight:800;color:{B['glow']};margin:0 2px 9px;display:flex;
   align-items:center;gap:9px;text-shadow:0 2px 10px rgba(0,0,0,.3)}}
 .sec h3::before{{content:"";width:5px;height:20px;border-radius:3px;
@@ -733,32 +733,32 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
    دقیقاً همان سه کارتی که در نمای بازارِ سایت هست (همان داده و همان رنگ‌ها). */
 .idxwrap{{flex:1;min-height:0;display:flex;gap:10px;direction:rtl}}
 .idx{{position:relative;flex:1;min-width:0;min-height:0;border-radius:14px;overflow:hidden;
-  display:flex;flex-direction:column;gap:7px;padding:10px 12px}}
+  display:flex;flex-direction:column;gap:5px;padding:8px 11px}}
 .idx__hd{{flex:none;display:flex;align-items:center;gap:8px}}
 .idx__hi{{width:16px;height:16px;display:grid;place-items:center;flex:none}}
 .idx__hi svg{{width:16px;height:16px}}
-.idx__t{{font-weight:800;font-size:13.5px;color:#fff;white-space:nowrap}}
+.idx__t{{font-weight:800;font-size:12.5px;color:#fff;white-space:nowrap}}
 /* ── دامیننس ── */
-.dom{{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:8px}}
+.dom{{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:6px}}
 .dom__legend{{flex:none;display:flex;align-items:center;gap:8px;font-size:10px;font-weight:700;
   color:{B['muted']}}}
 .dom__legend span{{display:flex;align-items:center;gap:5px;white-space:nowrap}}
 .dom__legend i{{width:7px;height:7px;border-radius:50%;display:inline-block;flex:none}}
 .dom__values{{flex:none;display:flex;align-items:baseline;justify-content:space-between;
-  font-size:17px;font-weight:900;letter-spacing:-.5px}}
+  font-size:15px;font-weight:900;letter-spacing:-.5px}}
 /* نوار از راست به چپ پر می‌شود: بیت‌کوین از سمتِ راست شروع می‌شود. */
-.dom__bar{{flex:none;display:flex;width:100%;height:13px;border-radius:999px;overflow:hidden;
+.dom__bar{{flex:none;display:flex;width:100%;height:11px;border-radius:999px;overflow:hidden;
   background:rgba(255,255,255,.08);direction:rtl}}
 .dom__bar span{{display:block;height:100%}}
 /* ── آلت‌سیزن ── */
 .alt__top{{flex:none;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}}
-.alt__num{{font-size:23px;font-weight:900;color:#fff;letter-spacing:-1px}}
+.alt__num{{font-size:20px;font-weight:900;color:#fff;letter-spacing:-1px}}
 .alt__den{{font-size:11px;font-weight:700;color:{B['dim']}}}
 .alt__label{{margin-right:auto;font-size:11px;font-weight:800;color:{B['teal2']}}}
 .alt__ends{{flex:none;display:flex;justify-content:space-between;font-size:9.5px;font-weight:700;
   color:{B['muted']}}}
 /* راست‌چین مثل سایت: سمتِ راست = فصل بیت‌کوین (نارنجی)، سمتِ چپ = فصل آلت‌کوین (آبی) */
-.alt__bar{{flex:none;position:relative;height:9px;border-radius:999px;
+.alt__bar{{flex:none;position:relative;height:8px;border-radius:999px;
   background:linear-gradient(to left,#F7931A 0%,#F5B86B 35%,#DCE2E7 50%,#6F95C8 65%,#2D63B0 100%)}}
 .alt__knob{{position:absolute;top:50%;transform:translateY(-50%);width:14px;height:14px;
   border-radius:50%;background:#fff;border:2.5px solid {B['navy']};
@@ -766,8 +766,8 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
 /* ── ترس و طمع ── */
 .gauge{{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:2px}}
-.gauge__svg{{width:100%;max-width:132px;height:auto;display:block}}
-.gauge__value{{font-size:23px;font-weight:900;line-height:1;letter-spacing:-1px;margin-top:-4px}}
+.gauge__svg{{width:100%;max-width:112px;height:auto;display:block}}
+.gauge__value{{font-size:20px;font-weight:900;line-height:1;letter-spacing:-1px;margin-top:-4px}}
 .gauge__label{{font-size:11px;font-weight:800}}
 .ic-badge{{color:#fff;font-weight:900;font-size:12px;background:linear-gradient(135deg,{B['blue']},{B['navy']})}}
 /* فوتر: شبکه‌های اجتماعی چپ، لوگو راست */
