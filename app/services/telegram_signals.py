@@ -80,10 +80,20 @@ async def register_webhook() -> dict[str, Any]:
 
 # ───────────────────────── منوی خصوصیِ ربات (دکمهٔ «نمای کلی بازار») ─────────────────────────
 def _is_authorized(user_id: int | str | None) -> bool:
+    """اجازهٔ زدنِ دکمهٔ «ساختِ تصویرِ نمای کلی بازار».
+
+    علاوه بر فهرستِ TELEGRAM_ADMIN_IDS، ادمین‌های ربات الگو هاب (مالک، فهرستِ
+    ثابتِ .env و ادمین‌هایی که از داخلِ پنلِ ربات اضافه شده‌اند) هم مجازند؛ تا
+    مدیریتِ ادمین‌ها یک‌جا باشد و برای هر ادمینِ جدید نیازی به ویرایشِ .env نباشد.
+    """
+    from app.services import bot_admin
+    if bot_admin.is_admin(user_id):
+        return True
     ids = {s.strip() for s in (settings.telegram_admin_ids or "").split(",") if s.strip()}
-    if not ids:
-        return True  # پیکربندی نشده ⇒ محدودیتی اعمال نمی‌شود (توصیه: پر شود)
-    return str(user_id) in ids
+    # پیش‌تر خالی‌بودنِ این متغیر یعنی «بدون محدودیت» و هر کسی می‌توانست دکمه را
+    # بزند. حالا که فهرستِ ادمینِ ربات همیشه دستِ‌کم مالک را دارد، به همان تکیه
+    # می‌کنیم و این حالتِ باز بسته شد.
+    return str(user_id) in ids if ids else False
 
 
 async def _send_message(chat_id: int, text: str, reply_markup: dict | None = None) -> None:
