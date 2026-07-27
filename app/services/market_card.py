@@ -349,10 +349,12 @@ async def _fresh_prices() -> dict[str, Any]:
 async def gather() -> dict[str, Any]:
     from app.services import coinmarketcap
 
-    coins_d, prices_d, macro_d = await asyncio.gather(
+    coins_d, prices_d, macro_d, alt_d, fng_d = await asyncio.gather(
         _safe(toobit.card_coins()),
         _safe(_fresh_prices()),
         _safe(coinmarketcap.macro()),
+        _safe(coinmarketcap.altseason()),
+        _safe(coinmarketcap.fng()),
     )
 
     coins = (coins_d.get("coins") if isinstance(coins_d, dict) else None) \
@@ -365,6 +367,14 @@ async def gather() -> dict[str, Any]:
         prices = {"usdt_irt": t["usdt_irt"], "gold_18k": m["gold_18k"],
                   "commodities": m["commodities"]}
     macro = macro_d if isinstance(macro_d, dict) and "error" not in macro_d else mock_data.cmc_macro()
+    # فصلِ آلت‌کوین و ترس‌وطمع را مثل روترِ /api/market/macro کنارِ مقادیرِ کلان
+    # می‌گذاریم تا کارت دقیقاً همان سه باکسِ نمای بازارِ سایت را نشان دهد.
+    if isinstance(alt_d, dict) and "error" not in alt_d and alt_d.get("altcoin_season"):
+        macro["altcoin_season"] = alt_d["altcoin_season"]
+    else:
+        macro["altcoin_season"] = mock_data.cmc_altseason()["altcoin_season"]
+    macro["fear_greed"] = (fng_d if isinstance(fng_d, dict) and "error" not in fng_d
+                           else mock_data.fear_greed())
 
     # آیکونِ ارزهای برترِ نمایش‌داده‌شده — با دانلود و کش
     icons = await _icon_map([c["symbol"] for c in coins])
@@ -373,6 +383,14 @@ async def gather() -> dict[str, Any]:
             "icons": icons, "shamsi": shamsi_today()}
 
 
+_ICON_ALT = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#19C3B3" stroke-width="2">'
+    '<path d="M4 12h16"/><circle cx="9" cy="12" r="3"/><path d="M14 7l5 5-5 5"/></svg>'
+)
+_ICON_FNG = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="#19C3B3" stroke-width="2">'
+    '<path d="M12 3a9 9 0 0 0-9 9h18a9 9 0 0 0-9-9z"/><path d="M12 12l5-3"/></svg>'
+)
 _ICON_DOM = (
     '<svg viewBox="0 0 24 24" fill="none" stroke="#19C3B3" stroke-width="2">'
     '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18"/></svg>'
@@ -494,11 +512,10 @@ def _dom_box(macro: dict[str, Any]) -> str:
     w = lambda v: f"{v / total * 100:.4f}"  # noqa: E731
 
     return (
-        '<div class="dom glass">'
-        '<div class="dom__hd">'
-        f'<span class="dom__hi">{_ICON_DOM}</span>'
-        '<span class="dom__t">دامیننس بیت‌کوین</span>'
-        '</div>'
+        '<div class="idx glass">'
+        f'<div class="idx__hd"><span class="idx__hi">{_ICON_DOM}</span>'
+        '<span class="idx__t">دامیننس بیت‌کوین</span></div>'
+        '<div class="dom">'
         '<div class="dom__legend">'
         f'<span><i style="background:{DOM_BTC}"></i>بیت‌کوین</span>'
         f'<span><i style="background:{DOM_ETH}"></i>اتریوم</span>'
@@ -514,7 +531,98 @@ def _dom_box(macro: dict[str, Any]) -> str:
         f'<span style="width:{w(eth)}%;background:{DOM_ETH}"></span>'
         f'<span style="width:{w(others)}%;background:{DOM_OTH}"></span>'
         '</div>'
+        '</div></div>'
+    )
+
+
+# ── شاخص فصل آلت‌کوین (همان باکسِ نمای بازارِ سایت) ──────────────────────────
+def _alt_box(macro: dict[str, Any]) -> str:
+    a = (macro or {}).get("altcoin_season") or {}
+    v = max(0, min(100, int(a.get("value") or 0)))
+    label = a.get("label_fa") or ""
+    return (
+        '<div class="idx glass">'
+        f'<div class="idx__hd"><span class="idx__hi">{_ICON_ALT}</span>'
+        '<span class="idx__t">شاخص آلت‌سیزن</span></div>'
+        '<div class="alt__top">'
+        f'<span class="alt__num">{_fa(v)}</span><span class="alt__den">/۱۰۰</span>'
+        f'<span class="alt__label">{label}</span></div>'
+        '<div class="alt__ends"><span>فصل بیت‌کوین</span><span>فصل آلت‌کوین</span></div>'
+        f'<div class="alt__bar"><span class="alt__knob" style="right:calc({v}% - 9px)"></span></div>'
         '</div>'
+    )
+
+
+# ── شاخص ترس و طمع — گیجِ نیم‌دایره‌ای، هم‌سبکِ gauge.js سایت ────────────────
+_FNG_STOPS = [
+    (0, (234, 57, 67), "ترس شدید"),
+    (25, (234, 140, 0), "ترس"),
+    (50, (243, 212, 47), "خنثی"),
+    (75, (147, 217, 0), "طمع"),
+    (100, (22, 199, 132), "طمع شدید"),
+]
+
+
+def _fng_color(v: float) -> tuple[int, int, int]:
+    """رنگِ طیف در مقدار v — میان‌یابیِ خطی در RGB (مثل gauge.js)."""
+    if v <= _FNG_STOPS[0][0]:
+        return _FNG_STOPS[0][1]
+    for i in range(1, len(_FNG_STOPS)):
+        a_at, a_c, _ = _FNG_STOPS[i - 1]
+        b_at, b_c, _ = _FNG_STOPS[i]
+        if v <= b_at:
+            t = (v - a_at) / (b_at - a_at)
+            return tuple(round(a_c[k] + (b_c[k] - a_c[k]) * t) for k in range(3))
+    return _FNG_STOPS[-1][1]
+
+
+def _fng_zone(v: float) -> str:
+    if v < 25:
+        return _FNG_STOPS[0][2]
+    if v < 45:
+        return _FNG_STOPS[1][2]
+    if v < 55:
+        return _FNG_STOPS[2][2]
+    if v < 75:
+        return _FNG_STOPS[3][2]
+    return _FNG_STOPS[4][2]
+
+
+def _fng_box(macro: dict[str, Any]) -> str:
+    import math
+    f = (macro or {}).get("fear_greed") or {}
+    v = max(0, min(100, int(f.get("value") or 0)))
+    label = f.get("label_fa") or _fng_zone(v)
+    c = _fng_color(v)
+    color = f"rgb({c[0]},{c[1]},{c[2]})"
+
+    R, cx, cy = 80, 100, 100
+
+    def arc(deg: float) -> tuple[float, float]:
+        rad = math.radians(deg)
+        return cx + R * math.cos(rad), cy + R * math.sin(rad)
+
+    sx, sy = arc(180)
+    ex, ey = arc(360)
+    mx, my = arc(180 + (v / 100) * 180)
+    stops = "".join(
+        f'<stop offset="{at / 100}" stop-color="rgb({col[0]},{col[1]},{col[2]})"/>'
+        for at, col, _ in _FNG_STOPS
+    )
+    return (
+        '<div class="idx glass">'
+        f'<div class="idx__hd"><span class="idx__hi">{_ICON_FNG}</span>'
+        '<span class="idx__t">شاخص ترس و طمع</span></div>'
+        '<div class="gauge">'
+        '<svg class="gauge__svg" viewBox="0 0 200 116">'
+        f'<defs><linearGradient id="gg" x1="0" x2="1">{stops}</linearGradient></defs>'
+        f'<path d="M {sx} {sy} A {R} {R} 0 0 1 {ex} {ey}" fill="none" '
+        'stroke="url(#gg)" stroke-width="13" stroke-linecap="butt" stroke-dasharray="11 5"/>'
+        f'<circle cx="{mx:.2f}" cy="{my:.2f}" r="9" fill="#fff" stroke="{color}" stroke-width="3"/>'
+        '</svg>'
+        f'<div class="gauge__value" style="color:{color}">{_fa(v)}</div>'
+        f'<div class="gauge__label" style="color:{color}">{label}</div>'
+        '</div></div>'
     )
 
 
@@ -536,7 +644,7 @@ def build_html(data: dict[str, Any]) -> str:
         + _key_row("OIL", "نفت خام", usd_fa(oil.get("price")), oil.get("change_24h", 0))
     )
 
-    dom_html = _dom_box(mac)
+    idx_html = _dom_box(mac) + _alt_box(mac) + _fng_box(mac)
 
     # لوگو: اگر فایلِ سفیدِ شفافِ شما (logo-white.png) موجود باشد همان استفاده می‌شود؛
     # وگرنه به logo-lockup.png برمی‌گردد. هیچ تغییری روی فایلِ لوگو اعمال نمی‌شود.
@@ -587,7 +695,7 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
 .body{{position:absolute;top:{PAD_TOP + 80}px;left:24px;right:24px;bottom:{PAD_BOT + 86}px;
   overflow:hidden;display:flex;flex-direction:column;gap:11px}}
 .sec{{display:flex;flex-direction:column;min-height:0}}
-.sec--coins{{flex:5}} .sec--keys{{flex:7}} .sec--dom{{flex:4}}
+.sec--coins{{flex:5}} .sec--keys{{flex:6}} .sec--idx{{flex:6}}
 .sec h3{{font-size:19px;font-weight:800;color:{B['glow']};margin:0 2px 9px;display:flex;
   align-items:center;gap:9px;text-shadow:0 2px 10px rgba(0,0,0,.3)}}
 .sec h3::before{{content:"";width:5px;height:20px;border-radius:3px;
@@ -621,24 +729,46 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
 .chip--up{{color:{B['up']};background:rgba(22,199,132,.16)}}
 .chip--down{{color:{B['down']};background:rgba(234,57,67,.16)}}
 .chip--flat{{color:{B['dim']};background:rgba(124,154,200,.16)}}
-/* دامیننس بازار — یک باکسِ تمام‌عرض، هم‌تراز با بخش‌های بالا (بدون حاشیهٔ جانبی) */
-.domwrap{{flex:1;min-height:0;display:flex;direction:rtl}}
-.dom{{position:relative;flex:1;min-height:0;width:100%;border-radius:16px;overflow:hidden;
-  display:flex;flex-direction:column;justify-content:center;gap:12px;padding:14px 22px}}
-.dom__hd{{flex:none;display:flex;align-items:center;gap:9px}}
-.dom__hi{{width:22px;height:22px;display:grid;place-items:center;flex:none}}
-.dom__hi svg{{width:22px;height:22px}}
-.dom__t{{font-weight:800;font-size:19px;color:#fff}}
-/* راهنما و مقادیر روی سه ستونِ مساوی می‌نشینند تا دقیقاً بالای نوار تراز باشند */
-.dom__legend{{flex:none;display:flex;align-items:center;gap:22px;font-size:15px;
-  font-weight:700;color:{B['muted']}}}
-.dom__legend span{{display:flex;align-items:center;gap:7px}}
-.dom__legend i{{width:11px;height:11px;border-radius:50%;display:inline-block;flex:none}}
-.dom__values{{flex:none;display:flex;align-items:baseline;gap:26px;font-size:30px;
-  font-weight:900;letter-spacing:-.5px}}
-.dom__bar{{flex:none;display:flex;width:100%;height:22px;border-radius:999px;
-  overflow:hidden;background:rgba(255,255,255,.08);direction:ltr}}
+/* شاخص‌های بازار — سه باکسِ کنارِ هم: دامیننس، آلت‌سیزن، ترس‌وطمع.
+   دقیقاً همان سه کارتی که در نمای بازارِ سایت هست (همان داده و همان رنگ‌ها). */
+.idxwrap{{flex:1;min-height:0;display:flex;gap:12px;direction:rtl}}
+.idx{{position:relative;flex:1;min-width:0;min-height:0;border-radius:16px;overflow:hidden;
+  display:flex;flex-direction:column;gap:10px;padding:13px 15px}}
+.idx__hd{{flex:none;display:flex;align-items:center;gap:8px}}
+.idx__hi{{width:19px;height:19px;display:grid;place-items:center;flex:none}}
+.idx__hi svg{{width:19px;height:19px}}
+.idx__t{{font-weight:800;font-size:16px;color:#fff;white-space:nowrap}}
+/* ── دامیننس ── */
+.dom{{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:11px}}
+.dom__legend{{flex:none;display:flex;align-items:center;gap:12px;font-size:12px;font-weight:700;
+  color:{B['muted']}}}
+.dom__legend span{{display:flex;align-items:center;gap:5px;white-space:nowrap}}
+.dom__legend i{{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}}
+.dom__values{{flex:none;display:flex;align-items:baseline;justify-content:space-between;
+  font-size:22px;font-weight:900;letter-spacing:-.5px}}
+/* نوار از راست به چپ پر می‌شود: بیت‌کوین از سمتِ راست شروع می‌شود. */
+.dom__bar{{flex:none;display:flex;width:100%;height:17px;border-radius:999px;overflow:hidden;
+  background:rgba(255,255,255,.08);direction:rtl}}
 .dom__bar span{{display:block;height:100%}}
+/* ── آلت‌سیزن ── */
+.alt__top{{flex:none;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}}
+.alt__num{{font-size:30px;font-weight:900;color:#fff;letter-spacing:-1px}}
+.alt__den{{font-size:14px;font-weight:700;color:{B['dim']}}}
+.alt__label{{margin-right:auto;font-size:13px;font-weight:800;color:{B['teal2']}}}
+.alt__ends{{flex:none;display:flex;justify-content:space-between;font-size:11px;font-weight:700;
+  color:{B['muted']}}}
+/* راست‌چین مثل سایت: سمتِ راست = فصل بیت‌کوین (نارنجی)، سمتِ چپ = فصل آلت‌کوین (آبی) */
+.alt__bar{{flex:none;position:relative;height:11px;border-radius:999px;
+  background:linear-gradient(to left,#F7931A 0%,#F5B86B 35%,#DCE2E7 50%,#6F95C8 65%,#2D63B0 100%)}}
+.alt__knob{{position:absolute;top:50%;transform:translateY(-50%);width:17px;height:17px;
+  border-radius:50%;background:#fff;border:3px solid {B['navy']};
+  box-shadow:0 2px 6px rgba(0,0,0,.35)}}
+/* ── ترس و طمع ── */
+.gauge{{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px}}
+.gauge__svg{{width:100%;max-width:168px;height:auto;display:block}}
+.gauge__value{{font-size:30px;font-weight:900;line-height:1;letter-spacing:-1px;margin-top:-4px}}
+.gauge__label{{font-size:14px;font-weight:800}}
 .ic-badge{{color:#fff;font-weight:900;font-size:12px;background:linear-gradient(135deg,{B['blue']},{B['navy']})}}
 /* فوتر: شبکه‌های اجتماعی چپ، لوگو راست */
 .ft{{position:absolute;left:24px;right:24px;bottom:{PAD_BOT}px;height:74px;
@@ -663,7 +793,7 @@ html,body{{width:720px;height:1280px;font-family:Dana,Vaz,sans-serif;
   <div class="body">
     <section class="sec sec--coins"><h3>ارزهای برتر بازار</h3><div class="coingrid">{coin_boxes}</div></section>
     <section class="sec sec--keys"><h3>قیمت‌های کلیدی</h3><div class="list">{key_rows}</div></section>
-    <section class="sec sec--dom"><h3>دامیننس بازار</h3><div class="domwrap">{dom_html}</div></section>
+    <section class="sec sec--idx"><h3>شاخص‌های بازار</h3><div class="idxwrap">{idx_html}</div></section>
   </div>
   <div class="ft">
     <div class="ft__social">
