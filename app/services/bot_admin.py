@@ -38,11 +38,20 @@ PORTFOLIO_TIERS = [("bronze", "برنزی"), ("silver", "نقره‌ای"),
 DURATIONS = [(1, "۱ ماهه"), (3, "۳ ماهه"), (6, "۶ ماهه"), (12, "سالانه")]
 
 
+def config_admin_ids() -> set[str]:
+    """ادمین‌های ثابتِ پیکربندی‌شده در .env (به‌علاوهٔ مالک)."""
+    ids = {s.strip() for s in (settings.algohub_admin_ids or "").split(",") if s.strip()}
+    owner = str(settings.algohub_owner_id or "").strip()
+    if owner:
+        ids.add(owner)
+    return ids
+
+
 def is_admin(tg_id: str | int | None) -> bool:
-    """مالک همیشه ادمین است؛ بقیه از جدولِ bot_admins خوانده می‌شوند."""
+    """ادمین = مالک، یا در فهرستِ ثابتِ .env، یا در جدولِ bot_admins."""
     if tg_id is None:
         return False
-    if str(tg_id) == str(settings.algohub_owner_id):
+    if str(tg_id) in config_admin_ids():
         return True
     return db.is_bot_admin(tg_id)
 
@@ -79,6 +88,11 @@ def admins_text() -> str:
     rows = db.bot_admins()
     lines = ["👤 <b>مدیریت ادمین‌ها</b>", "",
              f"👑 مالک (غیرقابل حذف): <code>{settings.algohub_owner_id}</code>"]
+    fixed = sorted(config_admin_ids() - {str(settings.algohub_owner_id or "").strip()})
+    if fixed:
+        lines.append("")
+        lines.append("<b>ادمین‌های ثابت (از تنظیمات سرور):</b>")
+        lines += [f"• <code>{i}</code>" for i in fixed]
     if rows:
         lines.append("")
         lines.append("<b>ادمین‌های افزوده‌شده:</b>")
