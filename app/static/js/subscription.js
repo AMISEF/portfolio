@@ -14,12 +14,22 @@
     return (window.CS ? CS.toFa(left) : left) + " تحلیل باقی‌مانده این ماه";
   }
 
-  async function init() {
-    let me = null;
+  // ── حساب کاربرِ جاری (یک‌بار خوانده و کش می‌شود) ────────────────────────
+  let ME = null;
+  let meFetched = false;
+
+  async function fetchMe() {
+    if (meFetched) return ME;
+    meFetched = true;
     try {
       const r = await fetch("/api/auth/me");
-      if (r.ok) { const d = await r.json(); me = d.user || null; }
-    } catch (e) { /* مهمان */ }
+      if (r.ok) { const d = await r.json(); ME = d.user || null; }
+    } catch (e) { ME = null; /* مهمان */ }
+    return ME;
+  }
+
+  async function init() {
+    const me = await fetchMe();
     if (!me) return; // کاربر وارد نشده — کارت‌ها همان‌گونه می‌مانند
 
     const tier = me.tier || "bronze";
@@ -47,8 +57,32 @@
   // ── مودال راهنمای پرداخت ───────────────────────────────────────────────
   const SUPPORT_URL = "https://t.me/cryptosmart_sup";
 
+  /** نامِ کاملِ کاربر از فیلدهای موجود. */
+  function fullName(me) {
+    return (me.name || [me.first_name, me.last_name].filter(Boolean).join(" ") || "").trim();
+  }
+
+  /**
+   * بلوک «مشخصات من» برای انتهای پیامِ پشتیبانی.
+   *
+   * مقادیر داخل backtick قرار می‌گیرند؛ تلگرام هنگام ارسالِ پیام آن‌ها را به
+   * قالبِ مونواسپیس (code) تبدیل می‌کند و پشتیبان با یک لمس کپی می‌کند.
+   */
+  function identityBlock(me) {
+    if (!me) return "";
+    const mono = (v) => "`" + String(v) + "`";
+    const rows = [];
+    if (me.email) rows.push("Email: " + mono(me.email));
+    if (me.username) rows.push("Username: " + mono(me.username));
+    const full = fullName(me);
+    if (full) rows.push("Name & Last Name: " + mono(full));
+    if (me.phone) rows.push("Phone: " + mono(me.phone));
+    if (!rows.length) return "";
+    return "\n\nمشخصات من:\n" + rows.join("\n");
+  }
+
   /** پیام رسمیِ آمادهٔ ارسال به پشتیبانی برای پلن انتخاب‌شده. */
-  function supportMessage(btn) {
+  function supportMessage(btn, me) {
     const name = btn.getAttribute("data-plan-name") || "";
     const price = btn.getAttribute("data-plan-price") || "";
     const period = btn.getAttribute("data-plan-period") || "";
@@ -56,7 +90,8 @@
       "سلام؛ وقت بخیر.\n" +
       "مایل به تهیهٔ اشتراک «" + name + "» الگو هاب کریپتو اسمارت (" +
       period + " — " + price + ") هستم.\n" +
-      "لطفاً راهنمایی بفرمایید. سپاسگزارم."
+      "لطفاً راهنمایی بفرمایید. سپاسگزارم." +
+      identityBlock(me)
     );
   }
 
@@ -85,6 +120,8 @@
     const planLine = document.getElementById("payModalPlan");
     const support = document.getElementById("paySupport");
     const closeBtn = document.getElementById("payModalClose");
+    const ctaDesc = overlay.querySelector(".pay-cta__desc");
+    const ctaDescBase = ctaDesc ? ctaDesc.textContent : "";
 
     const open = (btn) => {
       const name = btn.getAttribute("data-plan-name") || "";
@@ -92,12 +129,24 @@
       const period = btn.getAttribute("data-plan-period") || "";
       planLine.innerHTML =
         "پلن انتخابی شما: <b>" + name + "</b> — " + period + " " + price;
+
       // پیام از پیش نوشته‌شده در لینک تلگرام قرار می‌گیرد؛ ضمناً هنگام کلیک در
       // حافظه هم کپی می‌شود تا اگر کلاینت تلگرام متن را پر نکرد، کاربر فقط
-      // Paste کند.
-      const msg = supportMessage(btn);
-      support.href = SUPPORT_URL + "?text=" + encodeURIComponent(msg);
-      support.onclick = () => { copyText(msg); };
+      // Paste کند. مشخصاتِ حساب به‌محض آماده‌شدن به پیام افزوده می‌شود.
+      const setLink = (me) => {
+        const msg = supportMessage(btn, me);
+        support.href = SUPPORT_URL + "?text=" + encodeURIComponent(msg);
+        support.onclick = () => { copyText(msg); };
+        if (ctaDesc) {
+          ctaDesc.textContent = me
+            ? ctaDescBase + " مشخصات حساب شما (ایمیل، نام کاربری و نام و نام خانوادگی) به‌صورت خودکار انتهای پیام درج می‌شود."
+            : ctaDescBase;
+        }
+      };
+
+      setLink(ME);
+      fetchMe().then(setLink);
+
       overlay.hidden = false;
       document.body.style.overflow = "hidden";
     };
@@ -131,7 +180,26 @@
     });
   }
 
-  function boot() { init(); initPayModal(); }
+  // ── بنر تمدید/ارتقا (اشتراک جاری) ──────────────────────────────────────
+  // برای این دکمه هم همان پیامِ حاوی مشخصات ساخته می‌شود.
+  function initRenewLink() {
+    const banner = document.getElementById("subCurrent");
+    if (!banner) return;
+    const link = banner.querySelector("a[href^='https://t.me/']");
+    if (!link) return;
+    fetchMe().then((me) => {
+      if (!me) return;
+      const msg =
+        "سلام؛ وقت بخیر.\n" +
+        "مایل به تمدید/ارتقای اشتراک الگو هاب کریپتو اسمارت هستم.\n" +
+        "لطفاً راهنمایی بفرمایید. سپاسگزارم." +
+        identityBlock(me);
+      link.href = SUPPORT_URL + "?text=" + encodeURIComponent(msg);
+      link.addEventListener("click", () => { copyText(msg); });
+    });
+  }
+
+  function boot() { init(); initPayModal(); initRenewLink(); }
 
   if (document.readyState !== "loading") boot();
   else document.addEventListener("DOMContentLoaded", boot);
