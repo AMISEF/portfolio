@@ -7,9 +7,14 @@
      می‌کند تا بتوان هشدار فرستاد.
   ۲) هشدارِ قیمتِ خرید: وقتی ارزِ پیشنهادیِ سبدچینیِ هوش مصنوعی به قیمتِ هدف
      رسید، پیامِ رسمی با ایموجی، نام ارز و قیمت برای کاربر ارسال می‌شود.
-  ۳) خرید اشتراک: دو دکمه (مدیریت سرمایه / ژورنال تریدینگ) که فهرستِ قیمت‌ها را
-     با دکمه‌های شیشه‌ایِ (inline) هر پلن نشان می‌دهند؛ کلیک روی هر پلن کاربر را
-     با یک پیامِ رسمیِ آماده به پیویِ پشتیبانی می‌برد.
+  ۳) خرید اشتراک: دو دکمه (مدیریت سرمایه / ژورنال تریدینگ) که فهرستِ پلن‌ها را
+     همراه با توضیحِ کاملِ امکاناتِ هر پلن و دکمه‌های شیشه‌ایِ (inline) خرید نشان
+     می‌دهند؛ کلیک روی هر پلن کاربر را با یک پیامِ رسمیِ آماده به پیویِ پشتیبانی
+     می‌برد.
+
+فهرستِ پلن‌های مدیریت سرمایه از منبعِ واحدِ plans.py ساخته می‌شود و فهرستِ پلن‌های
+ژورنال (JOURNAL_PLANS) با frontend/src/lib/plans.ts و backend/app/services/plans.py
+ِ پروژهٔ ژورنال هم‌راستا نگه داشته می‌شود.
 
 توکن فقط از .env خوانده می‌شود (ALGOHUB_BOT_TOKEN) و هرگز در کد نیست.
 """
@@ -171,18 +176,80 @@ def _toman(n: int) -> str:
     return _fa_digits(f"{int(n):,}").replace(",", "٬") + " تومان"
 
 
-# پلن‌های پنل ژورنال تریدینگ (قیمت ماهانه). با صفحهٔ اشتراکِ ژورنال هم‌راستاست.
+# پلن‌های پنل ژورنال تریدینگ (قیمتِ ماهانه) — هم‌راستا با صفحهٔ اشتراکِ ژورنال.
+# هر تغییری در frontend/src/lib/plans.ts باید همین‌جا هم بازتاب داده شود.
 JOURNAL_PLANS = [
-    {"key": "silver", "name": "نقره‌ای", "emoji": "🥈", "monthly": 349000},
-    {"key": "gold", "name": "طلایی", "emoji": "🥇", "monthly": 999000},
+    {
+        "key": "bronze", "name": "برنزی", "emoji": "🥉", "monthly": 0,
+        "tagline": "شروعِ حرفه‌ایِ ژورنال‌نویسی، بدون هزینه",
+        "features": [
+            "ثبت ۱۰ معامله با تمام جزئیات: ورود پله‌ای، حد ضرر، تارگت، تصویر چارت، چک‌لیست و احساسات",
+            "۱ تحلیل هوش مصنوعی روی هر معامله — کیفیتِ اجرا نمره می‌گیرد، نه سود و ضرر",
+            "داشبورد کامل: وین‌ریت، فاکتور سود، R:R و منحنی رشد سرمایه",
+        ],
+    },
+    {
+        "key": "silver", "name": "نقره‌ای", "emoji": "🥈", "monthly": 349000,
+        "tagline": "هر هفته یک گزارش که می‌گوید پولت از کجا نشت می‌کند",
+        "features": [
+            "ثبت تا ۱۰۰ معامله با تمام جزئیات",
+            "تحلیل نامحدود هوش مصنوعی روی هر معامله",
+            "مربی هوش مصنوعی روی کل ژورنال، هفته‌ای ۱ بار: نقاط قوت، نشتی‌های پول و برنامهٔ ۷ روزهٔ بهبود",
+            "گفتگوی نامحدود با مربی دربارهٔ همان تحلیل‌ها",
+        ],
+    },
+    {
+        "key": "gold", "name": "طلایی", "emoji": "🥇", "monthly": 999000,
+        "tagline": "ریتمِ تریدرِ تمام‌وقت: بازخوردِ روزانه پیش از اشتباهِ بعدی",
+        "features": [
+            "ثبت نامحدود معامله — بدون هیچ سقفی",
+            "تحلیل نامحدود هوش مصنوعی روی تک‌تک معاملات",
+            "مربی هوش مصنوعی، هر روز ۱ بار: عیب‌یابیِ روزانه پیش از باز کردن پوزیشن بعدی",
+            "گزارش نهادی و بانکی، هفته‌ای ۱ بار — همان استانداردی که پراپ‌فرم‌ها با آن سرمایه می‌دهند",
+            "خروجی PDF گزارش نهادی برای ارائه به سرمایه‌گذار",
+        ],
+    },
+    {
+        "key": "diamond", "name": "الماسی", "emoji": "💎", "monthly": 1999000,
+        "tagline": "بدون سقف، بدون صف، بدون ثبت دستی — کل میزِ تحلیل در اختیار تو",
+        "features": [
+            "ثبت نامحدود معامله و تحلیل نامحدود هوش مصنوعی روی هر معامله",
+            "مربی هوش مصنوعی نامحدود: بعد از هر معامله، هر ساعت، بدون هیچ صف انتظاری",
+            "گزارش نهادی و بانکی نامحدود: اثرِ هر تغییرِ استراتژی را بلافاصله بسنج",
+            "اتصال مستقیم به صرافی توبیت (فقط در این پلن): معاملات فیوچرز خودکار ژورنال می‌شوند — بدون نیاز به ثبت دستی ژورنال",
+            "خروجی PDF نهادی برای ارائه به سرمایه‌گذار و پراپ‌فرم",
+        ],
+    },
 ]
 
 
+def _portfolio_features(p: dict[str, Any]) -> list[str]:
+    """امکاناتِ هر پلنِ مدیریت سرمایه، ساخته‌شده از منبعِ واحدِ plans.py."""
+    quota = p.get("ai_quota")
+    per_fa = "سال" if p.get("ai_period") == "year" else "ماه"
+    out: list[str] = []
+    if quota is None:
+        out.append("سبدچینی نامحدود با هوش مصنوعی")
+    elif not quota:
+        out.append("بدون سبدچینی هوش مصنوعی")
+    else:
+        out.append(f"{_fa_digits(quota)} اعتبار سبدچینی هوش مصنوعی در {per_fa}")
+    out.append("دسترسی به بخش «تحلیل اختصاصی»" if p.get("exclusive")
+               else "بدون دسترسی به بخش «تحلیل اختصاصی»")
+    out.append("ثبت و مدیریت نامحدود دارایی + سود و زیان لحظه‌ای")
+    if p.get("weekly_report"):
+        out.append("گزارش هفتگی وضعیت سبد")
+    if p.get("direct_manager"):
+        out.append("ارتباط مستقیم با مدیر مجموعه")
+    out.append(f"پشتیبانی: {p.get('support') or 'عمومی'}")
+    return out
+
+
 def _portfolio_plans() -> list[dict[str, Any]]:
-    """پلن‌های پولیِ پنل مدیریت سرمایه از منبعِ واحدِ plans.py."""
-    emoji = {"silver": "🥈", "gold": "🥇", "diamond": "💎"}
+    """همهٔ پلن‌های پنل مدیریت سرمایه از منبعِ واحدِ plans.py."""
+    emoji = {"bronze": "🥉", "silver": "🥈", "gold": "🥇", "diamond": "💎"}
     out = []
-    for key in ("silver", "gold", "diamond"):
+    for key in ("bronze", "silver", "gold", "diamond"):
         p = plans.PLANS.get(key)
         if not p:
             continue
@@ -191,8 +258,11 @@ def _portfolio_plans() -> list[dict[str, Any]]:
             "name": p["name_fa"],
             "emoji": emoji.get(key, "✨"),
             "price": int(p["price"]),
+            "original_price": p.get("original_price"),
             "period_fa": "سالانه" if p.get("period") == "year" else "ماهانه",
+            "tagline": p.get("best_for", ""),
             "desc": p.get("desc_fa", ""),
+            "features": _portfolio_features(p),
         })
     return out
 
@@ -215,6 +285,17 @@ def _purchase_message(plan_name: str, product: str, period_fa: str, price_fa: st
         "مبلغ را واریز کرده‌ام و رسید پرداخت را در همین گفتگو ارسال می‌کنم.\n"
         "لطفاً راهنمایی بفرمایید. سپاسگزارم."
     )
+
+
+def _plan_block(emoji: str, name: str, price_line: str, tagline: str,
+                features: list[str]) -> list[str]:
+    """بلوکِ نمایشیِ یک پلن: سرتیتر، شعار و فهرستِ امکانات."""
+    lines = [f"{emoji} <b>{_esc(name)}</b> — {price_line}"]
+    if tagline:
+        lines.append(f"<i>{_esc(tagline)}</i>")
+    lines += [f"   ✅ {_esc(f)}" for f in features]
+    lines.append("")
+    return lines
 
 
 # ──────────────────────── راهنمای پرداخت ───────────────────────
@@ -261,7 +342,6 @@ def payment_block() -> list[str]:
 
 def portfolio_subscription_message() -> tuple[str, dict]:
     """متن + کیبوردِ شیشه‌ایِ اشتراک‌های پنل مدیریت سرمایه."""
-    rows = _portfolio_plans()
     lines = [
         "💼 <b>اشتراک‌های پنل مدیریت سرمایه الگو هاب</b>",
         "",
@@ -270,18 +350,26 @@ def portfolio_subscription_message() -> tuple[str, dict]:
         "",
     ]
     buttons = []
-    for p in rows:
+    for p in _portfolio_plans():
+        if p["price"] <= 0:
+            price_line = "<b>رایگان</b>"
+            lines += _plan_block(p["emoji"], p["name"], price_line,
+                                 p["tagline"], p["features"])
+            continue
         price_fa = _toman(p["price"])
-        lines.append(f"{p['emoji']} <b>{_esc(p['name'])}</b> — {_esc(price_fa)} ({p['period_fa']})")
-        if p["desc"]:
-            lines.append(f"    ↳ {_esc(p['desc'])}")
+        price_line = f"{_esc(price_fa)} ({p['period_fa']})"
+        if p.get("original_price"):
+            price_line = (f"<s>{_esc(_toman(int(p['original_price'])))}</s> "
+                          f"{price_line}")
+        lines += _plan_block(p["emoji"], p["name"], price_line,
+                             p["tagline"], p["features"])
         msg = _purchase_message(p["name"], "پنل مدیریت سرمایه الگو هاب",
                                 p["period_fa"], price_fa)
         buttons.append([{
             "text": f"{p['emoji']} اشتراک {p['name']} — {price_fa}",
             "url": _support_link(msg),
         }])
-    lines += [""] + payment_block()
+    lines += payment_block()
     buttons.append([{"text": "💬 گفتگو با پشتیبانی", "url": settings.support_url}])
     buttons.append([{"text": "🔙 بازگشت به منوی اصلی", "callback_data": "nav:home"}])
     return _with_footer("\n".join(lines)), {"inline_keyboard": buttons}
@@ -293,13 +381,18 @@ def journal_subscription_message() -> tuple[str, dict]:
         "📊 <b>اشتراک‌های پنل ژورنال تریدینگ الگو هاب</b>",
         "",
         "ثبت حرفه‌ایِ معاملات، داشبورد و منحنی سرمایه، تحلیل هوش مصنوعی روی تک‌تک "
-        "معاملات و اتصال مستقیم به صرافی توبیت.",
+        "معاملات، مربی هوش مصنوعی و گزارش نهادی.",
         "",
     ]
     buttons = []
     for p in JOURNAL_PLANS:
+        if p["monthly"] <= 0:
+            lines += _plan_block(p["emoji"], p["name"], "<b>رایگان</b>",
+                                 p["tagline"], p["features"])
+            continue
         price_fa = _toman(p["monthly"])
-        lines.append(f"{p['emoji']} <b>{_esc(p['name'])}</b> — {_esc(price_fa)} (ماهانه)")
+        lines += _plan_block(p["emoji"], p["name"], f"{_esc(price_fa)} (ماهانه)",
+                             p["tagline"], p["features"])
         msg = _purchase_message(p["name"], "پنل ژورنال تریدینگ الگو هاب",
                                 "ماهانه", price_fa)
         buttons.append([{
@@ -307,8 +400,6 @@ def journal_subscription_message() -> tuple[str, dict]:
             "url": _support_link(msg),
         }])
     lines += [
-        "",
-        "🎁 پلن برنزی همیشه رایگان است.",
         "💡 با خرید ۳، ۶ یا ۱۲ ماهه تا ۳۳٪ تخفیف بگیرید — برای دورهٔ بلندتر با "
         "پشتیبانی در ارتباط باشید.",
         "",
