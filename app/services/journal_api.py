@@ -18,7 +18,9 @@ import httpx
 
 from app.config import settings
 
-TIERS = [("bronze", "برنزی"), ("silver", "نقره‌ای"), ("gold", "طلایی")]
+# هم‌تراز با PLAN_ORDER در backend/app/services/plans.py پروژهٔ ژورنال.
+TIERS = [("bronze", "برنزی"), ("silver", "نقره‌ای"), ("gold", "طلایی"),
+         ("diamond", "الماسی")]
 DURATIONS = [(1, "۱ ماهه"), (3, "۳ ماهه"), (6, "۶ ماهه"), (12, "سالانه")]
 
 # پورتِ درستِ بک‌اندِ ژورنال ۸۰۰۱ است (ecosystem.config.js پروژهٔ ژورنال).
