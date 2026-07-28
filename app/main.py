@@ -15,7 +15,7 @@ from app.config import settings
 from app.routers import (admin, advisor, auth, bot, market, pages, portfolio,
                          settings_api)
 from app.services import (algohub_bot, broadcast_job, market_card_job,
-                          price_alerts_job, telegram_signals)
+                          price_alerts_job, signals_retention, telegram_signals)
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
@@ -36,14 +36,17 @@ app.include_router(settings_api.router)
 @app.on_event("startup")
 async def _startup() -> None:
     db.init_db()
-    # ثبت وب‌هوکِ ربات سیگنال‌ها و پاک‌سازی تحلیل‌های منقضی (بدون بلوکه‌کردن استارت‌آپ).
+    # پاک‌سازیِ تحلیل‌های منقضی: یک‌بار در استارت‌آپ و سپس هر ساعت. مستقل از توکنِ
+    # ربات اجرا می‌شود تا حتی اگر وب‌هوک غیرفعال باشد، آرشیو بیش از مهلت نماند.
+    asyncio.create_task(signals_retention.loop())
+
+    # ثبت وب‌هوکِ ربات سیگنال‌ها (بدون بلوکه‌کردن استارت‌آپ).
     if settings.signals_bot_token:
         async def _init_signals() -> None:
             try:
                 await telegram_signals.register_webhook()
             except Exception:  # noqa: BLE001
                 pass
-            telegram_signals.purge_expired()
         asyncio.create_task(_init_signals())
         # زمان‌بندِ روزانهٔ تصویر «نمای کلی بازار» (هر روز ۱۱:۰۰ تهران).
         asyncio.create_task(market_card_job.daily_loop())
