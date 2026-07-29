@@ -103,19 +103,24 @@ async def coins():
     return data
 
 
+# حداکثر درصد تغییرِ باورپذیر برای انس طلا/نقره/نفت در ۲۴ساعت. هر عددِ بزرگ‌تر
+# نشانهٔ خرابیِ منبع یا اشتباهِ مقیاس (کسری ↔ درصد) است و نادیده گرفته می‌شود.
+_MAX_COMMODITY_CHANGE = 50.0
+
+
 @router.get("/prices")
 async def prices():
-    """قیمت‌های کلیدی: تتر تومانی (Tabdeal) + طلای ۱۸ع و دلار آزاد (SourceArena)
-    + انس طلا/نقره و نفت خام (Yahoo Finance، با تغییر ۲۴ساعتهٔ واقعی).
+    """قیمت‌های کلیدی: تتر تومانی (Tabdeal — قیمت و درصد تغییر ۲۴ساعته هر دو از
+    خودِ تبدیل) + طلای ۱۸ع و دلار آزاد (SourceArena) + انس طلا/نقره و نفت خام
+    (قیمت از SourceArena/Yahoo و درصد تغییر ۲۴ساعته از قراردادِ دائمیِ توبیت).
     ترس‌وطمع از کش تا گیج هر ۸ ثانیه به‌روز شود."""
-    usdt, metals, comm = await asyncio.gather(
+    usdt, metals, comm, swap = await asyncio.gather(
         _safe(tabdeal.usdt()), _safe(sourcearena.metals()),
-        _safe(commodities_svc.commodities()),
+        _safe(commodities_svc.commodities()), _safe(toobit.swap_commodities()),
     )
 
-    # کالاهای جهانی: قیمت و تغییر ۲۴ساعته از SourceArena (قابل‌اعتماد و محاسبه‌شده
-    # از تاریخچهٔ واقعی)؛ Yahoo فقط اسپارک‌لاین را تأمین می‌کند و اگر SourceArena
-    # کلیدی نداشت، به‌عنوان پشتیبانِ کامل به‌کار می‌رود.
+    # کالاهای جهانی: قیمت از SourceArena (قابل‌اعتماد برای بازار ایران) و در نبودش
+    # از Yahoo؛ Yahoo همچنین اسپارک‌لاین را تأمین می‌کند.
     sa_comm = metals.get("commodities", {}) if isinstance(metals, dict) else {}
     yh_comm = comm.get("commodities", {}) if (isinstance(comm, dict) and "error" not in comm) else {}
     commodities = {}
@@ -133,13 +138,25 @@ async def prices():
         if base:
             commodities[k] = base
 
-    # تغییر ۲۴ساعتهٔ تتر/تومان از تغییر دلار آزاد (SourceArena) گرفته می‌شود؛
-    # اندپوینت عمق Tabdeal خودش درصد تغییر ندارد.
+    # درصد تغییر ۲۴ساعته از خودِ صرافی توبیت (قرارداد دائمیِ XAU/XAG/XBR-SWAP-USDT).
+    # این عددِ واقعیِ بازار است و جای محاسبه‌های تخمینیِ بالا را می‌گیرد؛ مقادیرِ پرت
+    # (بیش از _MAX_COMMODITY_CHANGE) نادیده گرفته می‌شوند.
+    tb_comm = swap.get("commodities", {}) if (isinstance(swap, dict) and "error" not in swap) else {}
+    for k, row in commodities.items():
+        tch = (tb_comm.get(k) or {}).get("change_24h")
+        if isinstance(tch, (int, float)) and tch and abs(tch) <= _MAX_COMMODITY_CHANGE:
+            row["change_24h"] = round(float(tch), 2)
+            row["change_source"] = "toobit"
+
+    # درصد تغییر ۲۴ساعتهٔ تتر/تومان مستقیماً از خودِ تبدیل می‌آید (سرویس tabdeal:
+    # تیکر ۲۴ساعته → کندل ساعتی → دیتافید نمودار → تاریخچهٔ قیمتِ پایدار). فقط اگر
+    # هیچ‌کدام جواب ندادند، به‌عنوان آخرین چاره از تغییر دلار آزاد استفاده می‌شود.
     usdt_irt = usdt.get("usdt_irt") if isinstance(usdt, dict) else None
-    if isinstance(usdt_irt, dict) and isinstance(metals, dict):
+    if isinstance(usdt_irt, dict) and not usdt_irt.get("change_24h") and isinstance(metals, dict):
         usd_chg = metals.get("usd_change_24h")
-        if usd_chg and not usdt_irt.get("change_24h"):
+        if usd_chg:
             usdt_irt["change_24h"] = usd_chg
+            usdt_irt["change_source"] = "sourcearena-usd"
 
     # طلای ۱۸ عیار: وقتی دادهٔ SourceArena «تازه» است، قیمت واقعی بازار ایران را
     # نشان می‌دهیم و ضریب پرمیوم (قیمت واقعی ÷ ارزش ذوب) را ذخیره می‌کنیم. اگر
@@ -190,8 +207,10 @@ async def prices():
         "fear_greed": fg,
         "sources": {
             "usdt": usdt.get("source") if isinstance(usdt, dict) else "error",
+            "usdt_change": (usdt_irt or {}).get("change_source") if isinstance(usdt_irt, dict) else "error",
             "metals": metals.get("source") if isinstance(metals, dict) else "error",
             "commodities": comm.get("source") if isinstance(comm, dict) else "error",
+            "commodities_change": "toobit" if tb_comm else "fallback",
         },
     }
 
@@ -224,7 +243,7 @@ def _trim(s: str, n: int = 2500) -> str:
 async def _raw_get(url: str, params: dict | None = None) -> dict:
     """درخواست خام برای عیب‌یابی — مهلت کوتاه تا کل /debug زیر تایم‌اوت Nginx بماند."""
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(6.0)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(6.0), follow_redirects=True) as client:
             r = await client.get(url, params=params or {})
             try:
                 parsed = r.json()
@@ -262,6 +281,9 @@ async def debug(request: Request):
 
     raw_calls = [
         ("tabdeal_usdtirt", _raw_get(f"{settings.tabdeal_base_url}/r/api/v1/depth/", {"symbol": "USDTIRT"})),
+        ("tabdeal_ticker24", _raw_get(f"{settings.tabdeal_base_url}/r/api/v1/ticker/24hr", {"symbol": "USDTIRT"})),
+        ("tabdeal_klines", _raw_get(f"{settings.tabdeal_base_url}/r/api/v1/klines",
+                                    {"symbol": "USDTIRT", "interval": "1h", "limit": "3"})),
         ("toobit_ticker24", _raw_get(f"{settings.toobit_base_url}/quote/v1/ticker/24hr")),
         ("toobit_contract24", _raw_get(f"{settings.toobit_base_url}/quote/v1/contract/ticker/24hr")),
         ("fng", _raw_get(settings.fng_base_url, {"limit": "1"})),
