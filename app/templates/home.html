@@ -1,6 +1,34 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- پردهٔ بارگذاری: تا وقتی همهٔ داده‌های بازار برسند صفحه یک‌جا نشان داده نمی‌شود -->
+<style>
+  .boot-veil{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+    background:var(--bg,#0b1220);transition:opacity .35s ease}
+  .boot-veil.is-gone{opacity:0;pointer-events:none}
+  .boot-veil__box{display:flex;flex-direction:column;align-items:center;gap:14px}
+  .boot-veil__spin{width:38px;height:38px;border-radius:50%;
+    border:3px solid rgba(125,211,252,.18);border-top-color:var(--brand,#38bdf8);
+    animation:bootspin .8s linear infinite}
+  .boot-veil__text{font-size:.9rem;color:var(--text-dim,#8aa0b8)}
+  @keyframes bootspin{to{transform:rotate(360deg)}}
+  /* تا قبل از آمادگی، محتوا دیده نمی‌شود (به‌جای ظاهرشدنِ تکه‌تکه) */
+  body:not(.boot-ready) .topcoins,
+  body:not(.boot-ready) .page-stack{opacity:0}
+  body.boot-ready .topcoins,
+  body.boot-ready .page-stack{opacity:1;transition:opacity .3s ease}
+  @media (prefers-reduced-motion: reduce){
+    .boot-veil,.boot-veil__spin{transition:none;animation:none}
+  }
+</style>
+
+<div class="boot-veil" id="bootVeil" aria-hidden="true">
+  <div class="boot-veil__box">
+    <span class="boot-veil__spin"></span>
+    <span class="boot-veil__text">در حال آماده‌سازی نمای بازار…</span>
+  </div>
+</div>
+
 <!-- ۲) عنوان + تاریخ/ساعت -->
 <section class="market-head">
   <div class="market-head__title">نمای کلی <span class="accent">بازار</span></div>
@@ -166,6 +194,15 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+  // فیل‌سف: اگر به هر دلیلی داده‌ها دیر کردند، صفحه هرگز پشت پرده قفل نماند.
+  setTimeout(function () {
+    if (window.CSMarketReveal) return window.CSMarketReveal();
+    document.body.classList.add("boot-ready");
+    var v = document.getElementById("bootVeil");
+    if (v) v.remove();
+  }, 8000);
+</script>
 <script src="/static/js/gauge.js?v={{ static_v }}"></script>
 <script src="/static/js/heatmap.js?v={{ static_v }}"></script>
 <script src="/static/js/market.js?v={{ static_v }}"></script>

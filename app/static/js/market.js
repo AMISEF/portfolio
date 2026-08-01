@@ -1,6 +1,9 @@
 /* موتور دادهٔ صفحهٔ خانه: واکشی اندپوینت‌ها، رندر و به‌روزرسانی لحظه‌ای (بدون رفرش).
-   ۵ ارز برتر از توبیت هر ۵ ثانیه، شاخص‌های کلان از CoinMarketCap، نقشهٔ حرارتی
-   و قیمت‌های کلیدی زنده پایش می‌شوند و هنگام تغییر «چشمک» می‌خورند. */
+
+   بارگذاری اول: همهٔ بخش‌ها موازی گرفته می‌شوند و تا وقتی همهٔ آن‌ها آماده
+   نشوند هیچ‌چیز رندر نمی‌شود؛ صفحه یک‌جا بالا می‌آید، نه دانه‌دانه.
+   پس از آن، تایمرهای زنده شروع می‌شوند: ۵ ارز برتر و نقشهٔ حرارتی هر ۵ ثانیه،
+   شاخص‌های کلان هر ۶۰ ثانیه، تتر هر ۱۵ ثانیه و قیمت‌های کلیدی هر ۱۵ دقیقه. */
 (function (w) {
   "use strict";
   const CS = w.CS;
@@ -110,47 +113,40 @@
       '<div class="alt__bar"><span class="alt__knob" style="right:calc(' + v + '% - 9px)"></span></div>';
   }
 
-  async function loadMacro() {
-    try {
-      const d = await CS.fetchJSON("/api/market/macro");
-      renderMarketCap(d); renderDominance(d); renderAltseason(d); renderRsi(d);
-      if (d.fear_greed) w.CSGauge.render($("fngGauge"), d.fear_greed);
-      srcTag($("macroSrc"), d.source);
-    } catch (e) { console.warn("macro:", e); }
+  /* ---------- رندرهای سطح‌بالا (جدا از واکشی، تا بتوان همه را یک‌جا رندر کرد) ---------- */
+  function renderMacro(d) {
+    if (!d) return;
+    renderMarketCap(d); renderDominance(d); renderAltseason(d); renderRsi(d);
+    if (d.fear_greed) w.CSGauge.render($("fngGauge"), d.fear_greed);
+    srcTag($("macroSrc"), d.source);
   }
 
-  /* ---------- نقشهٔ حرارتی زنده (توبیت) ---------- */
-  async function loadHeatmap() {
-    try {
-      const d = await CS.fetchJSON("/api/market/heatmap");
-      w.CSHeatmap.render($("heatmap"), d.items || d.heatmap);
-      srcTag($("heatmapSrc"), d.source);
-    } catch (e) { console.warn("heatmap:", e); }
+  function renderHeatmap(d) {
+    if (!d) return;
+    w.CSHeatmap.render($("heatmap"), d.items || d.heatmap);
+    srcTag($("heatmapSrc"), d.source);
   }
 
-  /* ---------- ۵ ارز برتر بازار (کارت افقی، زنده هر ۵ ثانیه) ---------- */
-  async function loadCoins() {
-    try {
-      const d = await CS.fetchJSON("/api/market/coins");
-      $("topCoins").innerHTML = d.coins.map((g) =>
-        '<div class="coincard" data-sym="' + g.symbol + '">' +
-        '<div class="coincard__head">' + coinIcon(g.symbol, "coincard__icon") +
-          '<span class="coincard__name">' + g.symbol + '</span></div>' +
-        '<div class="coincard__body">' +
-          '<div class="coincard__left">' +
-            '<div class="coincard__price" data-price>' + CS.faPriceUsd(g.price) + '</div>' +
-            '<span class="chg ' + CS.chgClass(g.change_24h) + '">' + CS.faPct(g.change_24h) + '</span>' +
-          '</div>' +
-          sparkSVG(g.spark, g.change_24h >= 0) +
+  function renderCoins(d) {
+    if (!d || !d.coins) return;
+    $("topCoins").innerHTML = d.coins.map((g) =>
+      '<div class="coincard" data-sym="' + g.symbol + '">' +
+      '<div class="coincard__head">' + coinIcon(g.symbol, "coincard__icon") +
+        '<span class="coincard__name">' + g.symbol + '</span></div>' +
+      '<div class="coincard__body">' +
+        '<div class="coincard__left">' +
+          '<div class="coincard__price" data-price>' + CS.faPriceUsd(g.price) + '</div>' +
+          '<span class="chg ' + CS.chgClass(g.change_24h) + '">' + CS.faPct(g.change_24h) + '</span>' +
         '</div>' +
-        '</div>'
-      ).join("");
-      d.coins.forEach((g) => {
-        const el = document.querySelector('#topCoins .coincard[data-sym="' + g.symbol + '"] [data-price]');
-        flash(el, "c_" + g.symbol, g.price);
-      });
-      srcTag($("coinsSrc"), d.source);
-    } catch (e) { console.warn("coins:", e); }
+        sparkSVG(g.spark, g.change_24h >= 0) +
+      '</div>' +
+      '</div>'
+    ).join("");
+    d.coins.forEach((g) => {
+      const el = document.querySelector('#topCoins .coincard[data-sym="' + g.symbol + '"] [data-price]');
+      flash(el, "c_" + g.symbol, g.price);
+    });
+    srcTag($("coinsSrc"), d.source);
   }
 
   /* ---------- قیمت‌های کلیدی (تتر/طلا/نقره/نفت) ---------- */
@@ -177,29 +173,27 @@
   // آخرین داده‌های قیمت (برای به‌روزرسانی جداگانهٔ تتر)
   let _lastPriceData = null;
 
-  async function loadPrices() {
-    try {
-      const d = await CS.fetchJSON("/api/market/prices");
-      _lastPriceData = d;
-      const rows = [];
-      if (d.usdt_irt)
-        rows.push(keyRow("usdt", _KP.usdt, d.usdt_irt.name || "تتر / تومان", "تومان",
-          CS.faNum(d.usdt_irt.price) + " ت", d.usdt_irt.change_24h));
-      if (d.gold_18k)
-        rows.push(keyRow("g18", _KP.g18, "طلای ۱۸ عیار", d.gold_18k.sub || "هر گرم",
-          CS.faNum(d.gold_18k.price) + " ت", d.gold_18k.change_24h));
-      const c = d.commodities || {};
-      if (c.XAU) rows.push(keyRow("xau", _KP.xau, c.XAU.name || "طلای جهانی", c.XAU.sub || "اونس", CS.faPriceUsd(c.XAU.price), c.XAU.change_24h, c.XAU.spark));
-      if (c.XAG) rows.push(keyRow("xag", _KP.xag, c.XAG.name || "نقره", c.XAG.sub || "اونس", CS.faPriceUsd(c.XAG.price), c.XAG.change_24h, c.XAG.spark));
-      if (c.OIL) rows.push(keyRow("oil", _KP.oil, c.OIL.name || "نفت خام", c.OIL.sub || "بشکه", CS.faPriceUsd(c.OIL.price), c.OIL.change_24h, c.OIL.spark));
-      $("keyPrices").innerHTML = rows.join("") || '<span class="src-tag">داده‌ای موجود نیست</span>';
+  function renderPrices(d) {
+    if (!d) return;
+    _lastPriceData = d;
+    const rows = [];
+    if (d.usdt_irt)
+      rows.push(keyRow("usdt", _KP.usdt, d.usdt_irt.name || "تتر / تومان", "تومان",
+        CS.faNum(d.usdt_irt.price) + " ت", d.usdt_irt.change_24h));
+    if (d.gold_18k)
+      rows.push(keyRow("g18", _KP.g18, "طلای ۱۸ عیار", d.gold_18k.sub || "هر گرم",
+        CS.faNum(d.gold_18k.price) + " ت", d.gold_18k.change_24h));
+    const c = d.commodities || {};
+    if (c.XAU) rows.push(keyRow("xau", _KP.xau, c.XAU.name || "طلای جهانی", c.XAU.sub || "اونس", CS.faPriceUsd(c.XAU.price), c.XAU.change_24h, c.XAU.spark));
+    if (c.XAG) rows.push(keyRow("xag", _KP.xag, c.XAG.name || "نقره", c.XAG.sub || "اونس", CS.faPriceUsd(c.XAG.price), c.XAG.change_24h, c.XAG.spark));
+    if (c.OIL) rows.push(keyRow("oil", _KP.oil, c.OIL.name || "نفت خام", c.OIL.sub || "بشکه", CS.faPriceUsd(c.OIL.price), c.OIL.change_24h, c.OIL.spark));
+    $("keyPrices").innerHTML = rows.join("") || '<span class="src-tag">داده‌ای موجود نیست</span>';
 
-      if (d.usdt_irt) flash(document.querySelector('#keyPrices .rowitem[data-kp="usdt"] [data-price]'), "usdt", d.usdt_irt.price);
-      if (d.fear_greed) w.CSGauge.render($("fngGauge"), d.fear_greed);
-    } catch (e) { console.warn("prices:", e); }
+    if (d.usdt_irt) flash(document.querySelector('#keyPrices .rowitem[data-kp="usdt"] [data-price]'), "usdt", d.usdt_irt.price);
+    if (d.fear_greed) w.CSGauge.render($("fngGauge"), d.fear_greed);
   }
 
-  // تتر + طلای جهانی + نقره + نفت را هر ۱۵ ثانیه in-place به‌روز می‌کند
+  // تتر + طلای جهانی + نقره + نفت را in-place به‌روز می‌کند
   function _updateRow(kp, priceText, ch) {
     const row = document.querySelector('#keyPrices .rowitem[data-kp="' + kp + '"]');
     if (!row) return;
@@ -212,9 +206,36 @@
     }
   }
 
+  function renderLiveCommodities(d) {
+    if (!d) return;
+    const c = d.commodities || {};
+    if (c.XAU) _updateRow("xau", CS.faPriceUsd(c.XAU.price), c.XAU.change_24h);
+    if (c.XAG) _updateRow("xag", CS.faPriceUsd(c.XAG.price), c.XAG.change_24h);
+    if (c.OIL) _updateRow("oil", CS.faPriceUsd(c.OIL.price), c.OIL.change_24h);
+  }
+
+  /* ---------- واکشی‌های دوره‌ای (پس از بارگذاری اول) ---------- */
+  const get = (url) => CS.fetchJSON(url);
+
+  async function loadMacro() {
+    try { renderMacro(await get("/api/market/macro")); } catch (e) { console.warn("macro:", e); }
+  }
+  async function loadHeatmap() {
+    try { renderHeatmap(await get("/api/market/heatmap")); } catch (e) { console.warn("heatmap:", e); }
+  }
+  async function loadCoins() {
+    try { renderCoins(await get("/api/market/coins")); } catch (e) { console.warn("coins:", e); }
+  }
+  async function loadPrices() {
+    try { renderPrices(await get("/api/market/prices")); } catch (e) { console.warn("prices:", e); }
+  }
+  async function loadLiveCommodities() {
+    try { renderLiveCommodities(await get("/api/market/live-commodities")); } catch (e) { /* silent */ }
+  }
+
   async function refreshLive() {
     try {
-      const d = await CS.fetchJSON("/api/market/prices");
+      const d = await get("/api/market/prices");
       if (d.usdt_irt) {
         const el = document.querySelector('#keyPrices .rowitem[data-kp="usdt"] [data-price]');
         if (el) { el.textContent = CS.faNum(d.usdt_irt.price) + " ت"; flash(el, "usdt", d.usdt_irt.price); }
@@ -222,22 +243,51 @@
     } catch (e) { /* silent */ }
   }
 
-  // انس طلا / نقره / نفت از SWAP توبیت هر ۵ ثانیه (زنده)
-  async function loadLiveCommodities() {
-    try {
-      const d = await CS.fetchJSON("/api/market/live-commodities");
-      const c = d.commodities || {};
-      if (c.XAU) _updateRow("xau", CS.faPriceUsd(c.XAU.price), c.XAU.change_24h);
-      if (c.XAG) _updateRow("xag", CS.faPriceUsd(c.XAG.price), c.XAG.change_24h);
-      if (c.OIL) _updateRow("oil", CS.faPriceUsd(c.OIL.price), c.OIL.change_24h);
-    } catch (e) { /* silent */ }
+  /* ---------- بارگذاری اول: همه موازی، رندر یک‌جا ---------- */
+  let _revealed = false;
+  function reveal() {
+    if (_revealed) return;
+    _revealed = true;
+    document.body.classList.add("boot-ready");
+    const veil = $("bootVeil");
+    if (veil) {
+      veil.classList.add("is-gone");
+      setTimeout(() => veil.remove(), 400);
+    }
+  }
+  w.CSMarketReveal = reveal;   // تا فیل‌سفِ داخل صفحه هم بتواند صدا بزند
+
+  function startTimers() {
+    setInterval(loadMacro, 60 * 1000);               // ۶۰ ثانیه (CoinMarketCap)
+    setInterval(loadHeatmap, 5 * 1000);              // ۵ ثانیه (قیمت زندهٔ توبیت)
+    setInterval(loadCoins, 5 * 1000);                // ۵ ثانیه (زنده — توبیت)
+    setInterval(loadPrices, 15 * 60 * 1000);         // ۱۵ دقیقه (طلای ۱۸ع / SourceArena)
+    setInterval(refreshLive, 15 * 1000);             // ۱۵ ثانیه (تتر)
+    setInterval(loadLiveCommodities, 5 * 1000);      // ۵ ثانیه (طلا/نقره/نفت)
   }
 
-  /* ---------- راه‌اندازی + پایش لحظه‌ای ---------- */
-  loadMacro();   setInterval(loadMacro, 60 * 1000);               // ۶۰ ثانیه (CoinMarketCap)
-  loadHeatmap(); setInterval(loadHeatmap, 5 * 1000);              // ۵ ثانیه (قیمت زندهٔ توبیت)
-  loadCoins();   setInterval(loadCoins, 5 * 1000);                // ۵ ثانیه (زنده — توبیت)
-  loadPrices();  setInterval(loadPrices, 15 * 60 * 1000);         // ۱۵ دقیقه (طلای ۱۸ع / SourceArena)
-  setTimeout(function() { setInterval(refreshLive, 15 * 1000); }, 3000);         // ۱۵ ثانیه (تتر)
-  setTimeout(function() { loadLiveCommodities(); setInterval(loadLiveCommodities, 5 * 1000); }, 1500); // ۵ ثانیه (طلا/نقره/نفت)
+  async function boot() {
+    // همهٔ درخواست‌ها هم‌زمان می‌روند و تا وقتی همه تمام نشوند، هیچ‌کدام رندر
+    // نمی‌شود — پس کاربر صفحه را یک‌جا و کامل می‌بیند، نه دانه‌دانه.
+    const [macro, heat, coins, prices, live] = await Promise.all([
+      get("/api/market/macro").catch(() => null),
+      get("/api/market/heatmap").catch(() => null),
+      get("/api/market/coins").catch(() => null),
+      get("/api/market/prices").catch(() => null),
+      get("/api/market/live-commodities").catch(() => null),
+    ]);
+
+    // در یک فریم رندر کن تا مرورگر یک‌بار صفحه را بکشد.
+    requestAnimationFrame(() => {
+      try { renderMacro(macro); } catch (e) { console.warn("macro:", e); }
+      try { renderHeatmap(heat); } catch (e) { console.warn("heatmap:", e); }
+      try { renderCoins(coins); } catch (e) { console.warn("coins:", e); }
+      try { renderPrices(prices); } catch (e) { console.warn("prices:", e); }
+      try { renderLiveCommodities(live); } catch (e) { /* silent */ }
+      reveal();
+      startTimers();
+    });
+  }
+
+  boot();
 })(window);
