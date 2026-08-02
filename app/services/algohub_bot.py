@@ -46,7 +46,7 @@ def is_enabled() -> bool:
     return bool(_token())
 
 
-# ──────────────────────── پاورقیِ مشترکِ همهٔ پیام‌ها ───────────────────────
+# ────────────────────── پاورقیِ مشترکِ همهٔ پیام‌ها ─────────────────────
 def footer() -> str:
     """پاورقیِ نقل‌قولیِ (blockquote) تلگرام: شناسهٔ کانال + وب‌سایت."""
     ch = settings.algohub_channel_username
@@ -70,7 +70,7 @@ def _with_footer(body: str) -> str:
     return f"{body}\n\n{footer()}"
 
 
-# ──────────────────────── ارسال پیام ───────────────────────
+# ────────────────────── ارسال پیام ─────────────────────
 async def send_message(chat_id: str | int, text: str,
                        reply_markup: dict | None = None) -> bool:
     token = _token()
@@ -124,7 +124,7 @@ async def _answer_callback(callback_id: str, text: str = "") -> None:
         pass
 
 
-# ──────────────────────── ثبت وب‌هوک ───────────────────────
+# ────────────────────── ثبت وب‌هوک ─────────────────────
 async def register_webhook() -> dict[str, Any]:
     """ثبتِ idempotentِ وب‌هوک. بدون توکن کاری نمی‌کند."""
     token = _token()
@@ -153,7 +153,7 @@ async def register_webhook() -> dict[str, Any]:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 
 
-# ──────────────────────── اتصالِ حسابِ پنل ───────────────────────
+# ────────────────────── اتصالِ حسابِ پنل ─────────────────────
 def new_link_token(user_id: int) -> str:
     """ساختِ توکنِ یک‌بارمصرفِ اتصال و بازگرداندنِ لینکِ deep-link ربات."""
     token = secrets.token_urlsafe(16)
@@ -165,7 +165,7 @@ def link_url(token: str) -> str:
     return f"{settings.algohub_bot_url.rstrip('/')}?start={quote(token)}"
 
 
-# ──────────────────────── فهرست قیمت اشتراک‌ها ───────────────────────
+# ────────────────────── فهرست قیمت اشتراک‌ها ─────────────────────
 def _fa_digits(s: Any) -> str:
     fa = "۰۱۲۳۴۵۶۷۸۹"
     return "".join(fa[int(c)] if c.isdigit() else c for c in str(s))
@@ -181,11 +181,13 @@ def _toman(n: int) -> str:
 JOURNAL_PLANS = [
     {
         "key": "bronze", "name": "برنزی", "emoji": "🥉", "monthly": 0,
-        "tagline": "شروعِ حرفه‌ایِ ژورنال‌نویسی، بدون هزینه",
+        "tagline": "شروعِ رایگان: ۲۰ ژورنال و یک بار چشیدنِ تحلیلِ هوش مصنوعی",
         "features": [
-            "ثبت ۱۰ معامله با تمام جزئیات: ورود پله‌ای، حد ضرر، تارگت، تصویر چارت، چک‌لیست و احساسات",
-            "۱ تحلیل هوش مصنوعی روی هر معامله — کیفیتِ اجرا نمره می‌گیرد، نه سود و ضرر",
+            "ثبت ۲۰ معامله با تمام جزئیات: ورود پله‌ای، حد ضرر، تارگت، تصویر چارت، چک‌لیست و احساسات",
+            "۱ تحلیل تک‌معامله با هوش مصنوعی — یک بار برای آشنایی با کیفیت تحلیل",
+            "۱ بار مربی هوش مصنوعی روی کل ژورنال: نقاط قوت، نشتی‌های پول و برنامهٔ بهبود",
             "داشبورد کامل: وین‌ریت، فاکتور سود، R:R و منحنی رشد سرمایه",
+            "پس از این سقف، برای ثبت معاملهٔ بیشتر و تحلیلِ بیشتر باید یکی از پلن‌های اشتراکی تهیه شود",
         ],
     },
     {
@@ -298,7 +300,7 @@ def _plan_block(emoji: str, name: str, price_line: str, tagline: str,
     return lines
 
 
-# ──────────────────────── راهنمای پرداخت ───────────────────────
+# ────────────────────── راهنمای پرداخت ─────────────────────
 # آدرس‌های واریز و شناسهٔ توبیت — در هر دو پیامِ اشتراک نمایش داده می‌شوند.
 USDT_TRC20 = "TKnDWJ6PXt7CAjXEEvUnoJbD9QwnCwGyCL"
 USDT_BEP20 = "0x723B04ABAAFF8524F98d4b60B20Fff67920A48A5"
@@ -383,6 +385,9 @@ def journal_subscription_message() -> tuple[str, dict]:
         "ثبت حرفه‌ایِ معاملات، داشبورد و منحنی سرمایه، تحلیل هوش مصنوعی روی تک‌تک "
         "معاملات، مربی هوش مصنوعی و گزارش نهادی.",
         "",
+        "🆓 پلن برنزی رایگان است: ۲۰ ژورنال، ۱ تحلیل تک‌معامله و ۱ بار مربی هوش "
+        "مصنوعی؛ پس از آن، برای استفادهٔ بیشتر باید اشتراک تهیه کنید.",
+        "",
     ]
     buttons = []
     for p in JOURNAL_PLANS:
@@ -409,7 +414,7 @@ def journal_subscription_message() -> tuple[str, dict]:
     return _with_footer("\n".join(lines)), {"inline_keyboard": buttons}
 
 
-# ──────────────────────── هشدارِ قیمتِ خرید ───────────────────────
+# ────────────────────── هشدارِ قیمتِ خرید ─────────────────────
 def _price_fa(v: float) -> str:
     """قالب‌بندیِ قیمتِ دلاری با دقتِ متناسب با بزرگیِ عدد."""
     if v >= 100:
@@ -468,7 +473,7 @@ def alert_message(kind: str, symbol: str, name: str | None, target: float,
     return fn(symbol, name, target, price, horizon)
 
 
-# ──────────────────────── پردازشِ آپدیت‌ها ───────────────────────
+# ────────────────────── پردازشِ آپدیت‌ها ─────────────────────
 def _menu_keyboard(tg_id: str | int | None = None) -> dict[str, Any]:
     rows = [[{"text": BTN_PORTFOLIO_SUB}], [{"text": BTN_JOURNAL_SUB}]]
     if ba.is_admin(tg_id):
@@ -724,128 +729,4 @@ async def _handle_callback(cb: dict[str, Any]) -> bool:
                                reply_markup=ba.admins_keyboard())
         return True
 
-    # ── فعال‌سازی اشتراک ──
-    if head == "sub":
-        step = parts[1] if len(parts) > 1 else ""
-        if step == "site":
-            site = parts[2]
-            db.bot_state_set(chat_id, {"flow": "sub_lookup", "site": site})
-            label = "پنل مدیریت سرمایه" if site == "portfolio" else "پنل ژورنال تریدینگ"
-            await send_message(chat_id,
-                               f"🎟 <b>فعال‌سازی اشتراک — {label}</b>\n\n"
-                               "ایمیل، نام کاربری یا شناسهٔ کاربر را بفرستید:",
-                               reply_markup=ba.cancel_keyboard())
-            return True
-        if step == "user":
-            site, user_id = parts[2], parts[3]
-            db.bot_state_set(chat_id, {"flow": "sub_tier", "site": site, "user_id": user_id})
-            await send_message(chat_id, "پلنِ موردنظر را انتخاب کنید:",
-                               reply_markup=ba.tiers_keyboard(site))
-            return True
-        if step == "back-tier":
-            site = parts[2]
-            st = db.bot_state_get(chat_id)
-            if not st.get("user_id"):
-                await send_message(chat_id, "نشستِ فعال‌سازی منقضی شد. دوباره شروع کنید:",
-                                   reply_markup=ba.sites_keyboard("sub:site"))
-                return True
-            st["flow"] = "sub_tier"
-            db.bot_state_set(chat_id, st)
-            await send_message(chat_id, "پلنِ موردنظر را انتخاب کنید:",
-                               reply_markup=ba.tiers_keyboard(site))
-            return True
-        if step == "tier":
-            site, tier = parts[2], parts[3]
-            st = db.bot_state_get(chat_id)
-            st.update({"flow": "sub_dur", "site": site, "tier": tier})
-            db.bot_state_set(chat_id, st)
-            await send_message(chat_id, "مدتِ اشتراک را انتخاب کنید:",
-                               reply_markup=ba.durations_keyboard(site, tier))
-            return True
-        if step == "dur":
-            site, tier, months = parts[2], parts[3], int(parts[4])
-            st = db.bot_state_get(chat_id)
-            user_id = st.get("user_id")
-            db.bot_state_set(chat_id, None)
-            if not user_id:
-                await send_message(chat_id, "❌ نشستِ فعال‌سازی منقضی شد. دوباره از ابتدا شروع کنید.")
-                return True
-            tier_fa = ba._tier_fa(tier, site)
-            dur_fa = dict(ba.DURATIONS).get(months, "بدون انقضا")
-            if site == "portfolio":
-                exp = ba.apply_portfolio_plan(int(user_id), tier, months)
-                await send_message(
-                    chat_id,
-                    f"✅ <b>اشتراک فعال شد</b>\n\n"
-                    f"🏢 سایت: پنل مدیریت سرمایه\n🆔 کاربر: <code>{_esc(user_id)}</code>\n"
-                    f"🎟 پلن: <b>{tier_fa}</b>\n⏳ مدت: <b>{dur_fa}</b>\n"
-                    f"📅 انقضا: <b>{_esc(exp)}</b>",
-                    reply_markup=ba.admin_menu_keyboard())
-            else:
-                ok, res = await journal_api.set_plan(int(user_id), tier, months or None)
-                if not ok:
-                    await send_message(chat_id, f"❌ {_esc(res)}")
-                    return True
-                exp = str(res.get("expiresAt") or "بدون انقضا")[:10]
-                await send_message(
-                    chat_id,
-                    f"✅ <b>اشتراک فعال شد</b>\n\n"
-                    f"🏢 سایت: پنل ژورنال تریدینگ\n"
-                    f"✉️ کاربر: <code>{_esc(res.get('email') or user_id)}</code>\n"
-                    f"🎟 پلن: <b>{tier_fa}</b>\n⏳ مدت: <b>{dur_fa}</b>\n"
-                    f"📅 انقضا: <b>{_esc(exp)}</b>",
-                    reply_markup=ba.admin_menu_keyboard())
-            return True
-
-    # ── گزارش‌ها ──
-    if head == "rep":
-        if parts[1] == "pick":
-            await send_message(chat_id, "📊 <b>گزارش عملکرد</b>\n\nگزارشِ کدام سایت را می‌خواهید؟",
-                               reply_markup=ba.sites_keyboard("rep:site"))
-            return True
-        if parts[1] == "site":
-            site = parts[2]
-            await send_message(chat_id, "بازهٔ گزارش را انتخاب کنید:",
-                               reply_markup=ba.periods_keyboard(site))
-            return True
-        site, period = parts[1], parts[2]
-        if site == "portfolio":
-            await send_message(chat_id, ba.portfolio_report(period),
-                               reply_markup=ba.periods_keyboard(site))
-        else:
-            ok, data_ = await journal_api.stats(period)
-            if not ok:
-                await send_message(chat_id, f"❌ {_esc(data_)}")
-                return True
-            await send_message(chat_id, ba.journal_report(period, data_),
-                               reply_markup=ba.periods_keyboard(site))
-        return True
-
-    # ── پیام همگانی ──
-    if head == "bc":
-        action = parts[1] if len(parts) > 1 else ""
-
-        # وضعیتِ لحطه‌ایِ صفِ ارسال (نشستِ تأیید را دست نمی‌زند).
-        if action == "status":
-            await send_message(chat_id, ba.broadcast_status_text(),
-                               reply_markup=ba.broadcast_status_keyboard())
-            return True
-
-        st = db.bot_state_get(chat_id)
-        db.bot_state_set(chat_id, None)
-        if action == "no":
-            await send_message(chat_id, "❌ ارسال پیام همگانی لغو شد.",
-                               reply_markup=ba.admin_menu_keyboard())
-            return True
-        if st.get("flow") != "broadcast_confirm" or not st.get("message_id"):
-            await send_message(chat_id, "❌ پیامی برای ارسال یافت نشد. دوباره تلاش کنید.",
-                               reply_markup=ba.admin_menu_keyboard())
-            return True
-        # پیام در صف قرار می‌گیرد و کارگرِ پس‌زمینه آن را با سقفِ ساعتی می‌فرستد؛
-        # به‌این‌ترتیب وب‌هوک بلوکه نمی‌شود و به سرور فشار نمی‌آید.
-        info = ba.broadcast_enqueue(st["from_chat"], int(st["message_id"]), tg_id)
-        await send_message(chat_id, ba.broadcast_queued_text(info),
-                           reply_markup=ba.broadcast_status_keyboard())
-        return True
-
-    return True
+    # ── فعال‌سازی
