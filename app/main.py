@@ -38,7 +38,7 @@ async def pwa_manifest() -> FileResponse:
     return FileResponse(
         "app/static/manifest.webmanifest",
         media_type="application/manifest+json",
-        headers={"Cache-Control": "public, max-age=3600"},
+        headers={"Cache-Control": "no-cache"},
     )
 
 
@@ -55,8 +55,8 @@ async def pwa_service_worker() -> FileResponse:
 _ICON_CANDIDATES = [
     os.getenv("ALGOHUB_ICON_PATH", ""),
     "ALGOHUB-icon.png",
-    "app/static/img/algohub-icon.png",
     "/var/www/portfolio/ALGOHUB-icon.png",
+    "app/static/img/algohub-icon.png",
 ]
 
 # لوگوی شفافِ ALGO HUB: برای صفحهٔ شروع (اسپلش) و نمایش درونِ اپ.
@@ -148,6 +148,38 @@ async def pwa_app_icon(size: int = 512):
 async def pwa_app_splash(size: int = 512):
     """لوگوی شفاف — صفحهٔ شروعِ اپ و نمایشِ درون‌برنامه‌ای."""
     return _png_response("splash", size, _SPLASH_CANDIDATES)
+
+
+@app.get("/app-icon/debug", include_in_schema=False)
+async def pwa_app_icon_debug():
+    """عیب‌یابی: دقیقاً چه فایلی به‌عنوان آیکن/اسپلش سرو می‌شود؟"""
+
+    def describe(candidates: list[str]) -> dict:
+        found = _first_existing(candidates)
+        return {
+            "using": found,
+            "bytes": Path(found).stat().st_size if found else None,
+            "candidates": [
+                {"path": c, "exists": bool(c) and Path(c).is_file()}
+                for c in candidates
+                if c
+            ],
+        }
+
+    try:
+        from PIL import Image  # type: ignore
+
+        pillow = getattr(Image, "__version__", "installed")
+    except Exception:  # noqa: BLE001
+        pillow = None
+
+    return {
+        "cwd": os.getcwd(),
+        "pillow": pillow,
+        "icon": describe(_ICON_CANDIDATES),
+        "splash": describe(_SPLASH_CANDIDATES),
+        "cached": sorted(f"{k}:{s}" for k, s in _ICON_CACHE),
+    }
 
 
 @app.get("/offline", include_in_schema=False)
