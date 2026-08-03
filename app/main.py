@@ -19,9 +19,11 @@ import asyncio
 from app import db
 from app.config import settings
 from app.routers import (admin, advisor, auth, bot, market, pages, portfolio,
-                         settings_api)
-from app.services import (algohub_bot, broadcast_job, market_card_job,
-                          price_alerts_job, signals_retention, telegram_signals)
+                         seo, settings_api)
+from app.routers import analytics as analytics_api
+from app.services import (algohub_bot, analytics, broadcast_job,
+                          market_card_job, price_alerts_job,
+                          signals_retention, telegram_signals)
 
 app = FastAPI(title=settings.app_name, debug=settings.debug)
 
@@ -29,6 +31,49 @@ app = FastAPI(title=settings.app_name, debug=settings.debug)
 app.add_middleware(GZipMiddleware, minimum_size=512)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
+# ── رهگیریِ بازدید برای اندازه‌گیری قیف ──────────────────
+# کوکی ah_vid فقط یک شناسهٔ تصادفی است (بدون هیچ دادهٔ شخصی)
+# تا بتوانیم «بازدیدکنندهٔ یکتا» را بشماریم.
+@app.middleware("http")
+async def _track_landing_views(request, call_next):
+    response = await call_next(request)
+    try:
+        if (
+            request.method == "GET"
+            and response.status_code < 400
+            and analytics.should_track(request.url.path)
+            and "text/html" in (response.headers.get("content-type") or "")
+        ):
+            vid = request.cookies.get("ah_vid")
+            is_new = not vid
+            if is_new:
+                vid = analytics.new_visitor_id()
+
+            params = request.query_params
+            await asyncio.to_thread(
+                analytics.record_view,
+                vid=vid,
+                path=request.url.path,
+                referrer=request.headers.get("referer"),
+                user_agent=request.headers.get("user-agent", ""),
+                utm_source=params.get("utm_source") or params.get("src"),
+                utm_campaign=params.get("utm_campaign"),
+            )
+
+            if is_new:
+                response.set_cookie(
+                    "ah_vid",
+                    vid,
+                    max_age=63072000,  # ۲ سال
+                    httponly=True,
+                    samesite="lax",
+                    path="/",
+                )
+    except Exception:  # noqa: BLE001
+        pass
+    return response
 
 
 # ── اپلیکیشن نصب‌شدنی ALGO HUB (PWA) ──────────────────
@@ -259,11 +304,14 @@ app.include_router(admin.router)
 app.include_router(advisor.router)
 app.include_router(bot.router)
 app.include_router(settings_api.router)
+app.include_router(analytics_api.router)
+app.include_router(seo.router)
 
 
 @app.on_event("startup")
 async def _startup() -> None:
     db.init_db()
+    analytics.init_db()
     # پاک‌سازیِ تحلیل‌های منقضی: یک‌بار در استارت‌آپ و سپس هر ساعت.
     asyncio.create_task(signals_retention.loop())
 
