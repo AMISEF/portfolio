@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 import asyncio
@@ -23,6 +24,35 @@ app = FastAPI(title=settings.app_name, debug=settings.debug)
 app.add_middleware(GZipMiddleware, minimum_size=512)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
+# ── اپلیکیشن نصب‌شدنی (PWA) ─────────────────────────────────────
+# منیفست و سرویس‌وورکر باید روی ریشهٔ دامنه سرو شوند تا دامنهٔ پوشش «/»
+# باشد و ژورنال (زیرِ /journal) هم بخشی از همان اپ الگو هاب دیده شود.
+# این مسیرها پیش از روترهای صفحات ثبت می‌شوند.
+@app.get("/manifest.webmanifest", include_in_schema=False)
+async def pwa_manifest() -> FileResponse:
+    return FileResponse(
+        "app/static/manifest.webmanifest",
+        media_type="application/manifest+json",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
+
+@app.get("/sw.js", include_in_schema=False)
+async def pwa_service_worker() -> FileResponse:
+    return FileResponse(
+        "app/static/sw.js",
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
+    )
+
+
+@app.get("/offline", include_in_schema=False)
+async def pwa_offline() -> FileResponse:
+    return FileResponse("app/static/offline.html", media_type="text/html")
+
+
 app.include_router(pages.router)
 app.include_router(market.router)
 app.include_router(portfolio.router)
