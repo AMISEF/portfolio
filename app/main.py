@@ -4,7 +4,10 @@
 """
 from __future__ import annotations
 
-from fastapi import FastAPI
+import os
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -26,10 +29,9 @@ app.add_middleware(GZipMiddleware, minimum_size=512)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
-# ── اپلیکیشن نصب‌شدنی (PWA) ─────────────────────────────────────
+# ── اپلیکیشن نصب‌شدنی ALGO HUB (PWA) ──────────────────────────────
 # منیفست و سرویس‌وورکر باید روی ریشهٔ دامنه سرو شوند تا دامنهٔ پوشش «/»
-# باشد و ژورنال (زیرِ /journal) هم بخشی از همان اپ الگو هاب دیده شود.
-# این مسیرها پیش از روترهای صفحات ثبت می‌شوند.
+# باشد و ژورنال (زیرِ /journal) هم بخشی از همان اپ ALGO HUB دیده شود.
 @app.get("/manifest.webmanifest", include_in_schema=False)
 async def pwa_manifest() -> FileResponse:
     return FileResponse(
@@ -46,6 +48,29 @@ async def pwa_service_worker() -> FileResponse:
         media_type="application/javascript",
         headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
     )
+
+
+# لوگوی رسمی اپ ALGO HUB. فایلِ اصلی در مخزنِ ژورنال قرار دارد؛ برای همین
+# چند مسیر احتمالی به ترتیب بررسی می‌شود تا هر جا بود همان سرو شود.
+_LOGO_CANDIDATES = [
+    os.getenv("ALGOHUB_LOGO_PATH", ""),
+    "app/static/img/algohub-logo.png",
+    "/var/www/trading-journal/ALGOHUB-LOGO.png",
+    "../trading-journal/ALGOHUB-LOGO.png",
+    "app/static/img/logo.png",
+]
+
+
+@app.get("/app-icon", include_in_schema=False)
+async def pwa_app_icon() -> FileResponse:
+    for candidate in _LOGO_CANDIDATES:
+        if candidate and Path(candidate).is_file():
+            return FileResponse(
+                candidate,
+                media_type="image/png",
+                headers={"Cache-Control": "public, max-age=86400"},
+            )
+    raise HTTPException(status_code=404, detail="app icon not found")
 
 
 @app.get("/offline", include_in_schema=False)
@@ -66,8 +91,7 @@ app.include_router(settings_api.router)
 @app.on_event("startup")
 async def _startup() -> None:
     db.init_db()
-    # پاک‌سازیِ تحلیل‌های منقضی: یک‌بار در استارت‌آپ و سپس هر ساعت. مستقل از توکنِ
-    # ربات اجرا می‌شود تا حتی اگر وب‌هوک غیرفعال باشد، آرشیو بیش از مهلت نماند.
+    # پاک‌سازیِ تحلیل‌های منقضی: یک‌بار در استارت‌آپ و سپس هر ساعت.
     asyncio.create_task(signals_retention.loop())
 
     # ثبت وب‌هوکِ ربات سیگنال‌ها (بدون بلوکه‌کردن استارت‌آپ).
@@ -90,8 +114,7 @@ async def _startup() -> None:
                 pass
         asyncio.create_task(_init_algohub())
         asyncio.create_task(price_alerts_job.loop())
-        # کارگرِ صفِ پیام همگانی: ارسالِ تدریجی با سقفِ ساعتی (بدون فشار به سرور).
-        # صف در پایگاه‌داده است، پس کارهای نیمه‌تمامِ پیش از ری‌استارت ادامه می‌یابند.
+        # کارگرِ صفِ پیام همگانی: ارسالِ تدریجی با سقفِ ساعتی.
         asyncio.create_task(broadcast_job.loop())
 
 

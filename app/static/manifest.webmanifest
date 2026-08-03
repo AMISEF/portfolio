@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "الگو هاب — کریپتو اسمارت",
-  "short_name": "الگو هاب",
+  "name": "ALGO HUB",
+  "short_name": "ALGO HUB",
   "description": "مدیریت سرمایه، نمای بازار و ژورنال تریدینگ در یک اپلیکیشن",
   "lang": "fa",
   "dir": "rtl",
@@ -15,21 +15,27 @@
   "categories": ["finance", "productivity"],
   "icons": [
     {
-      "src": "/static/img/pwa-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/app-icon",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/img/pwa-icon-maskable.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/app-icon",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icon",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/static/img/logo.png",
-      "sizes": "192x192 512x512",
-      "type": "image/png",
+      "src": "/static/img/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     }
   ],
