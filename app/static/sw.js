@@ -1,21 +1,11 @@
 /*
- * Service Worker اپ الگو هاب (دامنهٔ کامل — هم مدیریت سرمایه و هم /journal).
- *
- * استراتژی:
- *  - فایل‌های استاتیک: ابتدا کش، سپس شبکه (سرعت بالای بازشدن).
- *  - صفحات: ابتدا شبکه، در صورت قطعی صفحهٔ آفلاین.
- *  - API و درخواست‌های غیر GET: هرگز کش نمی‌شوند (دادهٔ لحظه‌ای بازار).
+ * Service Worker اپ ALGO HUB (دامنهٔ کامل — هم مدیریت سرمایه و هم /journal).
  */
-const VERSION = "algohub-v1";
+const VERSION = "algohub-v2";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "/static/offline.html";
 
-const PRECACHE = [
-  OFFLINE_URL,
-  "/static/img/pwa-icon.svg",
-  "/static/img/pwa-icon-maskable.svg",
-  "/manifest.webmanifest",
-];
+const PRECACHE = [OFFLINE_URL, "/app-icon", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -41,6 +31,7 @@ self.addEventListener("activate", (event) => {
 function isStatic(url) {
   return (
     url.pathname.startsWith("/static/") ||
+    url.pathname === "/app-icon" ||
     url.pathname.startsWith("/journal/_next/static/") ||
     url.pathname.startsWith("/_next/static/")
   );
@@ -81,7 +72,6 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-/* ── اعلان‌ها ───────────────────────────────────────── */
 self.addEventListener("push", (event) => {
   let payload = {};
   try {
@@ -89,11 +79,11 @@ self.addEventListener("push", (event) => {
   } catch (e) {
     payload = { body: event.data ? event.data.text() : "" };
   }
-  const title = payload.title || "الگو هاب";
+  const title = payload.title || "ALGO HUB";
   const options = {
     body: payload.body || "",
-    icon: "/static/img/pwa-icon.svg",
-    badge: "/static/img/pwa-icon-maskable.svg",
+    icon: "/app-icon",
+    badge: "/app-icon",
     dir: "rtl",
     lang: "fa",
     tag: payload.tag || "algohub",

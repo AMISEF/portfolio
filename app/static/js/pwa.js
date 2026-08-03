@@ -1,5 +1,5 @@
 /*
- * نصب اپ الگو هاب روی صفحهٔ اصلی گوشی (PWA) + اعلان‌ها.
+ * نصب اپ ALGO HUB روی صفحهٔ اصلی گوشی (PWA) + اعلان‌ها.
  *
  * این فایل در همهٔ صفحات هاب لود می‌شود؛ سرویس‌وورکر را با دامنهٔ «/» ثبت
  * می‌کند (پس ژورنال در /journal هم پوشش داده می‌شود) و یک نوار توصیهٔ
@@ -10,6 +10,7 @@
 
   var DISMISS_KEY = "ah-pwa-dismissed-at";
   var DISMISS_DAYS = 7;
+  var APP_ICON = "/app-icon";
 
   function isStandalone() {
     return (
@@ -60,9 +61,8 @@
       "background:var(--surface,#0f2336);color:var(--text,#e6eef7);border:1px solid var(--border,#1e3a52);" +
       "box-shadow:0 18px 44px -18px rgba(0,0,0,.55);animation:ah-pwa-in .35s ease}" +
       "@keyframes ah-pwa-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}" +
-      ".ah-pwa__icon{width:44px;height:44px;border-radius:14px;flex:0 0 auto;" +
-      "background:linear-gradient(135deg,#4ED9CC,#19C3B3 45%,#128F84);display:grid;place-items:center;" +
-      "color:#04201d;font-weight:800;font-size:15px}" +
+      ".ah-pwa__icon{width:46px;height:46px;border-radius:14px;flex:0 0 auto;object-fit:contain;" +
+      "background:rgba(127,127,127,.10);padding:4px}" +
       ".ah-pwa__txt{flex:1 1 auto;min-width:0}" +
       ".ah-pwa__t{font-weight:800;font-size:14px}" +
       ".ah-pwa__d{font-size:12px;opacity:.75;line-height:1.9;margin-top:2px}" +
@@ -90,16 +90,17 @@
     bar = document.createElement("div");
     bar.className = "ah-pwa";
 
-    var icon = document.createElement("div");
+    var icon = document.createElement("img");
     icon.className = "ah-pwa__icon";
-    icon.textContent = "AH";
+    icon.src = APP_ICON;
+    icon.alt = "ALGO HUB";
 
     var txt = document.createElement("div");
     txt.className = "ah-pwa__txt";
 
     var t = document.createElement("div");
     t.className = "ah-pwa__t";
-    t.textContent = "الگو هاب را روی صفحهٔ اصلی گوشی‌تان نصب کنید";
+    t.textContent = "اپ ALGO HUB را روی صفحهٔ اصلی گوشی‌تان نصب کنید";
 
     var d = document.createElement("div");
     d.className = "ah-pwa__d";
@@ -171,9 +172,9 @@
     return Notification.requestPermission().then(function (perm) {
       if (perm === "granted") {
         navigator.serviceWorker.ready.then(function (reg) {
-          reg.showNotification("الگو هاب", {
+          reg.showNotification("ALGO HUB", {
             body: "اعلان‌ها فعال شد — هشدارهای بازار و یادآوری ثبت ژورنال را دریافت می‌کنید.",
-            icon: "/static/img/pwa-icon.svg",
+            icon: APP_ICON,
             dir: "rtl",
             lang: "fa",
             data: { url: "/" },
