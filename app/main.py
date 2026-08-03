@@ -51,38 +51,46 @@ async def pwa_service_worker() -> FileResponse:
     )
 
 
-# لوگوی رسمی اپ ALGO HUB. فایلِ اصلی در مخزنِ ژورنال قرار دارد؛ برای همین
-# چند مسیر احتمالی به ترتیب بررسی می‌شود تا هر جا بود همان سرو شود.
-_LOGO_CANDIDATES = [
+# آیکن رسمی اپ: نسخهٔ دارای پس‌زمینهٔ آبی (برای صفحهٔ اصلی iOS و اندروید).
+_ICON_CANDIDATES = [
+    os.getenv("ALGOHUB_ICON_PATH", ""),
+    "ALGOHUB-icon.png",
+    "app/static/img/algohub-icon.png",
+    "/var/www/portfolio/ALGOHUB-icon.png",
+]
+
+# لوگوی شفافِ ALGO HUB: برای صفحهٔ شروع (اسپلش) و نمایش درونِ اپ.
+_SPLASH_CANDIDATES = [
     os.getenv("ALGOHUB_LOGO_PATH", ""),
+    "ALGOHUB-LOGO.png",
     "app/static/img/algohub-logo.png",
     "/var/www/trading-journal/ALGOHUB-LOGO.png",
     "../trading-journal/ALGOHUB-LOGO.png",
     "app/static/img/logo.png",
 ]
 
-# اندازه‌های مجازِ آیکن (برای جلوگیری از ساختِ بی‌پایانِ تصاویر با ورودی دلخواه).
-_ICON_SIZES = (48, 72, 96, 128, 144, 152, 180, 192, 256, 384, 512)
-_ICON_CACHE: dict[int, bytes] = {}
+# اندازه‌های مجاز (تا ورودیِ دلخواه باعثِ ساختِ بی‌پایانِ تصویر نشود).
+_ICON_SIZES = (48, 72, 96, 128, 144, 152, 180, 192, 256, 384, 512, 640, 768, 1024)
+_ICON_CACHE: dict[tuple[str, int], bytes] = {}
 
 
-def _logo_path() -> str | None:
-    for candidate in _LOGO_CANDIDATES:
+def _first_existing(candidates: list[str]) -> str | None:
+    for candidate in candidates:
         if candidate and Path(candidate).is_file():
             return candidate
     return None
 
 
-def _render_icon(size: int) -> bytes | None:
-    """تغییر اندازهٔ لوگوی رسمی به یک PNG مربعیِ شفاف (با کش در حافظه).
+def _render(kind: str, size: int) -> bytes | None:
+    """تغییر اندازهٔ تصویر به یک PNG مربعی (با کش در حافظه).
 
-    اگر Pillow نصب نباشد یا خطایی رخ دهد، None برمی‌گردد و فایلِ خام سرو می‌شود.
+    اگر Pillow در دسترس نباشد یا خطایی رخ دهد، None برمی‌گردد و فایلِ خام سرو می‌شود.
     """
-    cached = _ICON_CACHE.get(size)
+    cached = _ICON_CACHE.get((kind, size))
     if cached is not None:
         return cached
 
-    source = _logo_path()
+    source = _first_existing(_ICON_CANDIDATES if kind == "icon" else _SPLASH_CANDIDATES)
     if not source:
         return None
 
@@ -91,7 +99,6 @@ def _render_icon(size: int) -> bytes | None:
 
         with Image.open(source) as img:
             img = img.convert("RGBA")
-            # مربع‌کردنِ بوم (لوگو بدون پس‌زمینه است، پس حاشیه شفاف می‌ماند).
             side = max(img.width, img.height)
             if img.width != img.height:
                 canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
@@ -105,16 +112,15 @@ def _render_icon(size: int) -> bytes | None:
     except Exception:  # noqa: BLE001
         return None
 
-    _ICON_CACHE[size] = data
+    _ICON_CACHE[(kind, size)] = data
     return data
 
 
-@app.get("/app-icon", include_in_schema=False)
-async def pwa_app_icon(size: int = 512):
+def _png_response(kind: str, size: int, candidates: list[str]):
     if size not in _ICON_SIZES:
         size = 512
 
-    data = _render_icon(size)
+    data = _render(kind, size)
     if data is not None:
         return Response(
             content=data,
@@ -122,15 +128,26 @@ async def pwa_app_icon(size: int = 512):
             headers={"Cache-Control": "public, max-age=86400"},
         )
 
-    # پشتیبان: سروی فایلِ خام (مثلاً وقتی Pillow نصب نیست).
-    source = _logo_path()
+    source = _first_existing(candidates)
     if source:
         return FileResponse(
             source,
             media_type="image/png",
             headers={"Cache-Control": "public, max-age=86400"},
         )
-    raise HTTPException(status_code=404, detail="app icon not found")
+    raise HTTPException(status_code=404, detail="image not found")
+
+
+@app.get("/app-icon", include_in_schema=False)
+async def pwa_app_icon(size: int = 512):
+    """آیکن اپ (پس‌زمینهٔ آبی) — روی صفحهٔ اصلی گوشی و اعلان‌ها."""
+    return _png_response("icon", size, _ICON_CANDIDATES)
+
+
+@app.get("/app-splash", include_in_schema=False)
+async def pwa_app_splash(size: int = 512):
+    """لوگوی شفاف — صفحهٔ شروعِ اپ و نمایشِ درون‌برنامه‌ای."""
+    return _png_response("splash", size, _SPLASH_CANDIDATES)
 
 
 @app.get("/offline", include_in_schema=False)
@@ -157,7 +174,8 @@ async def _startup() -> None:
     # پیش‌ساختِ آیکن‌های اپ تا اولین درخواست کند نشود.
     async def _warm_icons() -> None:
         for size in (192, 512):
-            await asyncio.to_thread(_render_icon, size)
+            await asyncio.to_thread(_render, "icon", size)
+        await asyncio.to_thread(_render, "splash", 512)
 
     asyncio.create_task(_warm_icons())
 
