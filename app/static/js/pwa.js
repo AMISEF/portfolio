@@ -1,16 +1,20 @@
 /*
- * نصب اپ ALGO HUB روی صفحهٔ اصلی گوشی (PWA) + اعلان‌ها.
+ * نصب اپ ALGO HUB روی صفحهٔ اصلی گوشی (PWA) + اسپلشِ شروع + اعلان‌ها.
  *
  * این فایل در همهٔ صفحات هاب لود می‌شود؛ سرویس‌وورکر را با دامنهٔ «/» ثبت
- * می‌کند (پس ژورنال در /journal هم پوشش داده می‌شود) و یک نوار توصیهٔ
- * نصب نمایش می‌دهد (با راهنمای جداگانه برای آیفون).
+ * می‌کند (پس ژورنال در /journal هم پوشش داده می‌شود)، هنگامِ بازشدنِ اپ لوگوی
+ * ALGO HUB را نشان می‌دهد و یک نوار توصیهٔ نصب نمایش می‌دهد.
+ *
+ *   /app-icon    → آیکن اپ با پس‌زمینهٔ آبی (صفحهٔ اصلی گوشی، اعلان‌ها)
+ *   /app-splash  → لوگوی شفاف (صفحهٔ شروع، نمایش درونِ اپ)
  */
 (function () {
   "use strict";
 
   var DISMISS_KEY = "ah-pwa-dismissed-at";
   var DISMISS_DAYS = 7;
-  var APP_ICON = "/app-icon";
+  var APP_ICON = "/app-icon?size=192";
+  var APP_SPLASH = "/app-splash?size=512";
 
   function isStandalone() {
     return (
@@ -42,14 +46,72 @@
     } catch (e) {}
   }
 
-  /* ── ثبت سرویس‌وورکر ────────────────────────────── */
+  /* ── ثبت سرویس‌وورکر ───────────────────────── */
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(function () {});
     });
   }
 
-  /* ── نوار توصیهٔ نصب ────────────────────────────── */
+  /* ── اسپلشِ شروعِ اپ ───────────────────────
+     فقط وقتی اپ نصب‌شده باز می‌شود (standalone) و یک‌بار در هر اجرا.        */
+  var SPLASH_KEY = "ah-splash-shown";
+
+  function splashSeenThisSession() {
+    try {
+      if (sessionStorage.getItem(SPLASH_KEY)) return true;
+      sessionStorage.setItem(SPLASH_KEY, "1");
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function showSplash() {
+    if (!isStandalone() || inTelegram() || splashSeenThisSession()) return;
+
+    var css =
+      ".ah-splash{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;" +
+      "align-items:center;justify-content:center;gap:18px;background:#0A1622;" +
+      "transition:opacity .45s ease;opacity:1}" +
+      ".ah-splash--out{opacity:0;pointer-events:none}" +
+      ".ah-splash img{width:min(46vw,190px);height:auto;animation:ah-splash-pop .6s ease}" +
+      ".ah-splash__t{color:#cfe3f5;font-size:12px;letter-spacing:.22em;opacity:.7}" +
+      "@keyframes ah-splash-pop{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:none}}";
+    var s = document.createElement("style");
+    s.textContent = css;
+    document.head.appendChild(s);
+
+    var el = document.createElement("div");
+    el.className = "ah-splash";
+
+    var img = document.createElement("img");
+    img.src = APP_SPLASH;
+    img.alt = "ALGO HUB";
+
+    var cap = document.createElement("div");
+    cap.className = "ah-splash__t";
+    cap.textContent = "ALGO HUB";
+
+    el.appendChild(img);
+    el.appendChild(cap);
+    document.body.appendChild(el);
+
+    setTimeout(function () {
+      el.className = "ah-splash ah-splash--out";
+      setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 500);
+    }, 1300);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", showSplash);
+  } else {
+    showSplash();
+  }
+
+  /* ── نوار توصیهٔ نصب ──────────────────────── */
   var deferred = null;
   var bar = null;
 
@@ -61,8 +123,7 @@
       "background:var(--surface,#0f2336);color:var(--text,#e6eef7);border:1px solid var(--border,#1e3a52);" +
       "box-shadow:0 18px 44px -18px rgba(0,0,0,.55);animation:ah-pwa-in .35s ease}" +
       "@keyframes ah-pwa-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}" +
-      ".ah-pwa__icon{width:46px;height:46px;border-radius:14px;flex:0 0 auto;object-fit:contain;" +
-      "background:rgba(127,127,127,.10);padding:4px}" +
+      ".ah-pwa__icon{width:46px;height:46px;border-radius:14px;flex:0 0 auto;object-fit:cover}" +
       ".ah-pwa__txt{flex:1 1 auto;min-width:0}" +
       ".ah-pwa__t{font-weight:800;font-size:14px}" +
       ".ah-pwa__d{font-size:12px;opacity:.75;line-height:1.9;margin-top:2px}" +
@@ -164,7 +225,7 @@
     });
   }
 
-  /* ── اعلان‌ها ───────────────────────────────────── */
+  /* ── اعلان‌ها ─────────────────────────────── */
   function enableNotifications() {
     if (!("Notification" in window) || !navigator.serviceWorker) {
       return Promise.resolve("unsupported");
