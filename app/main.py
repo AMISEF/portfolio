@@ -5,12 +5,13 @@
 from __future__ import annotations
 
 import io
+import json
 import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import asyncio
@@ -33,23 +34,6 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # ── اپلیکیشن نصب‌شدنی ALGO HUB (PWA) ──────────────────
 # منیفست و سرویس‌وورکر باید روی ریشهٔ دامنه سرو شوند تا دامنهٔ پوشش «/»
 # باشد و ژورنال (زیرِ /journal) هم بخشی از همان اپ ALGO HUB دیده شود.
-@app.get("/manifest.webmanifest", include_in_schema=False)
-async def pwa_manifest() -> FileResponse:
-    return FileResponse(
-        "app/static/manifest.webmanifest",
-        media_type="application/manifest+json",
-        headers={"Cache-Control": "no-cache"},
-    )
-
-
-@app.get("/sw.js", include_in_schema=False)
-async def pwa_service_worker() -> FileResponse:
-    return FileResponse(
-        "app/static/sw.js",
-        media_type="application/javascript",
-        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
-    )
-
 
 # آیکن رسمی اپ: نسخهٔ دارای پس‌زمینهٔ آبی (برای صفحهٔ اصلی iOS و اندروید).
 _ICON_CANDIDATES = [
@@ -70,8 +54,11 @@ _SPLASH_CANDIDATES = [
 ]
 
 # اندازه‌های مجاز (تا ورودیِ دلخواه باعثِ ساختِ بی‌پایانِ تصویر نشود).
-_ICON_SIZES = (48, 72, 96, 128, 144, 152, 180, 192, 256, 384, 512, 640, 768, 1024)
-_ICON_CACHE: dict[tuple[str, int], bytes] = {}
+_ICON_SIZES = (48, 72, 96, 128, 144, 152, 167, 180, 192, 256, 384, 512, 640, 768, 1024)
+
+# کلیدِ کش شاملِ «نسخهٔ فایل» است؛ بنابراین به محض اینکه تصویرِ روی دیسک
+# عوض شود، کلید هم عوض می‌شود و تصویرِ جدید بدون ریستارت سرو می‌شود.
+_ICON_CACHE: dict[tuple[str, int, str], bytes] = {}
 
 
 def _first_existing(candidates: list[str]) -> str | None:
@@ -81,12 +68,29 @@ def _first_existing(candidates: list[str]) -> str | None:
     return None
 
 
+def _version_of(kind: str) -> str:
+    """امضای کوتاهِ فایل (اندازه + زمان تغییر).
+
+    هر بار که تصویرِ تازه‌ای آپلود شود، این رشته عوض می‌شود و چون داخلِ
+    آدرسِ آیکن می‌آید، مرورگر و سیستم‌عامل مجبور می‌شوند دوباره دانلود کنند.
+    """
+    source = _first_existing(_ICON_CANDIDATES if kind == "icon" else _SPLASH_CANDIDATES)
+    if not source:
+        return "0"
+    try:
+        stat = Path(source).stat()
+        return f"{stat.st_size}-{int(stat.st_mtime)}"
+    except OSError:
+        return "0"
+
+
 def _render(kind: str, size: int) -> bytes | None:
     """تغییر اندازهٔ تصویر به یک PNG مربعی (با کش در حافظه).
 
     اگر Pillow در دسترس نباشد یا خطایی رخ دهد، None برمی‌گردد و فایلِ خام سرو می‌شود.
     """
-    cached = _ICON_CACHE.get((kind, size))
+    version = _version_of(kind)
+    cached = _ICON_CACHE.get((kind, size, version))
     if cached is not None:
         return cached
 
@@ -112,20 +116,29 @@ def _render(kind: str, size: int) -> bytes | None:
     except Exception:  # noqa: BLE001
         return None
 
-    _ICON_CACHE[(kind, size)] = data
+    # فقط نسخهٔ جاری را نگه می‌داریم؛ نسخه‌های قدیمی دور ریخته می‌شوند.
+    for key in [k for k in _ICON_CACHE if k[0] == kind and k[2] != version]:
+        _ICON_CACHE.pop(key, None)
+    _ICON_CACHE[(kind, size, version)] = data
     return data
 
 
-def _png_response(kind: str, size: int, candidates: list[str]):
+def _png_response(kind: str, size: int, candidates: list[str], versioned: bool):
     if size not in _ICON_SIZES:
         size = 512
+
+    # آدرسِ نسخه‌دار (شامل ?v=) را می‌توان مدت‌ها کش کرد؛ آدرسِ بدونِ نسخه
+    # هرگز نباید کش شود، وگرنه آپلودِ تصویر جدید دیده نمی‌شود.
+    cache_control = (
+        "public, max-age=31536000, immutable" if versioned else "no-cache, must-revalidate"
+    )
 
     data = _render(kind, size)
     if data is not None:
         return Response(
             content=data,
             media_type="image/png",
-            headers={"Cache-Control": "public, max-age=86400"},
+            headers={"Cache-Control": cache_control},
         )
 
     source = _first_existing(candidates)
@@ -133,32 +146,83 @@ def _png_response(kind: str, size: int, candidates: list[str]):
         return FileResponse(
             source,
             media_type="image/png",
-            headers={"Cache-Control": "public, max-age=86400"},
+            headers={"Cache-Control": cache_control},
         )
     raise HTTPException(status_code=404, detail="image not found")
 
 
+@app.get("/manifest.webmanifest", include_in_schema=False)
+async def pwa_manifest() -> JSONResponse:
+    """منیفست پویا: آدرسِ آیکن‌ها همیشه برچسبِ نسخهٔ فایلِ فعلی را دارد."""
+    with open("app/static/manifest.webmanifest", encoding="utf-8") as fh:
+        manifest = json.load(fh)
+
+    version = _version_of("icon")
+    manifest["icons"] = [
+        {
+            "src": f"/app-icon?size=192&v={version}",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any",
+        },
+        {
+            "src": f"/app-icon?size=512&v={version}",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any",
+        },
+        {
+            "src": f"/app-icon?size=192&v={version}",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable",
+        },
+        {
+            "src": f"/app-icon?size=512&v={version}",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable",
+        },
+    ]
+
+    return JSONResponse(
+        manifest,
+        media_type="application/manifest+json",
+        headers={"Cache-Control": "no-cache, must-revalidate"},
+    )
+
+
+@app.get("/sw.js", include_in_schema=False)
+async def pwa_service_worker() -> FileResponse:
+    return FileResponse(
+        "app/static/sw.js",
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
+    )
+
+
 @app.get("/app-icon", include_in_schema=False)
-async def pwa_app_icon(size: int = 512):
+async def pwa_app_icon(size: int = 512, v: str | None = None):
     """آیکن اپ (پس‌زمینهٔ آبی) — روی صفحهٔ اصلی گوشی و اعلان‌ها."""
-    return _png_response("icon", size, _ICON_CANDIDATES)
+    return _png_response("icon", size, _ICON_CANDIDATES, versioned=bool(v))
 
 
 @app.get("/app-splash", include_in_schema=False)
-async def pwa_app_splash(size: int = 512):
+async def pwa_app_splash(size: int = 512, v: str | None = None):
     """لوگوی شفاف — صفحهٔ شروعِ اپ و نمایشِ درون‌برنامه‌ای."""
-    return _png_response("splash", size, _SPLASH_CANDIDATES)
+    return _png_response("splash", size, _SPLASH_CANDIDATES, versioned=bool(v))
 
 
 @app.get("/app-icon/debug", include_in_schema=False)
 async def pwa_app_icon_debug():
     """عیب‌یابی: دقیقاً چه فایلی به‌عنوان آیکن/اسپلش سرو می‌شود؟"""
 
-    def describe(candidates: list[str]) -> dict:
+    def describe(kind: str, candidates: list[str]) -> dict:
         found = _first_existing(candidates)
         return {
             "using": found,
             "bytes": Path(found).stat().st_size if found else None,
+            "version": _version_of(kind),
             "candidates": [
                 {"path": c, "exists": bool(c) and Path(c).is_file()}
                 for c in candidates
@@ -176,9 +240,9 @@ async def pwa_app_icon_debug():
     return {
         "cwd": os.getcwd(),
         "pillow": pillow,
-        "icon": describe(_ICON_CANDIDATES),
-        "splash": describe(_SPLASH_CANDIDATES),
-        "cached": sorted(f"{k}:{s}" for k, s in _ICON_CACHE),
+        "icon": describe("icon", _ICON_CANDIDATES),
+        "splash": describe("splash", _SPLASH_CANDIDATES),
+        "cached": sorted(f"{k[0]}:{k[1]}:{k[2]}" for k in _ICON_CACHE),
     }
 
 
@@ -205,7 +269,7 @@ async def _startup() -> None:
 
     # پیش‌ساختِ آیکن‌های اپ تا اولین درخواست کند نشود.
     async def _warm_icons() -> None:
-        for size in (192, 512):
+        for size in (180, 192, 512):
             await asyncio.to_thread(_render, "icon", size)
         await asyncio.to_thread(_render, "splash", 512)
 

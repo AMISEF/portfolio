@@ -3,14 +3,15 @@
  *
  *   /app-icon    → آیکن اپ با پس‌زمینهٔ آبی
  *   /app-splash  → لوگوی شفافِ صفحهٔ شروع
+ *
+ * آیکن و منیفست عمداً کش نمی‌شوند: سرور خودش نسخه‌گذاری می‌کند و هر
+ * تصویرِ تازه‌ای که آپلود شود باید بلافاصله دیده شود.
  */
-const VERSION = "algohub-v3";
+const VERSION = "algohub-v4";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "/static/offline.html";
-const APP_ICON = "/app-icon?size=192";
-const APP_SPLASH = "/app-splash?size=512";
 
-const PRECACHE = [OFFLINE_URL, APP_ICON, APP_SPLASH, "/manifest.webmanifest"];
+const PRECACHE = [OFFLINE_URL];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -33,11 +34,10 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// فقط دارایی‌های بدون‌تغییر، آیکن و منیفست در این فهرست نیستند.
 function isStatic(url) {
   return (
     url.pathname.startsWith("/static/") ||
-    url.pathname === "/app-icon" ||
-    url.pathname === "/app-splash" ||
     url.pathname.startsWith("/journal/_next/static/") ||
     url.pathname.startsWith("/_next/static/")
   );
@@ -50,6 +50,14 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/")) return;
+  // آیکن/اسپلش/منیفست همیشه مستقیم از شبکه گرفته می‌شوند.
+  if (
+    url.pathname === "/app-icon" ||
+    url.pathname === "/app-splash" ||
+    url.pathname === "/manifest.webmanifest"
+  ) {
+    return;
+  }
 
   if (isStatic(url)) {
     event.respondWith(
@@ -88,8 +96,8 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "ALGO HUB";
   const options = {
     body: payload.body || "",
-    icon: APP_ICON,
-    badge: APP_ICON,
+    icon: "/app-icon?size=192",
+    badge: "/app-icon?size=96",
     dir: "rtl",
     lang: "fa",
     tag: payload.tag || "algohub",
