@@ -6,6 +6,148 @@
   <meta name="theme-color" content="#162F55">
   <title>{% block title %}{{ brand_fa }} — {{ title_fa }}{% endblock %}</title>
 
+  {#
+    سئو — طبق قواعد گوگل (Search Essentials):
+    توضیح یکتای هر صفحه، نشانی کانونیکال، hreflang فارسی، کارت اشتراک‌گذاری
+    و دادهٔ ساختاریافته (Organization / WebSite / SoftwareApplication / FAQ).
+    هر صفحه می‌تواند seo_description و seo_keywords را در context خود جایگزین کند.
+  #}
+  {% set site_url = "https" ~ "://algohub.cryptosmart.site" %}
+  {% set journal_url = "https" ~ "://trading-journal.cryptosmart.site" %}
+  {% set page_path = request.url.path if request else "/" %}
+  {% set canonical_url = site_url ~ page_path %}
+  {% set seo_desc = seo_description | default("الگو هاب (ALGO HUB): پلتفرم فارسی مدیریت سرمایه و ژورنال معاملاتی کریپتو — رصد لحظه‌ای قیمت، تحلیل سبد دارایی، مدیریت ریسک، هشدار قیمت و ثبت خودکار معاملات فیوچرز با تحلیل هوش مصنوعی.", true) %}
+  {% set seo_kw = seo_keywords | default("مدیریت سرمایه کریپتو، سبد دارایی ارز دیجیتال، ژورنال معاملاتی، ژورنال ترید فارسی، قیمت لحظه‌ای ارز دیجیتال، مدیریت ریسک، تحلیل هوش مصنوعی معاملات، فیوچرز کریپتو، الگو هاب، کریپتو اسمارت", true) %}
+
+  {% block seo %}
+  <meta name="description" content="{{ seo_desc }}">
+  <meta name="keywords" content="{{ seo_kw }}">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="author" content="Crypto Smart">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <link rel="alternate" hreflang="fa-IR" href="{{ canonical_url }}">
+  <link rel="alternate" hreflang="x-default" href="{{ canonical_url }}">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ALGO HUB">
+  <meta property="og:locale" content="fa_IR">
+  <meta property="og:title" content="{{ brand_fa }} — {{ title_fa }}">
+  <meta property="og:description" content="{{ seo_desc }}">
+  <meta property="og:url" content="{{ canonical_url }}">
+  <meta property="og:image" content="{{ site_url }}/app-icon?size=512">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ brand_fa }} — {{ title_fa }}">
+  <meta name="twitter:description" content="{{ seo_desc }}">
+  <meta name="twitter:image" content="{{ site_url }}/app-icon?size=512">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "{{ site_url }}/#organization",
+        "name": "ALGO HUB",
+        "alternateName": "الگو هاب — کریپتو اسمارت",
+        "url": "{{ site_url }}",
+        "logo": "{{ site_url }}/app-icon?size=512",
+        "sameAs": [
+          "https://t.me/CRYPTOSMART_ORG",
+          "https://www.instagram.com/cryptosmart_org/",
+          "https://www.youtube.com/@Cryptosmart_org",
+          "https://www.aparat.com/CryptoSmart"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "{{ site_url }}/#website",
+        "url": "{{ site_url }}",
+        "name": "ALGO HUB — مدیریت سرمایه و ژورنال معاملاتی کریپتو",
+        "inLanguage": "fa-IR",
+        "publisher": { "@id": "{{ site_url }}/#organization" },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "{{ site_url }}/?q={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "ALGO HUB",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Web, Android, iOS",
+        "url": "{{ site_url }}",
+        "inLanguage": "fa-IR",
+        "description": "{{ seo_desc }}",
+        "featureList": [
+          "رصد لحظه‌ای قیمت ارز دیجیتال، طلا و دلار",
+          "مدیریت سبد دارایی و محاسبهٔ سود و زیان",
+          "مدیریت ریسک و پروفایل سرمایه‌گذاری",
+          "هشدار قیمت و سیگنال اختصاصی",
+          "ژورنال معاملاتی فیوچرز با ثبت خودکار از صرافی",
+          "تحلیل معاملات با هوش مصنوعی"
+        ],
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "IRR",
+          "description": "شروع رایگان بدون نیاز به کارت بانکی"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "الگو هاب چیست؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "الگو هاب یک اپلیکیشن فارسی است که مدیریت سرمایه (سبد دارایی، قیمت لحظه‌ای، مدیریت ریسک) و ژورنال معاملاتی کریپتو را در یک جا جمع کرده است."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "آیا استفاده از الگو هاب رایگان است؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "بله؛ پلن برنزی رایگان است و بدون کارت بانکی می‌توانید شروع کنید. پلن‌های نقره‌ای، طلایی و الماسی امکانات حرفه‌ای‌تری مانند تحلیل نامحدود هوش مصنوعی دارند."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "آیا می‌توانم معاملات صرافی را خودکار ثبت کنم؟",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "بله؛ با اتصال کلید API صرافی‌هایی مانند توبیت، ال‌بانک، XT، اوربیت و ویکس، معاملات فیوچرز به‌صورت خودکار در ژورنال ثبت می‌شوند."
+            }
+          }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "الگو هاب",
+            "item": "{{ site_url }}/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "ژورنال معاملاتی",
+            "item": "{{ journal_url }}/"
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  {% endblock %}
+
   <!-- اپلیکیشن نصب‌شدنی ALGO HUB (PWA) — شامل مدیریت سرمایه و ژورنال تریدینگ -->
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="application-name" content="ALGO HUB">
@@ -45,7 +187,7 @@
     </main>
     <footer class="cs-footer">
       <div class="cs-footer__inner container">
-        <img src="/static/img/logo.png" alt="CryptoSmart" class="cs-footer__logo">
+        <img src="/static/img/logo.png" alt="لوگوی کریپتو اسمارت — الگو هاب" class="cs-footer__logo">
         <div class="cs-footer__wordmark">CRYPTO <span class="cs-footer__accent">SMART</span></div>
         <p class="cs-footer__tagline">شروع هوشمند، معامله هوشمند</p>
         <p class="cs-footer__tagline-en" dir="ltr">
