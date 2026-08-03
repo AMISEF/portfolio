@@ -1,11 +1,16 @@
 /*
  * Service Worker اپ ALGO HUB (دامنهٔ کامل — هم مدیریت سرمایه و هم /journal).
+ *
+ *   /app-icon    → آیکن اپ با پس‌زمینهٔ آبی
+ *   /app-splash  → لوگوی شفافِ صفحهٔ شروع
  */
-const VERSION = "algohub-v2";
+const VERSION = "algohub-v3";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "/static/offline.html";
+const APP_ICON = "/app-icon?size=192";
+const APP_SPLASH = "/app-splash?size=512";
 
-const PRECACHE = [OFFLINE_URL, "/app-icon", "/manifest.webmanifest"];
+const PRECACHE = [OFFLINE_URL, APP_ICON, APP_SPLASH, "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -32,6 +37,7 @@ function isStatic(url) {
   return (
     url.pathname.startsWith("/static/") ||
     url.pathname === "/app-icon" ||
+    url.pathname === "/app-splash" ||
     url.pathname.startsWith("/journal/_next/static/") ||
     url.pathname.startsWith("/_next/static/")
   );
@@ -82,8 +88,8 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "ALGO HUB";
   const options = {
     body: payload.body || "",
-    icon: "/app-icon",
-    badge: "/app-icon",
+    icon: APP_ICON,
+    badge: APP_ICON,
     dir: "rtl",
     lang: "fa",
     tag: payload.tag || "algohub",
