@@ -6,6 +6,15 @@
   <meta name="theme-color" content="#162F55">
   <title>{% block title %}{{ brand_fa }} — {{ title_fa }}{% endblock %}</title>
 
+  <!-- اپلیکیشن نصب‌شدنی «الگو هاب» (PWA) — شامل مدیریت سرمایه و ژورنال تریدینگ -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="application-name" content="الگو هاب">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="الگو هاب">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/static/img/logo.png">
+
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/styles.css?v={{ static_v }}">
@@ -77,6 +86,7 @@
   <script src="/static/js/theme.js?v={{ static_v }}"></script>
   <script src="/static/js/telegram.js?v={{ static_v }}"></script>
   <script src="/static/js/auth.js?v={{ static_v }}"></script>
+  <script src="/static/js/pwa.js?v={{ static_v }}" defer></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
