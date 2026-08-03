@@ -1,0 +1,53 @@
+{
+  "id": "/",
+  "name": "الگو هاب — کریپتو اسمارت",
+  "short_name": "الگو هاب",
+  "description": "مدیریت سرمایه، نمای بازار و ژورنال تریدینگ در یک اپلیکیشن",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "/?src=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#0A1622",
+  "theme_color": "#162F55",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "/static/img/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/img/pwa-icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/static/img/logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ژورنال تریدینگ",
+      "short_name": "ژورنال",
+      "url": "/journal/dashboard"
+    },
+    {
+      "name": "مدیریت سرمایه",
+      "short_name": "سرمایه",
+      "url": "/portfolio"
+    },
+    {
+      "name": "نمای بازار",
+      "short_name": "بازار",
+      "url": "/"
+    }
+  ]
+}

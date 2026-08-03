@@ -1,0 +1,124 @@
+/*
+ * Service Worker اپ الگو هاب (دامنهٔ کامل — هم مدیریت سرمایه و هم /journal).
+ *
+ * استراتژی:
+ *  - فایل‌های استاتیک: ابتدا کش، سپس شبکه (سرعت بالای بازشدن).
+ *  - صفحات: ابتدا شبکه، در صورت قطعی صفحهٔ آفلاین.
+ *  - API و درخواست‌های غیر GET: هرگز کش نمی‌شوند (دادهٔ لحظه‌ای بازار).
+ */
+const VERSION = "algohub-v1";
+const STATIC_CACHE = VERSION + "-static";
+const OFFLINE_URL = "/static/offline.html";
+
+const PRECACHE = [
+  OFFLINE_URL,
+  "/static/img/pwa-icon.svg",
+  "/static/img/pwa-icon-maskable.svg",
+  "/manifest.webmanifest",
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches
+      .open(STATIC_CACHE)
+      .then((c) => c.addAll(PRECACHE))
+      .catch(() => undefined)
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== STATIC_CACHE).map((k) => caches.delete(k)))
+      )
+      .then(() => self.clients.claim())
+  );
+});
+
+function isStatic(url) {
+  return (
+    url.pathname.startsWith("/static/") ||
+    url.pathname.startsWith("/journal/_next/static/") ||
+    url.pathname.startsWith("/_next/static/")
+  );
+}
+
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET") return;
+
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api/")) return;
+
+  if (isStatic(url)) {
+    event.respondWith(
+      caches.match(req).then((hit) => {
+        const network = fetch(req)
+          .then((res) => {
+            if (res && res.status === 200) {
+              const copy = res.clone();
+              caches.open(STATIC_CACHE).then((c) => c.put(req, copy)).catch(() => undefined);
+            }
+            return res;
+          })
+          .catch(() => hit);
+        return hit || network;
+      })
+    );
+    return;
+  }
+
+  if (req.mode === "navigate") {
+    event.respondWith(
+      fetch(req).catch(() =>
+        caches.match(OFFLINE_URL).then((r) => r || new Response("offline", { status: 503 }))
+      )
+    );
+  }
+});
+
+/* ── اعلان‌ها ───────────────────────────────────────── */
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (e) {
+    payload = { body: event.data ? event.data.text() : "" };
+  }
+  const title = payload.title || "الگو هاب";
+  const options = {
+    body: payload.body || "",
+    icon: "/static/img/pwa-icon.svg",
+    badge: "/static/img/pwa-icon-maskable.svg",
+    dir: "rtl",
+    lang: "fa",
+    tag: payload.tag || "algohub",
+    data: { url: payload.url || "/" },
+    vibrate: [80, 40, 80],
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ("focus" in client) {
+          client.navigate(target).catch(() => undefined);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    })
+  );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data === "skip-waiting") self.skipWaiting();
+});
