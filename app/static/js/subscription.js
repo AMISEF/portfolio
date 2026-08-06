@@ -56,6 +56,29 @@
 
   // ── مودال راهنمای پرداخت ───────────────────────────────────────────────
   const SUPPORT_URL = "https://t.me/cryptosmart_sup";
+  let usdtRatePromise = null;
+
+  function roundUsdtUp(value) {
+    return Math.ceil(value * 2) / 2;
+  }
+
+  function formatUsdt(value) {
+    const raw = Number(value).toLocaleString("en-US", { maximumFractionDigits: 1 });
+    return (window.CS ? CS.toFa(raw) : raw) + " USDT";
+  }
+
+  function fetchUsdtRate() {
+    if (!usdtRatePromise) {
+      usdtRatePromise = fetch("/api/market/prices")
+        .then((r) => {
+          if (!r.ok) throw new Error("market rate unavailable");
+          return r.json();
+        })
+        .then((d) => Number(d && d.usdt_irt && d.usdt_irt.price) || null)
+        .catch(() => null);
+    }
+    return usdtRatePromise;
+  }
 
   /** نامِ کاملِ کاربر از فیلدهای موجود. */
   function fullName(me) {
@@ -82,14 +105,14 @@
   }
 
   /** پیام رسمیِ آمادهٔ ارسال به پشتیبانی برای پلن انتخاب‌شده. */
-  function supportMessage(btn, me) {
+  function supportMessage(btn, usdtLabel, me) {
     const name = btn.getAttribute("data-plan-name") || "";
     const price = btn.getAttribute("data-plan-price") || "";
     const period = btn.getAttribute("data-plan-period") || "";
     return (
       "سلام؛ وقت بخیر.\n" +
       "مایل به تهیهٔ اشتراک «" + name + "» الگو هاب کریپتو اسمارت (" +
-      period + " — " + price + ") هستم.\n" +
+      period + " — " + price + " / " + usdtLabel + ") هستم.\n" +
       "لطفاً راهنمایی بفرمایید. سپاسگزارم." +
       identityBlock(me)
     );
@@ -119,6 +142,9 @@
     if (!overlay) return;
     const planLine = document.getElementById("payModalPlan");
     const support = document.getElementById("paySupport");
+    const rialPriceEl = document.getElementById("payRialPrice");
+    const usdtPriceEl = document.getElementById("payUsdtPrice");
+    const usdtRateEl = document.getElementById("payUsdtRate");
     const closeBtn = document.getElementById("payModalClose");
     const ctaDesc = overlay.querySelector(".pay-cta__desc");
     const ctaDescBase = ctaDesc ? ctaDesc.textContent : "";
@@ -126,15 +152,20 @@
     const open = (btn) => {
       const name = btn.getAttribute("data-plan-name") || "";
       const price = btn.getAttribute("data-plan-price") || "";
+      const rialPrice = Number(btn.getAttribute("data-plan-price-number")) || 0;
       const period = btn.getAttribute("data-plan-period") || "";
       planLine.innerHTML =
         "پلن انتخابی شما: <b>" + name + "</b> — " + period + " " + price;
+      if (rialPriceEl) rialPriceEl.textContent = price;
+      if (usdtPriceEl) usdtPriceEl.textContent = "در حال دریافت نرخ…";
+      if (usdtRateEl) usdtRateEl.textContent = "نرخ لحظه‌ای تتر صرافی تبدیل";
+      let currentUsdtLabel = "نرخ تتر موقتاً در دسترس نیست";
 
       // پیام از پیش نوشته‌شده در لینک تلگرام قرار می‌گیرد؛ ضمناً هنگام کلیک در
       // حافظه هم کپی می‌شود تا اگر کلاینت تلگرام متن را پر نکرد، کاربر فقط
       // Paste کند. مشخصاتِ حساب به‌محض آماده‌شدن به پیام افزوده می‌شود.
       const setLink = (me) => {
-        const msg = supportMessage(btn, me);
+        const msg = supportMessage(btn, currentUsdtLabel, me);
         support.href = SUPPORT_URL + "?text=" + encodeURIComponent(msg);
         support.onclick = () => { copyText(msg); };
         if (ctaDesc) {
@@ -146,6 +177,22 @@
 
       setLink(ME);
       fetchMe().then(setLink);
+      fetchUsdtRate().then((rate) => {
+        if (rate && rialPrice > 0) {
+          currentUsdtLabel = formatUsdt(roundUsdtUp(rialPrice / rate));
+          if (usdtPriceEl) usdtPriceEl.textContent = currentUsdtLabel;
+          if (usdtRateEl) {
+            const shownRate = Math.round(rate).toLocaleString("en-US");
+            usdtRateEl.textContent = "نرخ لحظه‌ای تتر صرافی تبدیل: " +
+              (window.CS ? CS.toFa(shownRate) : shownRate) + " تومان";
+          }
+        } else {
+          if (usdtPriceEl) usdtPriceEl.textContent = currentUsdtLabel;
+          if (usdtRateEl) usdtRateEl.textContent = "دریافت نرخ صرافی تبدیل ناموفق بود";
+        }
+        setLink(ME);
+        fetchMe().then(setLink);
+      });
 
       overlay.hidden = false;
       document.body.style.overflow = "hidden";
