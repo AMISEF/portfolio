@@ -74,7 +74,9 @@
           if (!r.ok) throw new Error("market rate unavailable");
           return r.json();
         })
-        .then((d) => Number(d && d.usdt_irt && d.usdt_irt.price) || null)
+        .then((d) => d && d.sources && d.sources.usdt === "live"
+          ? (Number(d.usdt_irt && d.usdt_irt.price) || null)
+          : null)
         .catch(() => null);
     }
     return usdtRatePromise;
