@@ -5,6 +5,38 @@
    ========================================================================== */
 
 /* ---------- توکن‌های برند ---------- */
+/* ---------- Site-wide Persian font (served locally) ---------- */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Regular.woff2") format("woff2");
+  font-style: normal; font-weight: 400; font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Medium.woff2") format("woff2");
+  font-style: normal; font-weight: 500; font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-SemiBold.woff2") format("woff2");
+  font-style: normal; font-weight: 600; font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Bold.woff2") format("woff2");
+  font-style: normal; font-weight: 700; font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-ExtraBold.woff2") format("woff2");
+  font-style: normal; font-weight: 800; font-display: swap;
+}
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("/static/fonts/Vazirmatn-Black.woff2") format("woff2");
+  font-style: normal; font-weight: 900; font-display: swap;
+}
+
 :root {
   --blue-900: #162F55; --blue-800: #1B3F70; --blue-700: #214E8A;
   --blue-500: #2D63B0; --blue-300: #6F95C8;
@@ -14,9 +46,9 @@
   --up: #16C784; --down: #EA3943; --warn: #F59E0B;
   --on-brand: #04201D; --on-blue: #FFFFFF;
 
-  --font: "Vazirmatn", "B Nazanin", Tahoma, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font: "Vazirmatn", Tahoma, system-ui, -apple-system, "Segoe UI", sans-serif;
   /* اعداد هم با همان فونت نرم وزیرمتن (ارقام جدول‌بندی‌شده) — نه فونت مونوی سیستمی */
-  --font-mono: "Vazirmatn", "B Nazanin", Tahoma, sans-serif;
+  --font-mono: "Vazirmatn", Tahoma, system-ui, sans-serif;
 
   --radius-lg: 22px; --radius-md: 16px; --radius-sm: 10px; --radius-pill: 999px; --radius-nav: 26px;
   --shadow-soft: 0 10px 30px -12px rgba(22,47,85,.25);
@@ -55,12 +87,17 @@
   --nav-bg: rgba(15,28,48,.72); --chip: rgba(120,160,210,.12); --glass-hi: rgba(120,170,220,.12);
 }
 
-* { box-sizing: border-box; }
+*, *::before, *::after {
+  box-sizing: border-box;
+  font-family: var(--font) !important;
+  font-synthesis: none;
+}
 html, body {
   margin: 0; padding: 0; font-family: var(--font);
   background: var(--bg); color: var(--text);
   direction: rtl; text-align: right;
-  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   overflow-x: hidden;            /* جلوگیری از اسکرول افقی صفحه در موبایل */
   max-width: 100%;
 }
