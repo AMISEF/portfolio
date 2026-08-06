@@ -13,11 +13,12 @@
 """
 from __future__ import annotations
 
+import math
 from typing import Any
 from urllib.parse import quote
 
 from app.config import settings
-from app.services import plans
+from app.services import plans, tabdeal
 
 
 # ──────────────────────── کمکی‌های قالب‌بندی ───────────────────────
@@ -34,6 +35,28 @@ def fa_digits(s: Any) -> str:
 def toman(n: int) -> str:
     # جداکنندهٔ هزارگانِ فارسی (٬) به‌جای کاماى لاتین.
     return fa_digits(f"{int(n):,}").replace(",", "٬") + " تومان"
+
+
+def round_usdt_up(price_toman: int, rate: float | int | None) -> float | None:
+    """Convert Toman to USDT and always round upward to the next 0.5 USDT."""
+    if price_toman <= 0 or not rate or rate <= 0:
+        return None
+    return math.ceil((price_toman / float(rate)) * 2) / 2
+
+
+def usdt(amount: float | None) -> str:
+    if amount is None:
+        return "نرخ تتر موقتاً در دسترس نیست"
+    return f"{fa_digits(f'{amount:g}')} USDT"
+
+
+async def current_usdt_rate() -> float | None:
+    try:
+        data = await tabdeal.usdt()
+        rate = float(((data.get("usdt_irt") or {}).get("price")) or 0)
+        return rate if rate > 0 else None
+    except Exception:  # noqa: BLE001 - subscription page must still render
+        return None
 
 
 def footer() -> str:
@@ -67,17 +90,18 @@ JOURNAL_PLANS = [
         ],
     },
     {
-        "key": "silver", "name": "نقره‌ای", "emoji": "🥈", "monthly": 349000,
+        "key": "silver", "name": "نقره‌ای", "emoji": "🥈", "monthly": 999000,
         "tagline": "هر هفته یک گزارش که می‌گوید پولت از کجا نشت می‌کند",
         "features": [
             "ثبت تا ۱۰۰ معامله با تمام جزئیات",
             "تحلیل نامحدود هوش مصنوعی روی هر معامله",
             "مربی هوش مصنوعی روی کل ژورنال، هفته‌ای ۱ بار: نقاط قوت، نشتی‌های پول و برنامهٔ ۷ روزهٔ بهبود",
             "گفتگوی نامحدود با مربی دربارهٔ همان تحلیل‌ها",
+            "تریدینگ پلن شخصی با دموهای آماده و همگام‌سازی با مربی هوش مصنوعی",
         ],
     },
     {
-        "key": "gold", "name": "طلایی", "emoji": "🥇", "monthly": 999000,
+        "key": "gold", "name": "طلایی", "emoji": "🥇", "monthly": 1999000,
         "tagline": "ریتمِ تریدرِ تمام‌وقت: بازخوردِ روزانه پیش از اشتباهِ بعدی",
         "features": [
             "ثبت نامحدود معامله — بدون هیچ سقفی",
@@ -85,10 +109,11 @@ JOURNAL_PLANS = [
             "مربی هوش مصنوعی، هر روز ۱ بار: عیب‌یابیِ روزانه پیش از باز کردن پوزیشن بعدی",
             "گزارش نهادی و بانکی، هفته‌ای ۱ بار — همان استانداردی که پراپ‌فرم‌ها با آن سرمایه می‌دهند",
             "خروجی PDF گزارش نهادی برای ارائه به سرمایه‌گذار",
+            "تریدینگ پلن شخصی با دموهای آماده و همگام‌سازی با مربی هوش مصنوعی",
         ],
     },
     {
-        "key": "diamond", "name": "الماسی", "emoji": "💎", "monthly": 1999000,
+        "key": "diamond", "name": "الماسی", "emoji": "💎", "monthly": 3950000,
         "tagline": "بدون سقف، بدون صف، بدون ثبت دستی — کل میزِ تحلیل در اختیار تو",
         "features": [
             "ثبت نامحدود معامله و تحلیل نامحدود هوش مصنوعی روی هر معامله",
@@ -96,6 +121,7 @@ JOURNAL_PLANS = [
             "گزارش نهادی و بانکی نامحدود: اثرِ هر تغییرِ استراتژی را بلافاصله بسنج",
             "اتصال مستقیم به صرافی توبیت (فقط در این پلن): معاملات فیوچرز خودکار ژورنال می‌شوند — بدون نیاز به ثبت دستی ژورنال",
             "خروجی PDF نهادی برای ارائه به سرمایه‌گذار و پراپ‌فرم",
+            "تریدینگ پلن شخصی با دموهای آماده و همگام‌سازی با مربی هوش مصنوعی",
         ],
     },
 ]
@@ -153,12 +179,12 @@ def support_link(message: str) -> str:
 
 
 def purchase_message(plan_name: str, product: str, period_fa: str,
-                     price_fa: str) -> str:
+                     price_fa: str, usdt_fa: str) -> str:
     """پیامِ رسمیِ آماده که در پیویِ پشتیبانی نوشته می‌شود."""
     return (
         "سلام؛ وقت بخیر.\n"
         f"مایل به تهیهٔ اشتراک «{plan_name}» {product} "
-        f"({period_fa} — {price_fa}) هستم.\n"
+        f"({period_fa} — {price_fa} / {usdt_fa}) هستم.\n"
         "مبلغ را واریز کرده‌ام و رسید پرداخت را در همین گفتگو ارسال می‌کنم.\n"
         "لطفاً راهنمایی بفرمایید. سپاسگزارم."
     )
@@ -214,7 +240,7 @@ def payment_block() -> list[str]:
 
 
 # ──────────────────────── پیام‌های اشتراک ───────────────────────
-def portfolio_subscription_message() -> tuple[str, dict]:
+async def portfolio_subscription_message() -> tuple[str, dict]:
     """متن + کیبوردِ شیشه‌ایِ اشتراک‌های پنل مدیریت سرمایه."""
     lines = [
         "💼 <b>اشتراک‌های پنل مدیریت سرمایه الگو هاب</b>",
@@ -223,6 +249,7 @@ def portfolio_subscription_message() -> tuple[str, dict]:
         "پشتیبانی تیم الگو هاب دسترسی خواهید داشت.",
         "",
     ]
+    rate = await current_usdt_rate()
     buttons: list[list[dict[str, str]]] = []
     for p in portfolio_plans():
         if p["price"] <= 0:
@@ -230,16 +257,17 @@ def portfolio_subscription_message() -> tuple[str, dict]:
                                 p["tagline"], p["features"])
             continue
         price_fa = toman(p["price"])
-        price_line = f"{esc(price_fa)} ({p['period_fa']})"
+        usdt_fa = usdt(round_usdt_up(p["price"], rate))
+        price_line = f"{esc(price_fa)} / {esc(usdt_fa)} ({p['period_fa']})"
         if p.get("original_price"):
             price_line = (f"<s>{esc(toman(int(p['original_price'])))}</s> "
                           f"{price_line}")
         lines += plan_block(p["emoji"], p["name"], price_line,
                             p["tagline"], p["features"])
         msg = purchase_message(p["name"], "پنل مدیریت سرمایه الگو هاب",
-                               p["period_fa"], price_fa)
+                               p["period_fa"], price_fa, usdt_fa)
         buttons.append([{
-            "text": f"{p['emoji']} اشتراک {p['name']} — {price_fa}",
+            "text": f"{p['emoji']} {p['name']} — {price_fa} / {usdt_fa}",
             "url": support_link(msg),
         }])
     lines += payment_block()
@@ -248,7 +276,7 @@ def portfolio_subscription_message() -> tuple[str, dict]:
     return with_footer("\n".join(lines)), {"inline_keyboard": buttons}
 
 
-def journal_subscription_message() -> tuple[str, dict]:
+async def journal_subscription_message() -> tuple[str, dict]:
     """متن + کیبوردِ شیشه‌ایِ اشتراک‌های پنل ژورنال تریدینگ."""
     lines = [
         "📊 <b>اشتراک‌های پنل ژورنال تریدینگ الگو هاب</b>",
@@ -260,6 +288,7 @@ def journal_subscription_message() -> tuple[str, dict]:
         "هوش مصنوعی. پس از آن، برای ادامه باید یکی از پلن‌های زیر را تهیه کنید.",
         "",
     ]
+    rate = await current_usdt_rate()
     buttons: list[list[dict[str, str]]] = []
     for p in JOURNAL_PLANS:
         if p["monthly"] <= 0:
@@ -267,12 +296,13 @@ def journal_subscription_message() -> tuple[str, dict]:
                                 p["tagline"], p["features"])
             continue
         price_fa = toman(p["monthly"])
-        lines += plan_block(p["emoji"], p["name"], f"{esc(price_fa)} (ماهانه)",
+        usdt_fa = usdt(round_usdt_up(p["monthly"], rate))
+        lines += plan_block(p["emoji"], p["name"], f"{esc(price_fa)} / {esc(usdt_fa)} (ماهانه)",
                             p["tagline"], p["features"])
         msg = purchase_message(p["name"], "پنل ژورنال تریدینگ الگو هاب",
-                               "ماهانه", price_fa)
+                               "ماهانه", price_fa, usdt_fa)
         buttons.append([{
-            "text": f"{p['emoji']} اشتراک {p['name']} — {price_fa}",
+            "text": f"{p['emoji']} {p['name']} — {price_fa} / {usdt_fa}",
             "url": support_link(msg),
         }])
     lines += [
