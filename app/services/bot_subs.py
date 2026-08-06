@@ -53,6 +53,8 @@ def usdt(amount: float | None) -> str:
 async def current_usdt_rate() -> float | None:
     try:
         data = await tabdeal.usdt()
+        if data.get("source") != "live":
+            return None
         rate = float(((data.get("usdt_irt") or {}).get("price")) or 0)
         return rate if rate > 0 else None
     except Exception:  # noqa: BLE001 - subscription page must still render
