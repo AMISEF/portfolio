@@ -280,13 +280,13 @@ async def process_update(update: dict[str, Any]) -> bool:
 
     if text == BTN_PORTFOLIO_SUB:
         db.bot_state_set(chat_id, None)
-        body, kb = portfolio_subscription_message()
+        body, kb = await portfolio_subscription_message()
         await send_message(chat_id, body, reply_markup=kb)
         return True
 
     if text == BTN_JOURNAL_SUB:
         db.bot_state_set(chat_id, None)
-        body, kb = journal_subscription_message()
+        body, kb = await journal_subscription_message()
         await send_message(chat_id, body, reply_markup=kb)
         return True
 
