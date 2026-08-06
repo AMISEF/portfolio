@@ -7,11 +7,15 @@
  * آیکن و منیفست عمداً کش نمی‌شوند: سرور خودش نسخه‌گذاری می‌کند و هر
  * تصویرِ تازه‌ای که آپلود شود باید بلافاصله دیده شود.
  */
-const VERSION = "algohub-v4";
+const VERSION = "algohub-v5";
 const STATIC_CACHE = VERSION + "-static";
 const OFFLINE_URL = "/static/offline.html";
 
-const PRECACHE = [OFFLINE_URL];
+const PRECACHE = [
+  OFFLINE_URL,
+  "/static/fonts/Vazirmatn-Regular.woff2",
+  "/static/fonts/Vazirmatn-ExtraBold.woff2",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

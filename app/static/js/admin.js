@@ -492,7 +492,9 @@
     const w = window.open("", "_blank");
     w.document.write(
       '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8"><title>کاربران — کریپتو اسمارت</title>' +
-      "<style>body{font-family:Tahoma,Arial,sans-serif;direction:rtl;padding:20px;}" +
+      "<style>@font-face{font-family:Vazirmatn;src:url('/static/fonts/Vazirmatn-Regular.woff2') format('woff2');font-weight:400;font-display:swap}" +
+      "@font-face{font-family:Vazirmatn;src:url('/static/fonts/Vazirmatn-Bold.woff2') format('woff2');font-weight:700;font-display:swap}" +
+      "*,*::before,*::after{font-family:Vazirmatn,Tahoma,sans-serif!important}body{direction:rtl;padding:20px;}" +
       "h1{font-size:18px;}table{width:100%;border-collapse:collapse;font-size:11px;}" +
       "th,td{border:1px solid #999;padding:5px 6px;text-align:right;}th{background:#eef;}" +
       "@media print{button{display:none;}}</style></head><body>" +
