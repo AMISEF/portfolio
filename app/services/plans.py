@@ -3,9 +3,9 @@
 
 چهار پلن:
   • برنزی   (رایگان)        — ۱ تحلیل سبد/ماه، بدون تحلیل اختصاصی
-  • نقره‌ای  (۹۹٬۰۰۰/ماه)   — ۲ تحلیل/ماه + تحلیل اختصاصی
-  • طلایی   (۱۹۹٬۰۰۰/ماه)  — نامحدود + تحلیل اختصاصی + گزارش هفتگی + پشتیبانی اختصاصی
-  • الماسی  (سالانه ۱٬۱۹۹٬۰۰۰ با تخفیف از ۲٬۴۰۰٬۰۰۰) — همهٔ امکانات طلایی + ارتباط مستقیم با مدیر
+  • نقره‌ای  (۹۹۹٬۰۰۰/ماه)   — ۲ تحلیل/ماه + تحلیل اختصاصی
+  • طلایی   (۱٬۹۹۹٬۰۰۰/ماه) — نامحدود + تحلیل اختصاصی + گزارش هفتگی + پشتیبانی اختصاصی
+  • الماسی  (سالانه ۳٬۹۵۰٬۰۰۰) — همهٔ امکانات طلایی + ارتباط مستقیم با مدیر
 
 خرید واقعی از طریق تلگرام (https://t.me/cryptosmart_sup) انجام می‌شود و فعال‌سازی
 توسط ادمین است؛ این ماژول فقط تعریف پلن‌ها، سهمیهٔ تحلیل هوش مصنوعی، امکانات و
@@ -31,7 +31,7 @@ PLANS: dict[str, dict[str, Any]] = {
     },
     "silver": {
         "key": "silver", "order": 1, "name_fa": "نقره‌ای",
-        "price": 99000, "price_label": "۹۹٬۰۰۰ تومان", "period": "month",
+        "price": 999000, "price_label": "۹۹۹٬۰۰۰ تومان", "period": "month",
         "best_for": " سرمایه‌گذار فعال", "highlight": False,
         "ai_quota": 10, "ai_period": "month", "exclusive": True, "weekly_report": False,
         "support": "تیمی", "direct_manager": False,
@@ -39,7 +39,7 @@ PLANS: dict[str, dict[str, Any]] = {
     },
     "gold": {
         "key": "gold", "order": 2, "name_fa": "طلایی",
-        "price": 199000, "price_label": "۱۹۹٬۰۰۰ تومان", "period": "month",
+        "price": 1999000, "price_label": "۱٬۹۹۹٬۰۰۰ تومان", "period": "month",
         "best_for": "تریدر حرفه‌ای", "highlight": True,
         "ai_quota": 30, "ai_period": "month", "exclusive": True, "weekly_report": True,
         "support": "اختصاصی", "direct_manager": False,
@@ -47,8 +47,8 @@ PLANS: dict[str, dict[str, Any]] = {
     },
     "diamond": {
         "key": "diamond", "order": 3, "name_fa": "الماسی",
-        "price": 1199000, "original_price": 2400000,
-        "price_label": "۱٬۱۹۹٬۰۰۰ تومان", "period": "year",
+        "price": 3950000,
+        "price_label": "۳٬۹۵۰٬۰۰۰ تومان", "period": "year",
         "best_for": "دسترسی کامل + مدیر", "highlight": False,
         "ai_quota": 600, "ai_period": "year", "exclusive": True, "weekly_report": True,
         "support": "اختصاصی", "direct_manager": True,
@@ -194,7 +194,7 @@ def plans_payload(user: dict[str, Any] | None = None, ai_used: int = 0) -> dict[
             q_label = f"{q} اعتبار سبدچینی هوش مصنوعی در {per_fa}"
         plans.append({
             "key": key, "name_fa": p["name_fa"], "order": p["order"],
-            "price_label": p["price_label"], "period": p["period"],
+            "price": p["price"], "price_label": p["price_label"], "period": p["period"],
             "best_for": p["best_for"], "highlight": p["highlight"],
             "original_price": p.get("original_price"), "desc_fa": p.get("desc_fa", ""),
             "ai_quota": q, "ai_period": p.get("ai_period", "month"),

@@ -67,6 +67,7 @@
               data-plan="{{ p.key }}"
               data-plan-name="{{ p.name_fa }}"
               data-plan-price="{{ p.price_label }}"
+              data-plan-price-number="{{ p.price }}"
               data-plan-period="{{ 'سالانه' if p.period == 'year' else 'ماهانه' }}">
         خرید اشتراک
       </button>
@@ -84,6 +85,13 @@
     <button type="button" class="modal__close" id="payModalClose" aria-label="بستن">×</button>
     <h2 class="modal__title" id="payModalTitle">راهنمای پرداخت و فعال‌سازی اشتراک</h2>
     <p class="modal__sub" id="payModalPlan"></p>
+
+    <div class="pay-sec pay-sec--free">
+      <h3 class="pay-sec__title">مبلغ قابل پرداخت</h3>
+      <p class="pay-sec__hint">قیمت ریالی: <strong id="payRialPrice">—</strong></p>
+      <p class="pay-sec__hint">قیمت تتری: <strong id="payUsdtPrice">در حال دریافت نرخ…</strong></p>
+      <p class="pay-tip" id="payUsdtRate"></p>
+    </div>
 
     <div class="pay-sec">
       <h3 class="pay-sec__title"><span class="pay-sec__ic">💵</span>پرداخت ارزی — تتر (USDT)</h3>
